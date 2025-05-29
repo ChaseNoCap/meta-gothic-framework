@@ -1,0 +1,39 @@
+{
+  "name": "@chasenocap/meta-gothic-framework",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Meta GOTHIC Framework - AI-Guided Opinionated TypeScript Framework with High Intelligent Components",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev:ui",
+    "dev:ui": "cd packages/ui-components && npm run dev",
+    "build": "npm run build:all",
+    "build:all": "npm run build:ui && npm run build:packages",
+    "build:ui": "cd packages/ui-components && npm run build",
+    "build:packages": "for dir in packages/*/; do (cd \"$dir\" && npm run build); done",
+    "test": "npm run test:all",
+    "test:all": "for dir in packages/*/; do (cd \"$dir\" && npm test); done",
+    "lint": "npm run lint:all",
+    "lint:all": "for dir in packages/*/; do (cd \"$dir\" && npm run lint); done",
+    "update-submodules": "git submodule update --remote --merge",
+    "init-submodules": "git submodule update --init --recursive",
+    "health-check": "node scripts/health-check.js",
+    "monitor": "npm run health-check -- --watch"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.10",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChaseNoCap/h1b-visa-analysis.git",
+    "directory": "meta-gothic-framework"
+  },
+  "author": "ChaseNoCap",
+  "license": "MIT"
+}

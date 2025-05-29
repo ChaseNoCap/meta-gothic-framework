@@ -1,0 +1,21 @@
+[submodule "packages/claude-client"]
+	path = packages/claude-client
+	url = https://github.com/ChaseNoCap/claude-client.git
+[submodule "packages/prompt-toolkit"]
+	path = packages/prompt-toolkit
+	url = https://github.com/ChaseNoCap/prompt-toolkit.git
+[submodule "packages/sdlc-config"]
+	path = packages/sdlc-config
+	url = https://github.com/ChaseNoCap/sdlc-config.git
+[submodule "packages/sdlc-engine"]
+	path = packages/sdlc-engine
+	url = https://github.com/ChaseNoCap/sdlc-engine.git
+[submodule "packages/sdlc-content"]
+	path = packages/sdlc-content
+	url = https://github.com/ChaseNoCap/sdlc-content.git
+[submodule "packages/graphql-toolkit"]
+	path = packages/graphql-toolkit
+	url = https://github.com/ChaseNoCap/graphql-toolkit.git
+[submodule "packages/context-aggregator"]
+	path = packages/context-aggregator
+	url = https://github.com/ChaseNoCap/context-aggregator.git
