@@ -19,3 +19,9 @@
 [submodule "packages/context-aggregator"]
 	path = packages/context-aggregator
 	url = https://github.com/ChaseNoCap/context-aggregator.git
+[submodule "packages/ui-components"]
+	path = packages/ui-components
+	url = https://github.com/ChaseNoCap/ui-components.git
+[submodule "packages/github-graphql-client"]
+	path = packages/github-graphql-client
+	url = https://github.com/ChaseNoCap/github-graphql-client.git
