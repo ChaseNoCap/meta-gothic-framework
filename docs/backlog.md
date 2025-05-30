@@ -26,8 +26,8 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
 
 ## 🚨 Critical Priority Items
 
-> **SPRINT COMPLETE** ✅: Meta GOTHIC Repository Tools successfully implemented!  
-> **NEXT SPRINT**: Real-time Event System Integration for live dashboard updates and workflow monitoring.
+> **CURRENT SPRINT**: Enhanced Tools Menu with Change Review Workflow  
+> **SPRINT GOAL**: Transform Tools into a dropdown menu with streamlined change review process that automatically analyzes all repository changes with AI-powered commit messages and executive summaries.
 
 ### 1. ✅ Meta GOTHIC Repository Tools (COMPLETE)
 **Status**: ✅ COMPLETE - Fully operational with real integrations  
@@ -71,7 +71,56 @@ npm run dev
 
 **🎯 Achievement**: Complete transition from mock data to production-ready repository management tools with real-time git integration and AI-powered commit message generation!
 
-### 2. 🚧 Real-time Event System Integration  
+### 2. 🚧 Enhanced Tools Menu with Change Review Workflow
+**Status**: Ready to Start  
+**Effort**: 3-4 days  
+**Priority**: CRITICAL - Current Sprint  
+**Description**: Transform Tools into a dropdown menu with submenu items and create a streamlined "Change Review" workflow that automatically analyzes all repository changes with AI commit messages and executive summary  
+**Prerequisites**: ✅ Repository Tools complete, ✅ Real data only implementation, ✅ Loading UX patterns established
+
+**Tasks**:
+- [ ] **Navigation Enhancement** (Day 1)
+  - [ ] Convert Tools menu item to dropdown trigger (click/tap expands submenu)
+  - [ ] Create submenu structure with items: "Change Review", "Repository Status", "Manual Commit"
+  - [ ] Implement dropdown UI component with proper accessibility (ARIA attributes)
+  - [ ] Add click-outside handler to close dropdown
+  - [ ] Ensure mobile-responsive dropdown behavior
+
+- [ ] **Change Review Workflow** (Day 2-3)
+  - [ ] Create new ChangeReview page component at /tools/change-review
+  - [ ] Implement automatic flow on menu click:
+    - [ ] Show loading modal with stages: "Scanning repositories", "Analyzing changes", "Generating AI messages", "Creating summary"
+    - [ ] Fetch git status for all repositories in parallel
+    - [ ] For each repo with changes, call Claude API for commit message
+    - [ ] Generate executive summary combining all changes
+  - [ ] Display results in organized view:
+    - [ ] Executive summary at top
+    - [ ] Individual repository cards with changes and AI messages
+    - [ ] Action buttons for each repo (commit, edit message, skip)
+  - [ ] Add batch operations (commit all, skip all)
+
+- [ ] **Data Integration** (Day 3-4)
+  - [ ] Extend dataFetcher service for batch git operations
+  - [ ] Create new API endpoints for bulk change analysis
+  - [ ] Implement proper error handling per repository
+  - [ ] Add retry logic for failed AI generations
+  - [ ] Follow no-mock-data directive from health monitor
+
+- [ ] **UI/UX Polish**
+  - [ ] Use LoadingModal component with proper stages
+  - [ ] Implement toast notifications for success/error states
+  - [ ] Add skeleton loaders during data fetching
+  - [ ] Ensure consistent error handling with ErrorMessage component
+  - [ ] Add keyboard shortcuts for power users
+
+**Success Criteria**:
+- Tools menu is now a dropdown with submenu items
+- Clicking "Change Review" automatically analyzes all repos with changes
+- Each repository gets an AI-generated commit message
+- Executive summary provides overview of all changes
+- All data is live (no mocks), with proper loading and error states
+
+### 3. 🚧 Real-time Event System Integration  
 **Status**: Ready to Start  
 **Effort**: 3-4 days  
 **Priority**: CRITICAL - Next Sprint  
@@ -90,7 +139,51 @@ npm run dev
 
 ## High Priority Items
 
-### 3. SDLC State Machine Integration
+### 4. Tools Menu Subpages Implementation
+**Status**: Not Started  
+**Effort**: 2-3 days  
+**Priority**: HIGH - Supports Current Sprint  
+**Description**: Create individual subpages for Tools menu items with dedicated functionality  
+**Prerequisites**: Enhanced Tools Menu (Critical #2) in progress
+
+**Tasks**:
+- [ ] **Repository Status Page** (/tools/repository-status)
+  - [ ] Real-time git status for all repositories
+  - [ ] Visual indicators for clean/dirty state
+  - [ ] Branch information and ahead/behind counts
+  - [ ] Last commit details per repository
+  - [ ] Quick actions: pull, push, stash
+
+- [ ] **Manual Commit Page** (/tools/manual-commit)
+  - [ ] Repository selector dropdown
+  - [ ] File change viewer with diff display
+  - [ ] Manual commit message editor
+  - [ ] Claude AI suggestion button (optional)
+  - [ ] Commit and push actions
+
+- [ ] **Executive Summary Generator** (standalone utility)
+  - [ ] Service to analyze multiple repository changes
+  - [ ] AI-powered summary generation
+  - [ ] Change categorization (features, fixes, docs, etc.)
+  - [ ] Impact analysis across packages
+
+### 5. Git Operations API Enhancement
+**Status**: Not Started  
+**Effort**: 2 days  
+**Priority**: HIGH - Supports Current Sprint  
+**Description**: Extend git-server.js with bulk operations and enhanced git commands  
+**Prerequisites**: Current git-server.js implementation
+
+**Tasks**:
+- [ ] Add bulk git status endpoint (/api/git/bulk-status)
+- [ ] Implement parallel processing for multiple repos
+- [ ] Add git commit endpoint with message parameter
+- [ ] Add git push endpoint with authentication
+- [ ] Implement transaction-like behavior for batch commits
+- [ ] Add rollback capability for failed operations
+- [ ] Enhanced error reporting per repository
+
+### 6. SDLC State Machine Integration
 **Status**: Not Started  
 **Effort**: 4-5 days  
 **ADRs**: ADR-006 (GOTHIC Pattern), ADR-011 (SDLC State Machine)  
@@ -103,7 +196,7 @@ npm run dev
 - [ ] Build progress tracking dashboard
 - [ ] Add phase-specific context loading for Claude
 
-### 4. GraphQL Federation Gateway
+### 7. GraphQL Federation Gateway
 **Status**: Not Started  
 **Effort**: 5-7 days  
 **ADRs**: ADR-005 (GraphQL-First), ADR-014 (GraphQL Federation)  
@@ -117,7 +210,7 @@ npm run dev
 - [ ] Add subscription federation support
 - [ ] Create unified API documentation
 
-### 5. Automated Tagging and Publishing Flow
+### 8. Automated Tagging and Publishing Flow
 **Status**: Not Started  
 **Effort**: 3-4 days  
 **ADRs**: ADR-003 (Automated Publishing), ADR-007 (Meta Repository)  
@@ -357,3 +450,44 @@ When adding new items to this backlog:
 - For architectural decisions, see the ADR documents in this directory
 - For package-specific details, see the package documentation
 - The framework follows the dogfooding principle - it will use itself for its own development
+
+## Implementation Notes
+
+### Tools Dropdown Menu Implementation Details
+
+**Component Structure**:
+```typescript
+// Navigation.tsx
+<DropdownMenu>
+  <DropdownMenuTrigger>Tools</DropdownMenuTrigger>
+  <DropdownMenuContent>
+    <DropdownMenuItem onClick={handleChangeReview}>
+      Change Review
+    </DropdownMenuItem>
+    <DropdownMenuItem asChild>
+      <Link to="/tools/repository-status">Repository Status</Link>
+    </DropdownMenuItem>
+    <DropdownMenuItem asChild>
+      <Link to="/tools/manual-commit">Manual Commit</Link>
+    </DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
+```
+
+**Change Review Flow**:
+1. User clicks "Change Review" menu item
+2. Immediately navigate to /tools/change-review and show loading modal
+3. Execute in parallel:
+   - Fetch git status for all repositories
+   - Filter repos with changes
+   - Generate AI commit messages for each
+   - Create executive summary
+4. Display results with action buttons
+5. Allow batch operations or individual actions
+
+**Key Requirements**:
+- No mock data - all git operations must be real
+- Loading states must follow established patterns (LoadingModal with stages)
+- Error handling must be comprehensive with retry options
+- Must work with existing git-server.js infrastructure
+- Executive summary should highlight cross-package impacts
