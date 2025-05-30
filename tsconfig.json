@@ -11,10 +11,7 @@
     "jsx": "react-jsx",
     "declaration": true,
     "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["packages/*/src/*"]
-    }
+    "baseUrl": "."
   },
   "include": [
     "packages/*/src/**/*"
