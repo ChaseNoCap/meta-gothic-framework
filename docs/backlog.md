@@ -29,15 +29,223 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
 
 ## 🚨 Critical Priority Items
 
-> **CURRENT SPRINT**: GraphQL Migration  
-> **SPRINT GOAL**: Migrate Git and Claude servers from RESTful endpoints to GraphQL using Fastify and Mercurius, implementing federation architecture.
+> **CURRENT SPRINT**: GraphQL Parallelism Implementation  
+> **SPRINT GOAL**: Implement parallel execution capabilities for Claude agents and git operations to achieve 5x performance improvement in batch operations.
 
-### 1. 🚧 GraphQL Schema Design and Service Structure (CURRENT SPRINT)
+### 1. 🚧 Configuration Management System (CURRENT SPRINT - HIGH PRIORITY)
+**Status**: Ready to Start  
+**Effort**: 12 hours  
+**Priority**: CRITICAL - Must complete first  
+**Description**: Create user preferences page for parallelism settings - essential foundation for all parallel features  
+**Prerequisites**: ✅ Git server operational, ✅ Claude server operational  
+**ADRs**: ADR-005 (GraphQL-First), ADR-008 (Event-driven architecture)
+
+**Tasks**:
+- [ ] **Create GraphQL Schema** (2 hours)
+  - Define UserConfig, ParallelismConfig, AutomationConfig types
+  - Add to federation schema in `/services/meta-gothic-app/schema/config.graphql`
+  
+- [ ] **Implement Resolvers** (3 hours)
+  - Create `/services/meta-gothic-app/resolvers/queries/getUserConfig.ts`
+  - Create `/services/meta-gothic-app/resolvers/mutations/updateUserConfig.ts`
+  - Use localStorage initially, prepare for database migration
+  
+- [ ] **Build Config UI Page** (4 hours)
+  - Create `/packages/ui-components/src/pages/Config.tsx`
+  - Add number inputs for concurrent agents (1-10) and shells (1-20)
+  - Add toggle switches for auto-commit and auto-push
+  - Implement real-time save with debouncing
+  
+- [ ] **Add Route and Navigation** (1 hour)
+  - Add config route to router
+  - Add config link to main navigation
+  - Add keyboard shortcut (Cmd+,)
+  
+- [ ] **Testing** (2 hours)
+  - Unit tests for resolvers
+  - Integration tests for UI
+  - E2E test for config persistence
+
+### 2. 🚧 Agent Run Storage Infrastructure (CURRENT SPRINT - HIGH PRIORITY)
+**Status**: Ready to Start  
+**Effort**: 12 hours  
+**Priority**: CRITICAL - Required for tracking parallel runs  
+**Description**: Implement persistent storage for Claude agent runs with full details and retry capability  
+**Prerequisites**: Configuration Management System  
+**ADRs**: ADR-009 (Multi-layer caching), ADR-011 (SDLC state machine)
+
+**Tasks**:
+- [ ] **Create Run Storage Service** (3 hours)
+  - Implement `/services/claude-service/src/services/RunStorage.ts`
+  - Methods: saveRun, getRun, getRunsByRepository, retryRun
+  - Use SQLite for local development
+  - Prepare interface for PostgreSQL migration
+  
+- [ ] **Define GraphQL Schema** (2 hours)
+  - Create `/services/claude-service/schema/runs.graphql`
+  - Define AgentRun, RunStatus, RunError, AgentInput, AgentOutput types
+  - Add queries: agentRun, agentRuns, repositoryRuns
+  - Add mutations: retryAgentRun, cancelAgentRun, retryFailedRuns
+  
+- [ ] **Implement Run Tracking in ClaudeSessionManager** (4 hours)
+  - Modify `generateCommitMessage` to create run records
+  - Track status changes (QUEUED → RUNNING → SUCCESS/FAILED)
+  - Capture full input/output including raw responses
+  - Measure duration and token usage
+  
+- [ ] **Create Database Schema** (2 hours)
+  - Design tables: agent_runs, run_inputs, run_outputs, run_errors
+  - Add indexes for common queries
+  - Implement migration system
+  
+- [ ] **Add Cleanup Job** (1 hour)
+  - Create scheduled task to delete old runs (30 days)
+  - Make retention period configurable
+
+### 3. 🚧 Concurrent Session Management (CURRENT SPRINT - HIGH PRIORITY)
+**Status**: Ready to Start  
+**Effort**: 12 hours  
+**Priority**: CRITICAL - Core performance improvement  
+**Description**: Update ClaudeSessionManager for parallel execution with queue management  
+**Prerequisites**: Agent Run Storage Infrastructure  
+**ADRs**: ADR-008 (Event-driven architecture), ADR-012 (Fastify performance)
+
+**Tasks**:
+- [ ] **Install and Configure p-queue** (1 hour)
+  - Add to claude-service dependencies
+  - Configure TypeScript types
+  
+- [ ] **Refactor ClaudeSessionManager** (4 hours)
+  - Implement queue-based execution with p-queue
+  - Respect user's concurrency settings from config
+  - Add rate limiting logic
+  - Handle dynamic config updates
+  
+- [ ] **Implement Process Pool** (3 hours)
+  - Create reusable Claude process pool
+  - Implement health checks
+  - Add process recycling after N uses
+  
+- [ ] **Add Performance Monitoring** (2 hours)
+  - Track queue depth
+  - Measure wait times
+  - Monitor resource usage
+  - Expose metrics via GraphQL
+  
+- [ ] **Error Handling and Recovery** (2 hours)
+  - Implement exponential backoff
+  - Dead letter queue for failed runs
+  - Circuit breaker pattern
+
+### 4. 🚧 Agent Status UI (CURRENT SPRINT - MEDIUM PRIORITY)
+**Status**: Ready to Start  
+**Effort**: 12 hours  
+**Priority**: MEDIUM - Essential for debugging parallel operations  
+**Description**: Build UI for viewing run history, detailed output, and retry functionality  
+**Prerequisites**: Agent Run Storage Infrastructure  
+**ADRs**: ADR-010 (Progressive context loading)
+
+**Tasks**:
+- [ ] **Create Agent Status Page** (4 hours)
+  - Create `/packages/ui-components/src/pages/AgentStatus.tsx`
+  - Split view: run list on left, details on right
+  - Implement filtering by status, repository, date range
+  
+- [ ] **Build Run Detail Components** (3 hours)
+  - Collapsible sections for input/output/errors
+  - Syntax highlighting for code blocks
+  - Raw Claude response viewer
+  - Copy-to-clipboard functionality
+  
+- [ ] **Implement Real-time Updates** (2 hours)
+  - WebSocket connection for status changes
+  - Optimistic UI updates
+  - Connection status indicator
+  
+- [ ] **Add Retry Functionality** (2 hours)
+  - One-click retry for failed runs
+  - Batch retry for multiple failures
+  - Show retry history with parent-child relationships
+  
+- [ ] **Performance Optimizations** (1 hour)
+  - Virtual scrolling for long lists
+  - Lazy loading of run details
+  - Response caching
+
+### 5. 🚧 GraphQL Parallel Resolvers (CURRENT SPRINT - MEDIUM PRIORITY)
+**Status**: Ready to Start  
+**Effort**: 12 hours  
+**Priority**: MEDIUM - Enables true parallel execution  
+**Description**: Implement parallel-friendly GraphQL mutations and queries  
+**Prerequisites**: Concurrent Session Management  
+**ADRs**: ADR-005 (GraphQL-First), ADR-014 (Federation)
+
+**Tasks**:
+- [ ] **Create Batch Mutation** (3 hours)
+  - Implement `generateCommitMessagesParallel` mutation
+  - Support field aliases for parallel execution
+  - Handle partial failures gracefully
+  
+- [ ] **Optimize Resolver Implementation** (3 hours)
+  - Use DataLoader for batching
+  - Implement field-level concurrency
+  - Add caching layer
+  
+- [ ] **Update UI to Use Parallel Queries** (2 hours)
+  - Build dynamic query construction
+  - Show progress for each parallel operation
+  - Handle partial results
+  
+- [ ] **Add Performance Monitoring** (2 hours)
+  - Track parallel vs sequential performance
+  - Identify bottlenecks
+  - Create performance dashboard
+  
+- [ ] **Documentation and Examples** (2 hours)
+  - Best practices guide
+  - Example queries
+  - Performance tuning guide
+
+### 6. 🚧 Real-time Progress Tracking (CURRENT SPRINT - LOW PRIORITY)
+**Status**: Ready to Start  
+**Effort**: 12 hours  
+**Priority**: LOW - Enhancement for better UX  
+**Description**: Add GraphQL subscriptions for real-time progress updates  
+**Prerequisites**: GraphQL Parallel Resolvers  
+**ADRs**: ADR-008 (Event-driven), ADR-013 (Mercurius subscriptions)
+
+**Tasks**:
+- [ ] **Implement GraphQL Subscriptions** (3 hours)
+  - Create `agentRunProgress` subscription
+  - Support individual and aggregate progress
+  - Implement subscription lifecycle management
+  
+- [ ] **Add Progress Tracking to ClaudeSessionManager** (2 hours)
+  - Emit progress events during execution
+  - Calculate ETAs based on historical data
+  - Handle subscription cleanup
+  
+- [ ] **Build Progress UI Components** (3 hours)
+  - Progress bars with percentages
+  - Time remaining display
+  - Cancel button integration
+  
+- [ ] **Optimize WebSocket Usage** (2 hours)
+  - Implement heartbeat
+  - Reconnection logic
+  - Message compression
+  
+- [ ] **Testing** (2 hours)
+  - Load testing with many subscriptions
+  - Network failure scenarios
+  - Memory leak prevention
+
+### 7. 🚧 GraphQL Schema Design and Service Structure (MOVED FROM SPRINT)
 **Status**: Ready to Start  
 **Effort**: 1-2 days  
-**Priority**: CRITICAL - Current Sprint  
+**Priority**: HIGH - Foundation for parallelism  
 **Description**: Design GraphQL schemas and set up basic Fastify+Mercurius service structure  
-**Prerequisites**: ✅ Git server operational, ✅ Claude server operational  
+**Prerequisites**: Parallelism stories complete  
 **ADRs**: ADR-005 (GraphQL-First), ADR-012 (Fastify), ADR-013 (Mercurius), ADR-014 (Federation)
 
 **Tasks**:
@@ -93,10 +301,10 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
   - Configure ports: repo-agent (3001), claude (3002), gateway (3000)
   - Set up TypeScript configuration for each service
 
-### 2. 🚧 Git Service Implementation (repo-agent-service)
+### 8. 🚧 Git Service Implementation (repo-agent-service)
 **Status**: Not Started  
 **Effort**: 2 days  
-**Priority**: CRITICAL - Current Sprint  
+**Priority**: HIGH - After parallelism  
 **Description**: Implement GraphQL resolvers for all Git operations, migrating from REST endpoints  
 **Prerequisites**: GraphQL Schema Design complete  
 **ADRs**: ADR-005 (GraphQL-First), ADR-012 (Fastify), ADR-013 (Mercurius)
@@ -122,10 +330,10 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
   - [ ] Git command timeout management
   - [ ] Result caching for expensive operations
 
-### 3. 🚧 Claude Service Implementation (claude-service)
+### 9. 🚧 Claude Service Implementation (claude-service)
 **Status**: Not Started  
 **Effort**: 2-3 days  
-**Priority**: CRITICAL - Current Sprint  
+**Priority**: HIGH - After parallelism  
 **Description**: Implement GraphQL resolvers for Claude operations with subscription support  
 **Prerequisites**: GraphQL Schema Design complete  
 **ADRs**: ADR-005 (GraphQL-First), ADR-012 (Fastify), ADR-013 (Mercurius)
@@ -156,10 +364,10 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
   - [ ] Output parsing and formatting
   - [ ] Context window optimization
 
-### 4. 🚧 Federation Gateway Implementation (meta-gothic-app)
+### 10. 🚧 Federation Gateway Implementation (meta-gothic-app)
 **Status**: Not Started  
 **Effort**: 1-2 days  
-**Priority**: CRITICAL - Current Sprint  
+**Priority**: HIGH - After parallelism  
 **Description**: Create federation gateway to unify Git and Claude services  
 **Prerequisites**: Both services implemented  
 **ADRs**: ADR-014 (GraphQL Federation), ADR-005 (GraphQL-First)
@@ -288,10 +496,10 @@ interface ChangeReviewReport {
 - ✓ All data is real-time with no mock/static data
 - ✓ Comprehensive error handling with user-friendly recovery options
 
-### 5. 🚧 UI Components GraphQL Migration
+### 11. 🚧 UI Components GraphQL Migration
 **Status**: Not Started  
 **Effort**: 2-3 days  
-**Priority**: CRITICAL - Current Sprint  
+**Priority**: HIGH - After parallelism  
 **Description**: Migrate UI components from REST API calls to GraphQL queries and mutations  
 **Prerequisites**: Federation gateway operational  
 **ADRs**: ADR-005 (GraphQL-First)
@@ -328,10 +536,10 @@ interface ChangeReviewReport {
   - [ ] Update component props with generated types
   - [ ] Add type safety to all GraphQL operations
 
-### 6. 🚧 Real-time Event System Integration  
+### 12. 🚧 Real-time Event System Integration  
 **Status**: Ready to Start  
 **Effort**: 3-4 days  
-**Priority**: HIGH - Next Sprint  
+**Priority**: MEDIUM - After GraphQL  
 **ADRs**: ADR-008 (Event-Driven Architecture), ADR-005 (GraphQL-First)  
 **Description**: Implement real-time updates for dashboard using event system to provide live monitoring and immediate workflow feedback  
 **Prerequisites**: ✅ Repository Tools complete, ✅ Dashboard operational with GitHub API integration
@@ -403,7 +611,7 @@ npm run dev
 **Priority**: HIGH - Previous Sprint (Deprioritized)  
 **Description**: Transform Tools into a dropdown menu with submenu items for better navigation  
 **Prerequisites**: ✅ Change Review complete, ✅ Real data only implementation
-**Note**: Deprioritized in favor of GraphQL migration
+**Note**: Deprioritized in favor of GraphQL Parallelism implementation
 
 **Tasks**:
 - [ ] Transform Tools link into dropdown menu using radix-ui components
@@ -710,26 +918,34 @@ npm run dev
 3. ✅ **Repository Tools** (COMPLETE)
 4. ✅ **Change Review with AI** (COMPLETE)
 
-### Phase 2: GraphQL Migration (Current - 1-2 weeks)
-1. **GraphQL Schema Design** (Critical #1 - IN PROGRESS)
-2. **Git Service Implementation** (Critical #2)
-3. **Claude Service Implementation** (Critical #3)
-4. **Federation Gateway** (Critical #4)
-5. **UI Components Migration** (Critical #5)
+### Phase 2: GraphQL Parallelism (Current - 2-3 weeks)
+1. **Configuration Management System** (Critical #1 - CURRENT)
+2. **Agent Run Storage Infrastructure** (Critical #2)
+3. **Concurrent Session Management** (Critical #3)
+4. **Agent Status UI** (Medium #4)
+5. **GraphQL Parallel Resolvers** (Medium #5)
+6. **Real-time Progress Tracking** (Low #6)
 
-### Phase 3: Real-time & Advanced Features (2-4 weeks)
-1. **Real-time Event System** (High #6)
+### Phase 3: GraphQL Migration (Next - 1-2 weeks)
+1. **GraphQL Schema Design** (High #7)
+2. **Git Service Implementation** (High #8)
+3. **Claude Service Implementation** (High #9)
+4. **Federation Gateway** (High #10)
+5. **UI Components Migration** (High #11)
+
+### Phase 4: Real-time & Advanced Features (4-6 weeks)
+1. **Real-time Event System** (Medium #12)
 2. **Enhanced Tools Menu** (High #1)
 3. **Tools Subpages** (High #2)
 4. **SDLC State Machine UI** (High #3)
 
-### Phase 4: Monitoring & Operations (4-6 weeks)
+### Phase 5: Monitoring & Operations (6-8 weeks)
 1. **CI/CD Metrics** (Medium)
 2. **Dependency Graph** (Medium)
 3. **Terminal UI Components** (Medium)
 4. **Automated Publishing** (High #5)
 
-### Phase 5: Polish & Documentation (6-8 weeks)
+### Phase 6: Polish & Documentation (8-10 weeks)
 1. **Technical Debt Cleanup** (TD-1, TD-2)
 2. **Documentation** (DOC-1, DOC-2)
 3. **Infrastructure Hardening** (INFRA-1, INFRA-2)
