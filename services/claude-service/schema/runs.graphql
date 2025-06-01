@@ -1,0 +1,117 @@
+# Agent run tracking schema
+
+type AgentRun {
+  id: ID!
+  repository: String!
+  status: RunStatus!
+  startedAt: String!
+  completedAt: String
+  duration: Int
+  input: AgentInput!
+  output: AgentOutput
+  error: RunError
+  retryCount: Int!
+  parentRunId: ID
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+  RETRYING
+}
+
+type AgentInput {
+  prompt: String!
+  diff: String!
+  recentCommits: [String!]!
+  model: String!
+  temperature: Float!
+}
+
+type AgentOutput {
+  message: String!
+  confidence: Float!
+  reasoning: String
+  rawResponse: String!
+  tokensUsed: Int!
+}
+
+type RunError {
+  code: String!
+  message: String!
+  stackTrace: String
+  recoverable: Boolean!
+}
+
+type AgentRunConnection {
+  runs: [AgentRun!]!
+  total: Int!
+}
+
+type RunStatistics {
+  total: Int!
+  byStatus: StatusCount!
+  byRepository: [RepositoryCount!]!
+  averageDuration: Float!
+  successRate: Float!
+}
+
+type StatusCount {
+  QUEUED: Int!
+  RUNNING: Int!
+  SUCCESS: Int!
+  FAILED: Int!
+  CANCELLED: Int!
+  RETRYING: Int!
+}
+
+type RepositoryCount {
+  repository: String!
+  count: Int!
+}
+
+extend type Query {
+  """Get specific run details"""
+  agentRun(id: ID!): AgentRun
+  
+  """List all runs with filtering"""
+  agentRuns(
+    status: RunStatus
+    repository: String
+    startDate: String
+    endDate: String
+    limit: Int = 20
+    offset: Int = 0
+  ): AgentRunConnection!
+  
+  """Get runs for a specific repository"""
+  repositoryRuns(repository: String!): [AgentRun!]!
+  
+  """Get run statistics"""
+  runStatistics: RunStatistics!
+}
+
+extend type Mutation {
+  """Retry a failed run"""
+  retryAgentRun(runId: ID!): AgentRun!
+  
+  """Cancel a running agent"""
+  cancelAgentRun(runId: ID!): AgentRun!
+  
+  """Retry all failed runs in a batch"""
+  retryFailedRuns(runIds: [ID!]!): [AgentRun!]!
+  
+  """Delete old runs (admin only)"""
+  deleteOldRuns: Int!
+}
+
+extend type Subscription {
+  """Subscribe to run status changes"""
+  agentRunUpdates(runId: ID!): AgentRun!
+  
+  """Subscribe to all run updates"""
+  allAgentRunUpdates: AgentRun!
+}

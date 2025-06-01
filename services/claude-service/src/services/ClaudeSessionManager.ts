@@ -2,6 +2,9 @@ import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'eventemitter3';
 import { nanoid } from 'nanoid';
 import PQueue from 'p-queue';
+import { v4 as uuidv4 } from 'uuid';
+import { RunStorage, RunStatus, AgentRun } from './RunStorage';
+import { initializeCleanupJob } from './RunCleanupJob';
 import type { 
   ClaudeSession, 
   SessionStatus, 
@@ -32,9 +35,16 @@ interface SessionData {
 export class ClaudeSessionManager extends EventEmitter {
   private sessions: Map<string, SessionData> = new Map();
   private queue: PQueue;
+  private runStorage: RunStorage;
   
   constructor() {
     super();
+    
+    // Initialize run storage
+    this.runStorage = new RunStorage('.claude-runs');
+    
+    // Initialize cleanup job (runs every 24 hours)
+    initializeCleanupJob(this.runStorage, 24);
     
     // Configure concurrent Claude process limits
     this.queue = new PQueue({ 
@@ -103,16 +113,73 @@ export class ClaudeSessionManager extends EventEmitter {
     diff: string;
     recentCommits: string[];
     context?: string;
-  }): Promise<{ message: string; confidence: number }> {
+  }): Promise<{ message: string; confidence: number; runId: string }> {
+    // Create run record
+    const run: AgentRun = {
+      id: uuidv4(),
+      repository: input.repository,
+      status: RunStatus.QUEUED,
+      startedAt: new Date(),
+      input: {
+        prompt: this.buildCommitMessagePrompt(input),
+        diff: input.diff,
+        recentCommits: input.recentCommits,
+        model: 'claude-3-opus',
+        temperature: 0.7,
+      },
+      retryCount: 0,
+    };
+
+    await this.runStorage.saveRun(run);
+
     // This can be called multiple times in parallel
     const result = await this.queue.add(async () => {
-      const prompt = this.buildCommitMessagePrompt(input);
-      const output = await this.callClaudeDirectly(prompt);
-      
-      return {
-        message: this.extractCommitMessage(output),
-        confidence: this.calculateConfidence(output)
-      };
+      try {
+        // Update status to running
+        run.status = RunStatus.RUNNING;
+        await this.runStorage.saveRun(run);
+
+        const startTime = Date.now();
+        const output = await this.callClaudeDirectly(run.input.prompt);
+        const duration = Date.now() - startTime;
+
+        const message = this.extractCommitMessage(output);
+        const confidence = this.calculateConfidence(output);
+
+        // Update run with success
+        run.status = RunStatus.SUCCESS;
+        run.completedAt = new Date();
+        run.duration = duration;
+        run.output = {
+          message,
+          confidence,
+          rawResponse: output,
+          tokensUsed: Math.floor(output.length / 4), // Rough estimate
+          reasoning: undefined,
+        };
+
+        await this.runStorage.saveRun(run);
+
+        return {
+          message,
+          confidence,
+          runId: run.id,
+        };
+      } catch (error: any) {
+        // Update run with failure
+        run.status = RunStatus.FAILED;
+        run.completedAt = new Date();
+        run.duration = Date.now() - run.startedAt.getTime();
+        run.error = {
+          code: error.code || 'UNKNOWN',
+          message: error.message,
+          stackTrace: error.stack,
+          recoverable: this.runStorage.isRecoverable(error),
+        };
+
+        await this.runStorage.saveRun(run);
+        throw error;
+      }
     });
 
     return result;
@@ -379,6 +446,13 @@ Respond with ONLY the commit message, no explanations.`;
       metadata: session.metadata,
       history: session.history
     };
+  }
+
+  /**
+   * Get RunStorage instance (for resolvers)
+   */
+  getRunStorage(): RunStorage {
+    return this.runStorage;
   }
 
   /**

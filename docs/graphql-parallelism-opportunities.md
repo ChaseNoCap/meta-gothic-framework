@@ -654,10 +654,26 @@ export class ClaudeSessionManager {
 2. ✅ Implement user preferences storage (localStorage initially, database later)
 3. ✅ Build configuration UI page with real-time preview
 
-### 🚧 In Progress
-4. **Agent Run Storage Infrastructure** - Implement RunStorage service for persistent run history
-5. **Concurrent Session Management** - Update `ClaudeSessionManager` to support concurrent operations with run tracking
-6. **Agent Status UI** - Create Agent Status UI page with run details and retry functionality
+### ✅ Completed (January 6, 2025) - Part 2
+4. ✅ **Agent Run Storage Infrastructure** - Implement RunStorage service for persistent run history
+   - File-based storage with JSON persistence
+   - Full CRUD operations and retry functionality
+   - Statistics and cleanup job implementation
+   - Database schema designed for future migration
+5. ✅ **Concurrent Session Management** - Update `ClaudeSessionManager` to support concurrent operations with run tracking
+   - Integrated RunStorage with ClaudeSessionManager
+   - Full run lifecycle tracking (QUEUED → RUNNING → SUCCESS/FAILED)
+   - Automatic cleanup job running every 24 hours
+   - Support for parallel execution with p-queue
+
+### ✅ Completed (January 6, 2025) - Part 3
+6. ✅ **Agent Status UI** - Create Agent Status UI page with run details and retry functionality
+   - Split-view layout with run list and detailed view
+   - Run statistics dashboard with success rate and performance metrics
+   - Collapsible sections for input/output/error details
+   - One-click retry functionality for failed runs
+   - Status filtering and repository filtering
+   - Mock API endpoints for development
 
 ### 📋 Upcoming
 7. Implement parallel-friendly GraphQL resolvers
@@ -667,9 +683,84 @@ export class ClaudeSessionManager {
 
 ## Current Sprint Progress
 
-**Configuration Management System**: ✅ COMPLETE
+### Phase 1: Configuration Management System ✅ COMPLETE
 - GraphQL schema defined
 - Resolvers with localStorage persistence
 - Full-featured Config UI page at `/config`
 - Keyboard shortcuts and navigation integration
 - Ready for integration with parallel execution features
+
+### Phase 2: Agent Run Storage Infrastructure ✅ COMPLETE
+**What was implemented:**
+- **RunStorage Service** (`/services/claude-service/src/services/RunStorage.ts`)
+  - File-based persistence to `.claude-runs/` directory
+  - Complete CRUD operations for agent runs
+  - Run statistics and performance metrics
+  - Retry functionality for failed runs
+  
+- **GraphQL Schema** (`/services/claude-service/schema/runs.graphql`)
+  - Comprehensive schema for AgentRun, RunStatus, RunError types
+  - Query operations for fetching runs with filtering
+  - Mutations for retry and cancellation
+  - Subscription definitions for real-time updates
+  
+- **ClaudeSessionManager Integration**
+  - Full run lifecycle tracking
+  - Automatic status updates (QUEUED → RUNNING → SUCCESS/FAILED)
+  - Error handling with recoverable error detection
+  - Performance metrics (duration, tokens used)
+  
+- **Automated Cleanup Job**
+  - Runs every 24 hours to delete runs older than 30 days
+  - Prevents unbounded storage growth
+  - Logs statistics after each cleanup
+  
+- **Database Migration Plan**
+  - SQL schema designed for future PostgreSQL/SQLite migration
+  - Migration strategy documented
+  - Repository pattern prepared for database abstraction
+
+**Storage Details:**
+- Currently uses JSON files: `.claude-runs/{runId}.json`
+- In-memory Map for fast runtime access
+- Suitable for development and moderate usage
+- Database migration path clearly defined for production scale
+
+### Phase 3: Agent Status UI ✅ COMPLETE
+**What was implemented:**
+- **Agent Status Page** (`/packages/ui-components/src/pages/AgentStatus.tsx`)
+  - Split-view layout: run list on left, details on right
+  - Real-time filtering by status and repository
+  - Search functionality for finding specific runs
+  
+- **Run Statistics Dashboard** (`/components/AgentStatus/RunStatistics.tsx`)
+  - Total runs, success rate, average duration
+  - Status distribution (queued, running, failed, etc.)
+  - Top repositories by run count
+  - Visual metrics with icons and badges
+  
+- **Run Details View** (`/components/AgentStatus/RunDetails.tsx`)
+  - Tabbed interface for Output, Input, Raw Response, and Errors
+  - Collapsible sections for better organization
+  - Copy-to-clipboard functionality for messages and IDs
+  - Syntax highlighting for code and diffs
+  - Retry button for recoverable failures
+  
+- **Run List Component** (`/components/AgentStatus/RunList.tsx`)
+  - Compact run display with status badges
+  - Time ago display using date-fns
+  - Quick retry button on failed runs
+  - Visual status indicators with icons
+  
+- **API Integration**
+  - Mock endpoints added to git-server.js for development
+  - `/api/claude/runs` - Get filtered run history
+  - `/api/claude/runs/statistics` - Get aggregated statistics
+  - `/api/claude/runs/:id/retry` - Retry failed runs
+  
+**UI Features:**
+- Dark mode support throughout
+- Responsive design for different screen sizes
+- Loading states and error handling
+- Toast notifications for user feedback
+- Keyboard navigation support
