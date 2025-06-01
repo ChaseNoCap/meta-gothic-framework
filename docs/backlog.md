@@ -29,15 +29,159 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
 
 ## 🚨 Critical Priority Items
 
-> **CURRENT SPRINT**: Enhanced Tools Menu Navigation  
-> **SPRINT GOAL**: Transform Tools into a dropdown menu with submenu items for better navigation and implement additional tool subpages.
+> **CURRENT SPRINT**: GraphQL Migration  
+> **SPRINT GOAL**: Migrate Git and Claude servers from RESTful endpoints to GraphQL using Fastify and Mercurius, implementing federation architecture.
 
-### 1. 🚧 Enhanced Tools Menu Navigation (CURRENT SPRINT)
+### 1. 🚧 GraphQL Schema Design and Service Structure (CURRENT SPRINT)
 **Status**: Ready to Start  
 **Effort**: 1-2 days  
 **Priority**: CRITICAL - Current Sprint  
-**Description**: Transform Tools into a dropdown menu with submenu items for better navigation  
-**Prerequisites**: ✅ Repository Tools complete, ✅ Change Review complete, ✅ Real data only implementation
+**Description**: Design GraphQL schemas and set up basic Fastify+Mercurius service structure  
+**Prerequisites**: ✅ Git server operational, ✅ Claude server operational  
+**ADRs**: ADR-005 (GraphQL-First), ADR-012 (Fastify), ADR-013 (Mercurius), ADR-014 (Federation)
+
+**Tasks**:
+- [ ] **Define Git Operations Schema** (repo-agent-service)
+  ```graphql
+  type Query {
+    gitStatus(path: String!): GitStatus!
+    scanAllRepositories: [RepositoryScan!]!
+    scanAllDetailed: DetailedScanReport!
+    submodules: [Submodule!]!
+    repositoryDetails(path: String!): RepositoryDetails!
+  }
+  
+  type Mutation {
+    executeGitCommand(input: GitCommandInput!): GitCommandResult!
+    commitChanges(input: CommitInput!): CommitResult!
+    batchCommit(input: BatchCommitInput!): BatchCommitResult!
+    pushChanges(input: PushInput!): PushResult!
+  }
+  ```
+
+- [ ] **Define Claude Operations Schema** (claude-service)
+  ```graphql
+  type Query {
+    sessions: [ClaudeSession!]!
+    session(id: ID!): ClaudeSession
+    health: HealthStatus!
+  }
+  
+  type Mutation {
+    executeCommand(input: ClaudeExecuteInput!): ClaudeExecuteResult!
+    continueSession(input: ContinueSessionInput!): ClaudeExecuteResult!
+    killSession(id: ID!): Boolean!
+    createHandoff(input: HandoffInput!): HandoffResult!
+    generateCommitMessages(input: BatchCommitMessageInput!): BatchCommitMessageResult!
+    generateExecutiveSummary(input: ExecutiveSummaryInput!): ExecutiveSummaryResult!
+  }
+  
+  type Subscription {
+    commandOutput(sessionId: ID!): CommandOutput!
+  }
+  ```
+
+- [ ] **Create Service Directory Structure**
+  - `/services/repo-agent-service/` - Git operations service
+  - `/services/claude-service/` - Claude AI operations service  
+  - `/services/meta-gothic-app/` - Federation gateway
+  - Each service with: `src/`, `schema/`, `resolvers/`, `package.json`
+
+- [ ] **Set up Base Fastify+Mercurius Configuration**
+  - Install dependencies: `fastify`, `mercurius`, `@mercurius/federation`
+  - Create server bootstrap files for each service
+  - Configure ports: repo-agent (3001), claude (3002), gateway (3000)
+  - Set up TypeScript configuration for each service
+
+### 2. 🚧 Git Service Implementation (repo-agent-service)
+**Status**: Not Started  
+**Effort**: 2 days  
+**Priority**: CRITICAL - Current Sprint  
+**Description**: Implement GraphQL resolvers for all Git operations, migrating from REST endpoints  
+**Prerequisites**: GraphQL Schema Design complete  
+**ADRs**: ADR-005 (GraphQL-First), ADR-012 (Fastify), ADR-013 (Mercurius)
+
+**Tasks**:
+- [ ] **Implement Query Resolvers**
+  - [ ] `gitStatus`: Execute `git status --porcelain` and parse results
+  - [ ] `scanAllRepositories`: Scan workspace for all git repositories
+  - [ ] `scanAllDetailed`: Deep scan with diffs, history, and branch info
+  - [ ] `submodules`: List and get status of git submodules
+  - [ ] `repositoryDetails`: Get comprehensive repo information
+
+- [ ] **Implement Mutation Resolvers**
+  - [ ] `executeGitCommand`: Safe git command execution with validation
+  - [ ] `commitChanges`: Stage and commit with message
+  - [ ] `batchCommit`: Commit across multiple repositories
+  - [ ] `pushChanges`: Push to remote with auth handling
+
+- [ ] **Service Infrastructure**
+  - [ ] Error handling with custom GraphQL errors
+  - [ ] Input validation and sanitization
+  - [ ] Concurrent operation handling
+  - [ ] Git command timeout management
+  - [ ] Result caching for expensive operations
+
+### 3. 🚧 Claude Service Implementation (claude-service)
+**Status**: Not Started  
+**Effort**: 2-3 days  
+**Priority**: CRITICAL - Current Sprint  
+**Description**: Implement GraphQL resolvers for Claude operations with subscription support  
+**Prerequisites**: GraphQL Schema Design complete  
+**ADRs**: ADR-005 (GraphQL-First), ADR-012 (Fastify), ADR-013 (Mercurius)
+
+**Tasks**:
+- [ ] **Implement Query Resolvers**
+  - [ ] `sessions`: List active Claude sessions
+  - [ ] `session`: Get specific session details
+  - [ ] `health`: Service health check with Claude availability
+
+- [ ] **Implement Mutation Resolvers**
+  - [ ] `executeCommand`: Spawn Claude subprocess with command
+  - [ ] `continueSession`: Continue existing Claude session
+  - [ ] `killSession`: Terminate Claude subprocess
+  - [ ] `createHandoff`: Generate handoff document
+  - [ ] `generateCommitMessages`: Batch AI commit message generation
+  - [ ] `generateExecutiveSummary`: Cross-repo summary generation
+
+- [ ] **Implement Subscription Resolvers**
+  - [ ] `commandOutput`: Stream Claude output in real-time
+  - [ ] WebSocket connection management
+  - [ ] Event emitter for subprocess output
+  - [ ] Backpressure handling for streams
+
+- [ ] **Claude Integration**
+  - [ ] Subprocess spawn management
+  - [ ] Session state persistence
+  - [ ] Output parsing and formatting
+  - [ ] Context window optimization
+
+### 4. 🚧 Federation Gateway Implementation (meta-gothic-app)
+**Status**: Not Started  
+**Effort**: 1-2 days  
+**Priority**: CRITICAL - Current Sprint  
+**Description**: Create federation gateway to unify Git and Claude services  
+**Prerequisites**: Both services implemented  
+**ADRs**: ADR-014 (GraphQL Federation), ADR-005 (GraphQL-First)
+
+**Tasks**:
+- [ ] **Gateway Setup**
+  - [ ] Configure Apollo Gateway or Mercurius Gateway
+  - [ ] Service discovery and health checks
+  - [ ] Request routing and composition
+  - [ ] Error aggregation and formatting
+
+- [ ] **Federation Features**
+  - [ ] Entity resolution between services
+  - [ ] Cross-service query optimization
+  - [ ] Subscription federation support
+  - [ ] Performance monitoring
+
+- [ ] **Security & Operations**
+  - [ ] Authentication middleware
+  - [ ] Rate limiting per operation
+  - [ ] Query complexity analysis
+  - [ ] Logging and tracing
 
 **✅ Completed Implementation**:
 
@@ -144,10 +288,50 @@ interface ChangeReviewReport {
 - ✓ All data is real-time with no mock/static data
 - ✓ Comprehensive error handling with user-friendly recovery options
 
-### 2. 🚧 Real-time Event System Integration  
+### 5. 🚧 UI Components GraphQL Migration
+**Status**: Not Started  
+**Effort**: 2-3 days  
+**Priority**: CRITICAL - Current Sprint  
+**Description**: Migrate UI components from REST API calls to GraphQL queries and mutations  
+**Prerequisites**: Federation gateway operational  
+**ADRs**: ADR-005 (GraphQL-First)
+
+**Tasks**:
+- [ ] **Set up GraphQL Client**
+  - [ ] Install and configure Apollo Client or urql
+  - [ ] Set up client-side caching strategy
+  - [ ] Configure WebSocket link for subscriptions
+  - [ ] Add authentication headers
+
+- [ ] **Migrate Git Operations**
+  - [ ] Replace `/api/git/status` with `gitStatus` query
+  - [ ] Replace `/api/git/scan-all` with `scanAllRepositories` query
+  - [ ] Replace `/api/git/scan-all-detailed` with `scanAllDetailed` query
+  - [ ] Replace `/api/git/commit` with `commitChanges` mutation
+  - [ ] Replace `/api/git/batch-commit` with `batchCommit` mutation
+
+- [ ] **Migrate Claude Operations**
+  - [ ] Replace `/api/claude/execute` with `executeCommand` mutation + subscription
+  - [ ] Replace `/api/claude/batch-commit-messages` with `generateCommitMessages` mutation
+  - [ ] Replace `/api/claude/executive-summary` with `generateExecutiveSummary` mutation
+  - [ ] Implement real-time streaming with `commandOutput` subscription
+
+- [ ] **Update Components**
+  - [ ] `UncommittedChangesAnalyzer`: Use GraphQL queries
+  - [ ] `CommitMessageGenerator`: Use GraphQL mutations
+  - [ ] `ChangeReviewPage`: Batch GraphQL operations
+  - [ ] `RepositoryList`: Subscribe to real-time updates
+
+- [ ] **Type Generation**
+  - [ ] Set up GraphQL Code Generator
+  - [ ] Generate TypeScript types from schema
+  - [ ] Update component props with generated types
+  - [ ] Add type safety to all GraphQL operations
+
+### 6. 🚧 Real-time Event System Integration  
 **Status**: Ready to Start  
 **Effort**: 3-4 days  
-**Priority**: CRITICAL - Next Sprint  
+**Priority**: HIGH - Next Sprint  
 **ADRs**: ADR-008 (Event-Driven Architecture), ADR-005 (GraphQL-First)  
 **Description**: Implement real-time updates for dashboard using event system to provide live monitoring and immediate workflow feedback  
 **Prerequisites**: ✅ Repository Tools complete, ✅ Dashboard operational with GitHub API integration
@@ -213,12 +397,26 @@ npm run dev
 
 ## High Priority Items
 
-### 1. Tools Menu Subpages Implementation
+### 1. Enhanced Tools Menu Navigation
+**Status**: Ready to Start  
+**Effort**: 1-2 days  
+**Priority**: HIGH - Previous Sprint (Deprioritized)  
+**Description**: Transform Tools into a dropdown menu with submenu items for better navigation  
+**Prerequisites**: ✅ Change Review complete, ✅ Real data only implementation
+**Note**: Deprioritized in favor of GraphQL migration
+
+**Tasks**:
+- [ ] Transform Tools link into dropdown menu using radix-ui components
+- [ ] Add submenu items: Change Review, Repository Status, Manual Commit
+- [ ] Implement navigation handlers for each menu item
+- [ ] Update routing configuration for new subpages
+
+### 2. Tools Menu Subpages Implementation
 **Status**: Not Started  
 **Effort**: 2-3 days  
-**Priority**: HIGH - Supports Current Sprint  
+**Priority**: HIGH  
 **Description**: Create individual subpages for Tools menu items with dedicated functionality  
-**Prerequisites**: Enhanced Tools Menu (Critical #2) in progress
+**Prerequisites**: Enhanced Tools Menu complete
 
 **Tasks**:
 - [ ] **Repository Status Page** (/tools/repository-status)
@@ -507,22 +705,31 @@ npm run dev
 ## Meta GOTHIC Implementation Roadmap
 
 ### Phase 1: Foundation (COMPLETE - Ahead of Schedule) ✅
-1. ✅ **Real GitHub API Enforcement** (Critical #1 - COMPLETE)
-2. ✅ **GitHub API Integration** (Critical #2 - COMPLETE)
-3. ✅ **GitHub Service Dependencies** (Critical #3 - COMPLETE)
-4. **Real-time Event System** (Critical #4 - Ready to Start)
+1. ✅ **Real GitHub API Enforcement** (COMPLETE)
+2. ✅ **GitHub API Integration** (COMPLETE)
+3. ✅ **Repository Tools** (COMPLETE)
+4. ✅ **Change Review with AI** (COMPLETE)
 
-### Phase 2: Core Features (2-4 weeks)
-1. **SDLC State Machine UI** (High #3)
-2. **GraphQL Federation** (High #4)
-3. **CI/CD Metrics** (Medium #6)
+### Phase 2: GraphQL Migration (Current - 1-2 weeks)
+1. **GraphQL Schema Design** (Critical #1 - IN PROGRESS)
+2. **Git Service Implementation** (Critical #2)
+3. **Claude Service Implementation** (Critical #3)
+4. **Federation Gateway** (Critical #4)
+5. **UI Components Migration** (Critical #5)
 
-### Phase 3: Advanced Features (4-6 weeks)
-1. **Dependency Graph** (Medium #7)
-2. **Terminal UI Components** (Medium #8)
-3. **Kanban Board** (Low #9)
+### Phase 3: Real-time & Advanced Features (2-4 weeks)
+1. **Real-time Event System** (High #6)
+2. **Enhanced Tools Menu** (High #1)
+3. **Tools Subpages** (High #2)
+4. **SDLC State Machine UI** (High #3)
 
-### Phase 4: Polish & Documentation (6-8 weeks)
+### Phase 4: Monitoring & Operations (4-6 weeks)
+1. **CI/CD Metrics** (Medium)
+2. **Dependency Graph** (Medium)
+3. **Terminal UI Components** (Medium)
+4. **Automated Publishing** (High #5)
+
+### Phase 5: Polish & Documentation (6-8 weeks)
 1. **Technical Debt Cleanup** (TD-1, TD-2)
 2. **Documentation** (DOC-1, DOC-2)
 3. **Infrastructure Hardening** (INFRA-1, INFRA-2)

@@ -1,0 +1,40 @@
+{
+  "name": "@meta-gothic/repo-agent-service",
+  "version": "1.0.0",
+  "description": "GraphQL service for Git repository operations in the metaGOTHIC framework",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "generate-types": "graphql-codegen"
+  },
+  "dependencies": {
+    "fastify": "^4.26.0",
+    "mercurius": "^14.0.0",
+    "@mercurius/federation": "^3.0.0",
+    "simple-git": "^3.22.0",
+    "glob": "^10.3.10",
+    "p-limit": "^5.0.0",
+    "graphql": "^16.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vitest": "^1.2.1",
+    "@graphql-codegen/cli": "^5.0.0",
+    "@graphql-codegen/typescript": "^4.0.1",
+    "@graphql-codegen/typescript-resolvers": "^4.0.1",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

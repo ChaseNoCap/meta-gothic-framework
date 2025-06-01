@@ -1,0 +1,455 @@
+# Git Operations GraphQL Schema
+# This service handles all Git-related operations for the metaGOTHIC framework
+
+type Query {
+  """Get git status for a specific repository path"""
+  gitStatus(path: String!): GitStatus!
+  
+  """Scan all repositories in the workspace"""
+  scanAllRepositories: [RepositoryScan!]!
+  
+  """Deep scan with detailed information including diffs and history"""
+  scanAllDetailed: DetailedScanReport!
+  
+  """List and get status of all git submodules"""
+  submodules: [Submodule!]!
+  
+  """Get comprehensive information about a specific repository"""
+  repositoryDetails(path: String!): RepositoryDetails!
+}
+
+type Mutation {
+  """Execute a git command with safety validation"""
+  executeGitCommand(input: GitCommandInput!): GitCommandResult!
+  
+  """Stage and commit changes with a message"""
+  commitChanges(input: CommitInput!): CommitResult!
+  
+  """Commit changes across multiple repositories"""
+  batchCommit(input: BatchCommitInput!): BatchCommitResult!
+  
+  """Push changes to remote repository"""
+  pushChanges(input: PushInput!): PushResult!
+}
+
+# Types
+
+type GitStatus {
+  """Repository path"""
+  path: String!
+  
+  """Current branch name"""
+  branch: String!
+  
+  """Remote tracking branch"""
+  trackingBranch: String
+  
+  """Number of commits ahead of remote"""
+  ahead: Int!
+  
+  """Number of commits behind remote"""
+  behind: Int!
+  
+  """List of changed files"""
+  files: [FileChange!]!
+  
+  """Whether repository has uncommitted changes"""
+  isDirty: Boolean!
+  
+  """Total number of changes"""
+  changeCount: Int!
+}
+
+type FileChange {
+  """File path relative to repository root"""
+  path: String!
+  
+  """Git status code (M, A, D, R, C, U, ?)"""
+  status: String!
+  
+  """Human-readable status description"""
+  statusDescription: String!
+  
+  """Whether file is staged"""
+  isStaged: Boolean!
+  
+  """Number of additions"""
+  additions: Int
+  
+  """Number of deletions"""
+  deletions: Int
+}
+
+type RepositoryScan {
+  """Repository name"""
+  name: String!
+  
+  """Full path to repository"""
+  path: String!
+  
+  """Git status information"""
+  status: GitStatus!
+  
+  """Whether this is a submodule"""
+  isSubmodule: Boolean!
+  
+  """Package.json information if available"""
+  packageInfo: PackageInfo
+}
+
+type PackageInfo {
+  """Package name from package.json"""
+  name: String!
+  
+  """Package version"""
+  version: String!
+  
+  """Package description"""
+  description: String
+  
+  """Whether package is private"""
+  private: Boolean!
+}
+
+type DetailedScanReport {
+  """Timestamp of scan"""
+  timestamp: String!
+  
+  """Total number of repositories scanned"""
+  totalRepositories: Int!
+  
+  """Number of repositories with changes"""
+  dirtyRepositories: Int!
+  
+  """Detailed repository information"""
+  repositories: [DetailedRepository!]!
+  
+  """Summary statistics"""
+  statistics: ScanStatistics!
+}
+
+type DetailedRepository {
+  """Basic repository information"""
+  repository: RepositoryScan!
+  
+  """Git diff for staged changes"""
+  stagedDiff: String
+  
+  """Git diff for unstaged changes"""
+  unstagedDiff: String
+  
+  """Recent commit history"""
+  recentCommits: [Commit!]!
+  
+  """Stash entries"""
+  stashes: [Stash!]!
+}
+
+type Commit {
+  """Commit hash"""
+  hash: String!
+  
+  """Abbreviated commit hash"""
+  abbrevHash: String!
+  
+  """Commit message"""
+  message: String!
+  
+  """Author name"""
+  author: String!
+  
+  """Author email"""
+  authorEmail: String!
+  
+  """Commit timestamp"""
+  timestamp: String!
+  
+  """Files changed in commit"""
+  filesChanged: Int!
+}
+
+type Stash {
+  """Stash index"""
+  index: Int!
+  
+  """Stash message"""
+  message: String!
+  
+  """When stash was created"""
+  timestamp: String!
+}
+
+type Submodule {
+  """Submodule name"""
+  name: String!
+  
+  """Submodule path"""
+  path: String!
+  
+  """Current commit hash"""
+  commit: String!
+  
+  """Submodule URL"""
+  url: String!
+  
+  """Whether submodule is initialized"""
+  initialized: Boolean!
+  
+  """Git status if initialized"""
+  status: GitStatus
+}
+
+type RepositoryDetails {
+  """Basic repository information"""
+  repository: RepositoryScan!
+  
+  """Remote repositories"""
+  remotes: [Remote!]!
+  
+  """All branches"""
+  branches: [Branch!]!
+  
+  """All tags"""
+  tags: [Tag!]!
+  
+  """Repository configuration"""
+  config: RepositoryConfig!
+}
+
+type Remote {
+  """Remote name (e.g., origin)"""
+  name: String!
+  
+  """Fetch URL"""
+  fetchUrl: String!
+  
+  """Push URL"""
+  pushUrl: String!
+}
+
+type Branch {
+  """Branch name"""
+  name: String!
+  
+  """Whether this is the current branch"""
+  isCurrent: Boolean!
+  
+  """Remote tracking branch"""
+  tracking: String
+  
+  """Last commit on branch"""
+  lastCommit: Commit!
+}
+
+type Tag {
+  """Tag name"""
+  name: String!
+  
+  """Tagged commit hash"""
+  commit: String!
+  
+  """Tag message if annotated"""
+  message: String
+  
+  """Tagger name if annotated"""
+  tagger: String
+  
+  """Tag timestamp"""
+  timestamp: String
+}
+
+type RepositoryConfig {
+  """User name"""
+  userName: String
+  
+  """User email"""
+  userEmail: String
+  
+  """Default branch"""
+  defaultBranch: String!
+  
+  """Whether repository has signing configured"""
+  signingEnabled: Boolean!
+}
+
+type ScanStatistics {
+  """Total number of changed files"""
+  totalFiles: Int!
+  
+  """Total additions across all repositories"""
+  totalAdditions: Int!
+  
+  """Total deletions across all repositories"""
+  totalDeletions: Int!
+  
+  """List of affected packages"""
+  affectedPackages: [String!]!
+  
+  """Change breakdown by type"""
+  changesByType: ChangeTypeBreakdown!
+}
+
+type ChangeTypeBreakdown {
+  """Number of modified files"""
+  modified: Int!
+  
+  """Number of added files"""
+  added: Int!
+  
+  """Number of deleted files"""
+  deleted: Int!
+  
+  """Number of renamed files"""
+  renamed: Int!
+  
+  """Number of untracked files"""
+  untracked: Int!
+}
+
+# Input Types
+
+input GitCommandInput {
+  """Repository path"""
+  path: String!
+  
+  """Git command to execute (without 'git' prefix)"""
+  command: String!
+  
+  """Command arguments"""
+  args: [String!]!
+  
+  """Timeout in milliseconds"""
+  timeout: Int
+}
+
+input CommitInput {
+  """Repository path"""
+  path: String!
+  
+  """Commit message"""
+  message: String!
+  
+  """Files to stage before committing (empty = all)"""
+  files: [String!]
+  
+  """Whether to amend the last commit"""
+  amend: Boolean
+  
+  """Whether to skip pre-commit hooks"""
+  noVerify: Boolean
+}
+
+input BatchCommitInput {
+  """List of repositories to commit"""
+  repositories: [CommitInput!]!
+  
+  """Whether to continue on error"""
+  continueOnError: Boolean
+  
+  """Whether to push after committing"""
+  pushAfterCommit: Boolean
+}
+
+input PushInput {
+  """Repository path"""
+  path: String!
+  
+  """Remote name (default: origin)"""
+  remote: String
+  
+  """Branch to push (default: current)"""
+  branch: String
+  
+  """Whether to force push"""
+  force: Boolean
+  
+  """Whether to set upstream"""
+  setUpstream: Boolean
+}
+
+# Result Types
+
+type GitCommandResult {
+  """Whether command succeeded"""
+  success: Boolean!
+  
+  """Command output (stdout)"""
+  output: String!
+  
+  """Error output (stderr)"""
+  error: String
+  
+  """Exit code"""
+  exitCode: Int!
+  
+  """Execution time in milliseconds"""
+  executionTime: Int!
+}
+
+type CommitResult {
+  """Whether commit succeeded"""
+  success: Boolean!
+  
+  """Commit hash if successful"""
+  commitHash: String
+  
+  """Commit message"""
+  message: String!
+  
+  """Error message if failed"""
+  error: String
+  
+  """Files that were committed"""
+  filesCommitted: [String!]!
+}
+
+type BatchCommitResult {
+  """Total number of repositories processed"""
+  totalRepositories: Int!
+  
+  """Number of successful commits"""
+  successCount: Int!
+  
+  """Number of failed commits"""
+  failureCount: Int!
+  
+  """Individual results per repository"""
+  results: [RepositoryCommitResult!]!
+  
+  """Whether push was attempted"""
+  pushAttempted: Boolean!
+  
+  """Push results if attempted"""
+  pushResults: [PushResult!]
+}
+
+type RepositoryCommitResult {
+  """Repository path"""
+  path: String!
+  
+  """Repository name"""
+  name: String!
+  
+  """Commit result"""
+  result: CommitResult!
+}
+
+type PushResult {
+  """Repository path"""
+  path: String!
+  
+  """Whether push succeeded"""
+  success: Boolean!
+  
+  """Remote that was pushed to"""
+  remote: String!
+  
+  """Branch that was pushed"""
+  branch: String!
+  
+  """Error message if failed"""
+  error: String
+  
+  """Push summary (e.g., '1 commit, 3 files')"""
+  summary: String
+}
