@@ -43,6 +43,14 @@ This index provides a comprehensive overview of all architectural decisions made
 - JSON file persistence
 - Real-time dashboard updates
 
+### ADR-017: Hybrid Package Development Approach ✅
+**Status**: Accepted  
+**Summary**: Hybrid approach for metaGOTHIC package development  
+**Key Decisions**:
+- Start with established ecosystem patterns
+- Add domain-specific features incrementally
+- Maintain compatibility while extending functionality
+
 ## Framework Architecture ADRs
 
 ### ADR-005: GraphQL-First Architecture 📋
@@ -227,7 +235,4 @@ ADR-014 (Federation) → ADR-015 (GitHub API Strategy)
 
 ## References
 
-- [Architecture Decision Record Template](./architecture-decision-record-template.md)
 - [metaGOTHIC Backlog](./backlog.md)
-- [Architecture Reference](./architecture-reference.md)
-- [Meta Repository Pattern Guide](./meta-repository-pattern.md)

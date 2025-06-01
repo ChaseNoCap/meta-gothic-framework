@@ -25,9 +25,9 @@ metaGOTHIC/
 │   ├── graphql-toolkit/        # GraphQL utilities
 │   ├── context-aggregator/     # Intelligent context management
 │   └── ui-components/          # React dashboard components
-├── src/                        # (Future) API server for dashboard
 ├── docs/                       # metaGOTHIC-specific documentation
-└── scripts/                    # Automation scripts
+├── src/                        # (Future) API server for dashboard
+└── scripts/                    # (Future) Automation scripts
 ```
 
 ## 📊 Current State (May 2025)
