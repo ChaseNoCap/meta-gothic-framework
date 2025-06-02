@@ -195,7 +195,7 @@ export class ProgressTracker extends EventEmitter {
    * Estimate time remaining based on historical data
    */
   private estimateTimeRemaining(
-    runId: string,
+    _runId: string,
     currentStage: ProgressStage,
     run?: RunProgress
   ): number | undefined {

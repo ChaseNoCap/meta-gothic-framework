@@ -3,9 +3,9 @@ import { EventEmitter } from 'eventemitter3';
 import { nanoid } from 'nanoid';
 import PQueue from 'p-queue';
 import { v4 as uuidv4 } from 'uuid';
-import { RunStorage, RunStatus, AgentRun } from './RunStorage';
-import { initializeCleanupJob } from './RunCleanupJob';
-import { progressTracker, ProgressStage } from './ProgressTracker';
+import { RunStorage, RunStatus, AgentRun } from './RunStorage.js';
+import { initializeCleanupJob } from './RunCleanupJob.js';
+import { progressTracker, ProgressStage } from './ProgressTracker.js';
 import type { 
   ClaudeSession, 
   SessionStatus, 

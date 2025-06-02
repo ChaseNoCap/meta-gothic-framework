@@ -7,7 +7,6 @@ import type {
 import { withCache, runCache } from '../../utils/cache.js';
 import { performanceMonitor } from '../../utils/performance.js';
 import { progressTracker } from '../../services/ProgressTracker.js';
-import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 
 /**
@@ -20,7 +19,7 @@ export async function generateCommitMessages(
   { input }: { input: BatchCommitMessageInput },
   context: Context
 ): Promise<BatchCommitMessageResult> {
-  const { sessionManager, pubsub } = context;
+  const { sessionManager } = context;
   const startTime = Date.now();
   
   // Create batch for progress tracking

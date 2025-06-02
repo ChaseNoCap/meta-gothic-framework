@@ -1,4 +1,4 @@
-import { RunStorage } from './RunStorage';
+import { RunStorage } from './RunStorage.js';
 
 export class RunCleanupJob {
   private intervalId: NodeJS.Timeout | null = null;

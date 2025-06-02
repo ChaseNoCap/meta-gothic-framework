@@ -1,5 +1,6 @@
 import { Context } from '../../types/context.js';
-import { withFilter } from 'mercurius';
+import mercurius from 'mercurius';
+const { withFilter } = mercurius;
 
 // Event names
 export const AGENT_RUN_PROGRESS = 'AGENT_RUN_PROGRESS';
@@ -8,7 +9,7 @@ export const BATCH_PROGRESS = 'BATCH_PROGRESS';
 /**
  * Subscribe to progress updates for a specific agent run
  */
-export const agentRunProgress = {
+export const agentRunProgress: any = {
   subscribe: withFilter(
     (_root: any, _args: any, { pubsub }: Context) => {
       if (!pubsub) {
@@ -27,7 +28,7 @@ export const agentRunProgress = {
 /**
  * Subscribe to aggregate progress for a batch of operations
  */
-export const batchProgress = {
+export const batchProgress: any = {
   subscribe: withFilter(
     (_root: any, _args: any, { pubsub }: Context) => {
       if (!pubsub) {

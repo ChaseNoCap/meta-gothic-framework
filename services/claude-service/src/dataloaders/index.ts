@@ -48,11 +48,11 @@ export function createDataLoaders(
   const sessionLoader = new DataLoader<string, any>(
     async (sessionIds) => {
       // Get all sessions from the manager
-      const allSessions = sessionManager.getSessions();
+      const allSessions = sessionManager.getActiveSessions();
       
       // Map requested IDs to sessions
       return sessionIds.map(id => 
-        allSessions.find(session => session.id === id) || null
+        allSessions.find((session: any) => session.id === id) || null
       );
     },
     {
