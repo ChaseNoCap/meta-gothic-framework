@@ -1,10 +1,13 @@
-import { RunStorage, RunStatus } from '../../src/services/RunStorage';
+import { RunStatus } from '../../services/RunStorage.js';
+import { Context } from '../../types/context.js';
 
-// Initialize RunStorage singleton
-const runStorage = new RunStorage();
-
-export async function agentRun(_parent: unknown, { id }: { id: string }) {
-  const run = await runStorage.getRun(id);
+export async function agentRun(
+  _parent: unknown, 
+  { id }: { id: string },
+  context: Context
+) {
+  // Use DataLoader for efficient batching
+  const run = await context.loaders.agentRunLoader.load(id);
   if (!run) return null;
   
   return formatRunForGraphQL(run);
@@ -19,7 +22,8 @@ export async function agentRuns(
     endDate?: string;
     limit?: number;
     offset?: number;
-  }
+  },
+  context: Context
 ) {
   const options = {
     status: args.status,
@@ -29,7 +33,7 @@ export async function agentRuns(
     offset: args.offset,
   };
 
-  const result = await runStorage.getAllRuns(options);
+  const result = await context.runStorage.getAllRuns(options);
   
   // Filter by repository if specified
   let runs = result.runs;
@@ -45,14 +49,20 @@ export async function agentRuns(
 
 export async function repositoryRuns(
   _parent: unknown,
-  { repository }: { repository: string }
+  { repository }: { repository: string },
+  context: Context
 ) {
-  const runs = await runStorage.getRunsByRepository(repository);
+  // Use DataLoader for efficient batching
+  const runs = await context.loaders.repositoryRunsLoader.load(repository);
   return runs.map(formatRunForGraphQL);
 }
 
-export async function runStatistics() {
-  const stats = await runStorage.getRunStatistics();
+export async function runStatistics(
+  _parent: unknown,
+  _args: unknown,
+  context: Context
+) {
+  const stats = await context.runStorage.getRunStatistics();
   
   return {
     ...stats,

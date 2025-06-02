@@ -99,10 +99,10 @@ export class ClaudeSessionManager extends EventEmitter {
     
     // Queue the execution for controlled parallelism
     const output = this.queue.add(async () => {
-      return this.executeClaudeCommand(sessionId, prompt, options);
+      return await this.executeClaudeCommand(sessionId, prompt, options);
     });
 
-    return { sessionId, output };
+    return { sessionId, output: output as Promise<string> };
   }
 
   /**
@@ -182,7 +182,7 @@ export class ClaudeSessionManager extends EventEmitter {
       }
     });
 
-    return result;
+    return result as { message: string; confidence: number; runId: string; };
   }
 
   /**
@@ -459,7 +459,7 @@ Respond with ONLY the commit message, no explanations.`;
    * Clean up terminated sessions
    */
   async cleanup() {
-    for (const [id, session] of this.sessions) {
+    for (const [_id, session] of this.sessions) {
       if (session.process && !session.process.killed) {
         session.process.kill('SIGTERM');
       }

@@ -10,6 +10,9 @@ type Query {
   
   """Check service health and Claude availability"""
   health: HealthStatus!
+  
+  """Get performance metrics for operations"""
+  performanceMetrics(operation: String, lastMinutes: Int): PerformanceReport!
 }
 
 type Mutation {
@@ -533,4 +536,74 @@ input ChangeStats {
   
   """Lines deleted"""
   deletions: Int!
+}
+
+# Performance Monitoring Types
+
+type PerformanceReport {
+  """Aggregated metrics by operation"""
+  operations: [OperationMetrics!]!
+  
+  """Comparison of parallel vs sequential execution"""
+  parallelComparison: ParallelComparison
+  
+  """Time range of the report"""
+  timeRange: TimeRange!
+  
+  """Total operations tracked"""
+  totalOperations: Int!
+}
+
+type OperationMetrics {
+  """Operation name"""
+  operation: String!
+  
+  """Number of executions"""
+  count: Int!
+  
+  """Total duration in milliseconds"""
+  totalDuration: Float!
+  
+  """Average duration in milliseconds"""
+  averageDuration: Float!
+  
+  """Minimum duration in milliseconds"""
+  minDuration: Float!
+  
+  """Maximum duration in milliseconds"""
+  maxDuration: Float!
+  
+  """95th percentile duration"""
+  p95Duration: Float!
+  
+  """99th percentile duration"""
+  p99Duration: Float!
+  
+  """Success rate percentage"""
+  successRate: Float!
+}
+
+type ParallelComparison {
+  """Metrics for parallel execution"""
+  parallel: OperationMetrics
+  
+  """Metrics for sequential execution"""
+  sequential: OperationMetrics
+  
+  """Speed improvement factor (sequential/parallel)"""
+  speedup: Float!
+  
+  """Efficiency percentage"""
+  efficiency: Float!
+}
+
+type TimeRange {
+  """Start time of the range"""
+  start: String!
+  
+  """End time of the range"""
+  end: String!
+  
+  """Duration in minutes"""
+  durationMinutes: Int!
 }

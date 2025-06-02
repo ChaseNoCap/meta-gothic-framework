@@ -1,4 +1,4 @@
-import { RunStorage } from '../../src/services/RunStorage';
+import { RunStorage } from '../../services/RunStorage.js';
 
 // Initialize RunStorage singleton
 const runStorage = new RunStorage();

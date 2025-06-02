@@ -1,0 +1,381 @@
+# Example GraphQL Queries for Parallel Execution
+
+# 1. Basic Batch Commit Message Generation
+# This processes all repositories in a single mutation with automatic parallelism
+mutation GenerateCommitMessagesBasic {
+  generateCommitMessages(input: {
+    repositories: [
+      {
+        path: "/workspace/package1"
+        name: "package1"
+        diff: "diff --git a/index.js b/index.js\n+console.log('hello');"
+        filesChanged: ["index.js"]
+        recentCommits: ["feat: add logging", "fix: resolve import issue"]
+      },
+      {
+        path: "/workspace/package2"
+        name: "package2"
+        diff: "diff --git a/test.js b/test.js\n+test('new test', () => {});"
+        filesChanged: ["test.js"]
+      }
+    ]
+    styleGuide: {
+      format: "conventional"
+      maxLength: 72
+      includeScope: true
+    }
+  }) {
+    totalRepositories
+    successCount
+    executionTime
+    results {
+      repositoryName
+      success
+      message
+      confidence
+      commitType
+      error
+    }
+    totalTokenUsage {
+      inputTokens
+      outputTokens
+      estimatedCost
+    }
+  }
+}
+
+# 2. True Parallel Execution with Field Aliases
+# This executes multiple mutations simultaneously for maximum performance
+mutation ParallelCommitGeneration {
+  # First batch of 5 repositories
+  batch1: generateCommitMessages(input: {
+    repositories: [
+      { path: "/workspace/pkg1", name: "pkg1", diff: "...", filesChanged: ["file1.js"] },
+      { path: "/workspace/pkg2", name: "pkg2", diff: "...", filesChanged: ["file2.js"] },
+      { path: "/workspace/pkg3", name: "pkg3", diff: "...", filesChanged: ["file3.js"] },
+      { path: "/workspace/pkg4", name: "pkg4", diff: "...", filesChanged: ["file4.js"] },
+      { path: "/workspace/pkg5", name: "pkg5", diff: "...", filesChanged: ["file5.js"] }
+    ]
+  }) {
+    ...BatchResult
+  }
+  
+  # Second batch of 5 repositories
+  batch2: generateCommitMessages(input: {
+    repositories: [
+      { path: "/workspace/pkg6", name: "pkg6", diff: "...", filesChanged: ["file6.js"] },
+      { path: "/workspace/pkg7", name: "pkg7", diff: "...", filesChanged: ["file7.js"] },
+      { path: "/workspace/pkg8", name: "pkg8", diff: "...", filesChanged: ["file8.js"] },
+      { path: "/workspace/pkg9", name: "pkg9", diff: "...", filesChanged: ["file9.js"] },
+      { path: "/workspace/pkg10", name: "pkg10", diff: "...", filesChanged: ["file10.js"] }
+    ]
+  }) {
+    ...BatchResult
+  }
+}
+
+fragment BatchResult on BatchCommitMessageResult {
+  successCount
+  executionTime
+  results {
+    repositoryName
+    success
+    message
+    confidence
+  }
+}
+
+# 3. Generate Executive Summary from Commit Messages
+mutation GenerateExecutiveSummary {
+  generateExecutiveSummary(input: {
+    commitMessages: [
+      {
+        repository: "ui-components"
+        message: "feat(dashboard): add real-time metrics display"
+        stats: { filesChanged: 5, additions: 120, deletions: 30 }
+      },
+      {
+        repository: "claude-service"
+        message: "perf(graphql): implement parallel resolver execution"
+        stats: { filesChanged: 8, additions: 250, deletions: 50 }
+      },
+      {
+        repository: "git-service"
+        message: "fix(auth): resolve token expiration issue"
+        stats: { filesChanged: 2, additions: 15, deletions: 5 }
+      }
+    ]
+    audience: "engineering-team"
+    maxLength: 500
+    focusAreas: ["performance", "security", "features"]
+    includeRiskAssessment: true
+    includeRecommendations: true
+  }) {
+    success
+    summary
+    error
+    metadata {
+      repositoryCount
+      totalChanges
+      themes {
+        name
+        description
+        affectedRepositories
+        impact
+      }
+      riskLevel
+      suggestedActions
+    }
+  }
+}
+
+# 4. Query Performance Metrics
+query GetPerformanceMetrics {
+  performanceMetrics(lastMinutes: 60) {
+    operations {
+      operation
+      count
+      totalDuration
+      averageDuration
+      minDuration
+      maxDuration
+      p95Duration
+      p99Duration
+      successRate
+    }
+    parallelComparison {
+      parallel {
+        operation
+        count
+        averageDuration
+        successRate
+      }
+      sequential {
+        operation
+        count
+        averageDuration
+        successRate
+      }
+      speedup
+      efficiency
+    }
+    timeRange {
+      start
+      end
+      durationMinutes
+    }
+    totalOperations
+  }
+}
+
+# 5. Monitor Agent Run History
+query GetRecentAgentRuns {
+  agentRuns(
+    status: SUCCESS
+    limit: 10
+    startDate: "2025-01-06T00:00:00Z"
+  ) {
+    runs {
+      id
+      repository
+      status
+      startedAt
+      completedAt
+      duration
+      input {
+        prompt
+        context
+      }
+      output {
+        response
+        tokensUsed
+      }
+      error
+    }
+    total
+  }
+}
+
+# 6. Get Specific Repository Runs
+query GetRepositoryRuns {
+  repositoryRuns(repository: "ui-components") {
+    id
+    status
+    startedAt
+    duration
+    output {
+      response
+    }
+  }
+}
+
+# 7. Retry Failed Runs in Batch
+mutation RetryFailedRuns {
+  retryFailedRuns(repositoryFilter: "packages/*") {
+    retriedCount
+    successCount
+    failedCount
+    runs {
+      id
+      repository
+      status
+      error
+    }
+  }
+}
+
+# 8. Real-time Subscription for Command Output
+subscription WatchCommandOutput {
+  commandOutput(sessionId: "session-123") {
+    sessionId
+    type
+    content
+    timestamp
+    isFinal
+    tokens
+  }
+}
+
+# 9. Execute Claude Command with Context
+mutation ExecuteClaudeCommand {
+  executeCommand(input: {
+    prompt: "Analyze the performance improvements in the latest changes"
+    workingDirectory: "/workspace/claude-service"
+    context: {
+      files: ["src/resolvers/mutations/generateCommitMessages.ts"]
+      projectContext: "GraphQL performance optimization project"
+      instructions: "Focus on parallelization benefits"
+      maxTokens: 4000
+    }
+    options: {
+      model: "claude-3-opus-20240229"
+      temperature: 0.7
+      maxTokens: 2000
+      stream: true
+    }
+  }) {
+    sessionId
+    success
+    error
+    initialResponse
+    metadata {
+      startTime
+      pid
+      estimatedTime
+      flags
+    }
+  }
+}
+
+# 10. Health Check with Details
+query HealthCheck {
+  health {
+    healthy
+    version
+    claudeAvailable
+    claudeVersion
+    activeSessions
+    resources {
+      memoryUsage
+      cpuUsage
+      activeProcesses
+    }
+  }
+}
+
+# 11. Session Management
+query GetActiveSessions {
+  sessions {
+    id
+    createdAt
+    lastActivity
+    status
+    pid
+    workingDirectory
+    metadata {
+      projectContext
+      model
+      tokenUsage {
+        inputTokens
+        outputTokens
+        estimatedCost
+      }
+    }
+    history {
+      timestamp
+      prompt
+      response
+      executionTime
+      success
+    }
+  }
+}
+
+# 12. Complex Parallel Query with Multiple Operations
+query DashboardData {
+  # Get health status
+  health {
+    healthy
+    activeSessions
+  }
+  
+  # Get recent successful runs
+  recentRuns: agentRuns(status: SUCCESS, limit: 5) {
+    runs {
+      repository
+      startedAt
+      duration
+    }
+  }
+  
+  # Get failed runs for retry
+  failedRuns: agentRuns(status: FAILED, limit: 5) {
+    runs {
+      id
+      repository
+      error
+    }
+  }
+  
+  # Get performance metrics
+  metrics: performanceMetrics(lastMinutes: 30) {
+    operations {
+      operation
+      averageDuration
+      successRate
+    }
+    parallelComparison {
+      speedup
+    }
+  }
+  
+  # Get run statistics
+  stats: runStatistics {
+    total
+    byStatus {
+      SUCCESS
+      FAILED
+      RUNNING
+    }
+    averageDuration
+    successRate
+  }
+}
+
+# 13. Dynamic Parallel Mutation Example (pseudo-code)
+# This shows how to dynamically generate mutations with field aliases
+# 
+# const repositories = [...]; // Your repository list
+# const chunks = chunkArray(repositories, 5);
+# 
+# const mutation = gql`
+#   mutation DynamicParallel {
+#     ${chunks.map((chunk, i) => `
+#       batch${i}: generateCommitMessages(input: {
+#         repositories: ${JSON.stringify(chunk)}
+#       }) {
+#         results { repositoryName message success }
+#       }
+#     `).join('\n')}
+#   }
+# `;

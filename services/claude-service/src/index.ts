@@ -1,22 +1,27 @@
 import Fastify from 'fastify';
 import mercurius from 'mercurius';
-import mercuriusFederation from '@mercurius/federation';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { resolvers } from './resolvers/index.js';
 import { ClaudeSessionManager } from './services/ClaudeSessionManager.js';
+import { RunStorage } from './services/RunStorage.js';
+import { createDataLoaders } from './dataloaders/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const schema = readFileSync(join(__dirname, '../schema/schema.graphql'), 'utf8');
+// Load and merge schemas
+const mainSchema = readFileSync(join(__dirname, '../schema/schema.graphql'), 'utf8');
+const runsSchema = readFileSync(join(__dirname, '../schema/runs.graphql'), 'utf8');
+const schema = mainSchema + '\n\n' + runsSchema;
 
 const PORT = process.env.CLAUDE_SERVICE_PORT || 3002;
 const HOST = process.env.CLAUDE_SERVICE_HOST || '0.0.0.0';
 
-// Initialize session manager
+// Initialize services
 const sessionManager = new ClaudeSessionManager();
+const runStorage = new RunStorage();
 
 async function start() {
   const app = Fastify({
@@ -39,7 +44,7 @@ async function start() {
   });
 
   // Health check endpoint
-  app.get('/health', async (request, reply) => {
+  app.get('/health', async (_request, _reply) => {
     const claudeAvailable = await sessionManager.checkClaudeAvailability();
     return { 
       status: 'healthy',
@@ -50,8 +55,8 @@ async function start() {
     };
   });
 
-  // Register GraphQL with federation support
-  await app.register(mercuriusFederation, {
+  // Register GraphQL
+  await app.register(mercurius as any, {
     schema,
     resolvers,
     graphiql: process.env.NODE_ENV !== 'production',
@@ -59,29 +64,36 @@ async function start() {
     jit: 1,
     queryDepth: 10,
     subscription: {
-      context: (connection, request) => {
+      context: (_connection: any, _request: any) => {
+        const loaders = createDataLoaders(runStorage, sessionManager);
         return {
           sessionManager,
+          runStorage,
+          loaders,
           pubsub: app.graphql.pubsub
         };
       },
-      onConnect: async (data) => {
+      onConnect: async (_data: any) => {
         app.log.info('WebSocket client connected');
         return true;
       },
-      onDisconnect: async (context) => {
+      onDisconnect: async (_context: any) => {
         app.log.info('WebSocket client disconnected');
       }
     },
-    context: (request) => {
+    context: (request: any) => {
+      // Create fresh DataLoaders for each request to avoid stale cache
+      const loaders = createDataLoaders(runStorage, sessionManager);
       return {
         request,
         sessionManager,
+        runStorage,
+        loaders,
         pubsub: app.graphql.pubsub,
         workspaceRoot: process.env.WORKSPACE_ROOT || process.cwd()
       };
     },
-    errorHandler: (error, request, reply) => {
+    errorHandler: (error: any, request: any, _reply: any) => {
       app.log.error({ error, query: request.body }, 'GraphQL error');
       return {
         statusCode: error.statusCode || 500,
