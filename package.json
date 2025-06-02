@@ -10,7 +10,7 @@
     "dev:graphql": "./services/start-all-services.sh",
     "stop:graphql": "./services/stop-all-services.sh",
     "dev:gateway": "cd services/meta-gothic-app && npm run dev",
-    "dev:repo-agent": "cd services/repo-agent-service && npm run dev",
+    "dev:repo-agent": "cd services/repo-agent-service && WORKSPACE_ROOT=$PWD npm run dev",
     "dev:claude": "cd services/claude-service && npm run dev",
     "build": "npm run build:all",
     "build:all": "npm run build:ui && npm run build:packages",

@@ -4,6 +4,32 @@ import { RepositoryScan, RepositoryType } from '../../types/generated.js';
 import path from 'path';
 import fs from 'fs/promises';
 
+async function getSubmodules(repoPath: string): Promise<string[]> {
+  try {
+    const git = simpleGit(repoPath);
+    const submoduleStatus = await git.raw(['submodule', 'status']);
+    
+    if (!submoduleStatus) return [];
+    
+    const submodules: string[] = [];
+    const lines = submoduleStatus.split('\n').filter(line => line.trim());
+    
+    for (const line of lines) {
+      // Parse submodule status line
+      // Format: " 160000 commit-hash 0 path/to/submodule"
+      const match = line.match(/^\s*[\+\-\s]?[0-9a-f]+\s+(\S+)/);
+      if (match) {
+        const submodulePath = path.join(repoPath, match[1]);
+        submodules.push(submodulePath);
+      }
+    }
+    
+    return submodules;
+  } catch {
+    return [];
+  }
+}
+
 async function findGitRepositories(dir: string, results: string[] = []): Promise<string[]> {
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -12,7 +38,11 @@ async function findGitRepositories(dir: string, results: string[] = []): Promise
     const hasGit = entries.some(entry => entry.name === '.git' && entry.isDirectory());
     if (hasGit) {
       results.push(dir);
-      // Don't recurse into git repositories (they might have submodules which we'll handle separately)
+      
+      // Also get submodules for this repository
+      const submodules = await getSubmodules(dir);
+      results.push(...submodules);
+      
       return results;
     }
     

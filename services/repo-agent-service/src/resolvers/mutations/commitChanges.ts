@@ -84,12 +84,19 @@ export async function commitChanges(
         return parts.length > 1 ? parts.slice(1).join('\t') : parts[0];
       });
     
+    // Verify the working directory is now clean for the committed files
+    const postCommitStatus = await git.status();
+    const isClean = postCommitStatus.files.length === 0 || 
+      (files && files.length > 0 && !postCommitStatus.files.some(f => files.includes(f.path)));
+    
     return {
       success: true,
       commitHash: latestCommit.hash,
       error: null,
       repository: repoPath,
-      committedFiles
+      committedFiles,
+      isClean, // Add this to help clients know if working directory is clean
+      remainingFiles: postCommitStatus.files.length // Number of uncommitted files remaining
     };
   } catch (error: any) {
     return {

@@ -16,6 +16,12 @@ type Query {
   
   """Get comprehensive information about a specific repository"""
   repositoryDetails(path: String!): RepositoryDetails!
+  
+  """Check if repository has uncommitted changes"""
+  isRepositoryClean(path: String!): RepositoryCleanStatus!
+  
+  """Get the latest commit hash for a repository"""
+  latestCommit(path: String!): CommitInfo!
 }
 
 type Mutation {
@@ -329,6 +335,40 @@ type Tag {
   date: String
 }
 
+type RepositoryCleanStatus {
+  """Whether the repository has uncommitted changes"""
+  isClean: Boolean!
+  
+  """Number of uncommitted files"""
+  uncommittedFiles: Int!
+  
+  """Latest commit hash"""
+  latestCommitHash: String!
+  
+  """Repository path"""
+  repository: String!
+}
+
+type CommitInfo {
+  """Commit hash"""
+  hash: String!
+  
+  """Short hash (7 characters)"""
+  shortHash: String!
+  
+  """Commit message"""
+  message: String!
+  
+  """Author name"""
+  author: String!
+  
+  """Commit timestamp"""
+  timestamp: String!
+  
+  """Repository path"""
+  repository: String!
+}
+
 type RepositorySize {
   """Total size in bytes"""
   totalSize: Int!
@@ -398,6 +438,12 @@ type CommitResult {
   
   """Files that were committed"""
   committedFiles: [String!]!
+  
+  """Whether the working directory is clean after commit"""
+  isClean: Boolean
+  
+  """Number of uncommitted files remaining"""
+  remainingFiles: Int
 }
 
 type BatchCommitResult {

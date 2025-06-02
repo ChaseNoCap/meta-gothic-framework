@@ -1,6 +1,13 @@
-import Fastify from 'fastify';
-import mercuriusGateway from '@mercurius/gateway';
+import Fastify, { FastifyRequest } from 'fastify';
+import mercuriusGateway from '@mercuriusjs/gateway';
 import websocket from '@fastify/websocket';
+
+// Extend FastifyRequest to include our custom properties
+declare module 'fastify' {
+  interface FastifyRequest {
+    queryStart?: number;
+  }
+}
 
 const PORT = process.env.GATEWAY_PORT || 3000;
 const HOST = process.env.GATEWAY_HOST || '0.0.0.0';
@@ -71,44 +78,23 @@ async function start() {
     }
   ];
 
-  // Service retry configuration
-  const retryConfig = {
-    retries: 3,
-    retryDelay: 1000,
-    timeout: 30000
-  };
-
   // Register the gateway
   await app.register(mercuriusGateway, {
     gateway: {
       services,
       pollingInterval: 2000, // Poll for schema changes
-      retryServicesInterval: 5000, // Retry failed services
-      serviceHealthCheck: true, // Enable health checks
-      ...retryConfig,
+      serviceHealthCheck: true,
       errorHandler: (error, service) => {
-        app.log.error({ error, service }, 'Gateway error from service');
+        app.log.error({ error, service: service.name }, 'Gateway error from service');
         // Custom error formatting
-        if (error.extensions?.code === 'INTERNAL_SERVER_ERROR') {
-          throw new Error(`Service ${service.name} is temporarily unavailable`);
+        if (error.message?.includes('ECONNREFUSED')) {
+          throw new Error(`Service ${service.name} is not available. Please ensure it's running.`);
         }
         throw error;
       }
     },
-    graphiql: process.env.NODE_ENV !== 'production' ? {
-      endpoint: '/graphql',
-      subscriptionEndpoint: `ws://${HOST}:${PORT}/graphql`
-    } : false,
-    subscription: {
-      emitter: app.graphql.pubsub,
-      onConnect: async (data) => {
-        app.log.info('WebSocket connection established');
-        return { connected: true };
-      },
-      onDisconnect: async () => {
-        app.log.info('WebSocket connection closed');
-      }
-    },
+    graphiql: process.env.NODE_ENV !== 'production',
+    subscription: true,
     context: (request) => {
       return {
         request,
@@ -117,48 +103,29 @@ async function start() {
         // Add request ID for tracing
         requestId: request.id
       };
-    },
-    errorFormatter: (execution, context) => {
-      // Log errors with request context
-      if (execution.errors) {
-        app.log.error({
-          requestId: context.requestId,
-          errors: execution.errors,
-          query: execution.document
-        }, 'GraphQL execution errors');
-      }
-      
-      return {
-        statusCode: execution.errors?.[0]?.extensions?.statusCode || 200,
-        response: execution
-      };
     }
   });
 
   // Gateway-level hooks
-  app.graphql.addHook('preParsing', async (schema, document, context) => {
-    const start = Date.now();
-    context.queryStart = start;
-    app.log.debug({ 
-      requestId: context.requestId,
-      document 
-    }, 'Incoming GraphQL request');
+  app.addHook('preHandler', async (request, reply) => {
+    if (request.url === '/graphql' && request.method === 'POST') {
+      request.queryStart = Date.now();
+      app.log.debug({ 
+        requestId: request.id,
+        body: request.body 
+      }, 'Incoming GraphQL request');
+    }
   });
 
-  app.graphql.addHook('onResolution', async (execution, context) => {
-    const duration = Date.now() - (context.queryStart || 0);
-    
-    app.log.info({
-      requestId: context.requestId,
-      duration,
-      hasErrors: !!execution.errors
-    }, 'GraphQL request completed');
-    
-    if (execution.errors) {
-      app.log.error({ 
-        requestId: context.requestId,
-        errors: execution.errors 
-      }, 'GraphQL execution errors');
+  app.addHook('onSend', async (request, reply, payload) => {
+    if (request.url === '/graphql' && request.queryStart) {
+      const duration = Date.now() - request.queryStart;
+      
+      app.log.info({
+        requestId: request.id,
+        duration,
+        statusCode: reply.statusCode
+      }, 'GraphQL request completed');
     }
   });
 

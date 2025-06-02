@@ -3,11 +3,15 @@ import { scanAllRepositories } from './scanAllRepositories.js';
 import { scanAllDetailed } from './scanAllDetailed.js';
 import { submodules } from './submodules.js';
 import { repositoryDetails } from './repositoryDetails.js';
+import { isRepositoryClean } from './isRepositoryClean.js';
+import { latestCommit } from './latestCommit.js';
 
 export const resolvers = {
   gitStatus,
   scanAllRepositories,
   scanAllDetailed,
   submodules,
-  repositoryDetails
+  repositoryDetails,
+  isRepositoryClean,
+  latestCommit
 };

@@ -129,10 +129,12 @@ export async function scanAllDetailed(
   context: Context
 ): Promise<DetailedScanReport> {
   const startTime = new Date();
+  console.log('[scanAllDetailed] Starting scan with workspaceRoot:', context.workspaceRoot);
   
   try {
     // First, get all repositories
     const repositories = await scanAllRepositories(_parent, _args, context);
+    console.log('[scanAllDetailed] Found repositories:', repositories.map(r => ({ name: r.name, path: r.path })));
     
     // Get detailed information for each repository
     const detailedRepos: DetailedRepository[] = await Promise.all(

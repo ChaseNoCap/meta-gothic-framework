@@ -28,7 +28,11 @@ start_service() {
     fi
     
     # Start the service in the background
-    npm run dev > "/tmp/${service_name}.log" 2>&1 &
+    if [ "$service_name" = "repo-agent-service" ]; then
+        WORKSPACE_ROOT="$(cd ../.. && pwd)" npm run dev > "/tmp/${service_name}.log" 2>&1 &
+    else
+        npm run dev > "/tmp/${service_name}.log" 2>&1 &
+    fi
     
     echo $! > "/tmp/${service_name}.pid"
     
