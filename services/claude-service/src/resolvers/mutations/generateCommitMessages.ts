@@ -6,6 +6,8 @@ import type {
 } from '../../types/generated.js';
 import { withCache, runCache } from '../../utils/cache.js';
 import { performanceMonitor } from '../../utils/performance.js';
+import { progressTracker } from '../../services/ProgressTracker.js';
+import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 
 /**
@@ -18,8 +20,11 @@ export async function generateCommitMessages(
   { input }: { input: BatchCommitMessageInput },
   context: Context
 ): Promise<BatchCommitMessageResult> {
-  const { sessionManager } = context;
+  const { sessionManager, pubsub } = context;
   const startTime = Date.now();
+  
+  // Create batch for progress tracking
+  const batchId = progressTracker.createBatch(input.repositories.length);
   
   // Track parallel execution performance
   return performanceMonitor.measure(
@@ -41,12 +46,17 @@ export async function generateCommitMessages(
         async () => {
           // This will be automatically queued by ClaudeSessionManager's p-queue
           // with concurrency=5 and rate limiting of 3 per second
-          return await sessionManager.generateCommitMessage({
+          const result = await sessionManager.generateCommitMessage({
             repository: repo.name,
             diff: repo.diff,
             recentCommits: repo.recentCommits || [],
             context: repo.context
           });
+          
+          // Add run to batch for tracking
+          progressTracker.addRunToBatch(batchId, result.runId, repo.name);
+          
+          return result;
         },
         300 // Cache for 5 minutes
       );

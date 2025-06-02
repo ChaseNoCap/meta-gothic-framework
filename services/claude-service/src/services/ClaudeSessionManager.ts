@@ -5,6 +5,7 @@ import PQueue from 'p-queue';
 import { v4 as uuidv4 } from 'uuid';
 import { RunStorage, RunStatus, AgentRun } from './RunStorage';
 import { initializeCleanupJob } from './RunCleanupJob';
+import { progressTracker, ProgressStage } from './ProgressTracker';
 import type { 
   ClaudeSession, 
   SessionStatus, 
@@ -132,20 +133,34 @@ export class ClaudeSessionManager extends EventEmitter {
 
     await this.runStorage.saveRun(run);
 
+    // Emit initial progress
+    progressTracker.updateRunProgress(run.id, ProgressStage.QUEUED);
+
     // This can be called multiple times in parallel
     const result = await this.queue.add(async () => {
       try {
         // Update status to running
         run.status = RunStatus.RUNNING;
         await this.runStorage.saveRun(run);
+        progressTracker.updateRunProgress(run.id, ProgressStage.INITIALIZING, 'Starting Claude session');
 
+        // Simulate context loading
+        progressTracker.updateRunProgress(run.id, ProgressStage.LOADING_CONTEXT, 'Loading repository context');
+        
+        // Main processing
+        progressTracker.updateRunProgress(run.id, ProgressStage.PROCESSING, 'Generating commit message');
         const startTime = Date.now();
         const output = await this.callClaudeDirectly(run.input.prompt);
         const duration = Date.now() - startTime;
 
+        // Parsing response
+        progressTracker.updateRunProgress(run.id, ProgressStage.PARSING_RESPONSE, 'Extracting commit message');
         const message = this.extractCommitMessage(output);
         const confidence = this.calculateConfidence(output);
 
+        // Saving results
+        progressTracker.updateRunProgress(run.id, ProgressStage.SAVING_RESULTS, 'Saving results');
+        
         // Update run with success
         run.status = RunStatus.SUCCESS;
         run.completedAt = new Date();
@@ -159,6 +174,9 @@ export class ClaudeSessionManager extends EventEmitter {
         };
 
         await this.runStorage.saveRun(run);
+        
+        // Mark as completed
+        progressTracker.updateRunProgress(run.id, ProgressStage.COMPLETED, 'Completed successfully');
 
         return {
           message,
@@ -166,6 +184,9 @@ export class ClaudeSessionManager extends EventEmitter {
           runId: run.id,
         };
       } catch (error: any) {
+        // Mark as failed
+        progressTracker.markRunFailed(run.id, error.message);
+        
         // Update run with failure
         run.status = RunStatus.FAILED;
         run.completedAt = new Date();

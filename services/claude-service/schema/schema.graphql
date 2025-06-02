@@ -38,6 +38,12 @@ type Mutation {
 type Subscription {
   """Subscribe to real-time command output from a Claude session"""
   commandOutput(sessionId: ID!): CommandOutput!
+  
+  """Subscribe to progress updates for agent runs"""
+  agentRunProgress(runId: ID!): AgentRunProgress!
+  
+  """Subscribe to aggregate progress for multiple runs"""
+  batchProgress(batchId: ID!): BatchProgress!
 }
 
 # Types
@@ -606,4 +612,93 @@ type TimeRange {
   
   """Duration in minutes"""
   durationMinutes: Int!
+}
+
+# Progress Tracking Types
+
+type AgentRunProgress {
+  """Run ID this progress update is for"""
+  runId: ID!
+  
+  """Repository being processed"""
+  repository: String!
+  
+  """Current stage of processing"""
+  stage: ProgressStage!
+  
+  """Progress percentage (0-100)"""
+  percentage: Float!
+  
+  """Estimated time remaining in seconds"""
+  estimatedTimeRemaining: Int
+  
+  """Current operation description"""
+  currentOperation: String
+  
+  """Timestamp of this update"""
+  timestamp: String!
+  
+  """Whether this run is complete"""
+  isComplete: Boolean!
+  
+  """Error if any occurred"""
+  error: String
+}
+
+type BatchProgress {
+  """Batch ID for this group of operations"""
+  batchId: ID!
+  
+  """Total number of operations in batch"""
+  totalOperations: Int!
+  
+  """Number of completed operations"""
+  completedOperations: Int!
+  
+  """Number of failed operations"""
+  failedOperations: Int!
+  
+  """Overall progress percentage"""
+  overallPercentage: Float!
+  
+  """Individual run progress"""
+  runProgress: [AgentRunProgress!]!
+  
+  """Estimated total time remaining"""
+  estimatedTimeRemaining: Int
+  
+  """Batch start time"""
+  startTime: String!
+  
+  """Whether batch is complete"""
+  isComplete: Boolean!
+}
+
+enum ProgressStage {
+  """Queued for processing"""
+  QUEUED
+  
+  """Initializing Claude session"""
+  INITIALIZING
+  
+  """Loading context and files"""
+  LOADING_CONTEXT
+  
+  """Processing with Claude"""
+  PROCESSING
+  
+  """Parsing response"""
+  PARSING_RESPONSE
+  
+  """Saving results"""
+  SAVING_RESULTS
+  
+  """Completed successfully"""
+  COMPLETED
+  
+  """Failed with error"""
+  FAILED
+  
+  """Cancelled by user"""
+  CANCELLED
 }

@@ -23,6 +23,10 @@ const HOST = process.env.CLAUDE_SERVICE_HOST || '0.0.0.0';
 const sessionManager = new ClaudeSessionManager();
 const runStorage = new RunStorage();
 
+// Import progress tracker for event binding
+import { progressTracker } from './services/ProgressTracker.js';
+import { emitAgentRunProgress, emitBatchProgress } from './resolvers/subscriptions/agentRunProgress.js';
+
 async function start() {
   const app = Fastify({
     logger: {
@@ -79,7 +83,13 @@ async function start() {
       },
       onDisconnect: async (_context: any) => {
         app.log.info('WebSocket client disconnected');
-      }
+      },
+      // Enable WebSocket compression
+      perMessageDeflate: true,
+      // Implement heartbeat
+      keepAlive: 10000,
+      // Max payload size (1MB)
+      maxPayload: 1024 * 1024
     },
     context: (request: any) => {
       // Create fresh DataLoaders for each request to avoid stale cache
@@ -111,6 +121,24 @@ async function start() {
       };
     }
   });
+
+  // Connect progress tracker to GraphQL pubsub
+  const pubsub = app.graphql.pubsub;
+  if (pubsub) {
+    // Forward progress events to GraphQL subscriptions
+    progressTracker.on('agentRunProgress', (progress) => {
+      emitAgentRunProgress(pubsub, progress);
+    });
+    
+    progressTracker.on('batchProgress', (progress) => {
+      emitBatchProgress(pubsub, progress);
+    });
+    
+    // Periodic cleanup of old batches
+    setInterval(() => {
+      progressTracker.cleanupCompletedBatches();
+    }, 60 * 60 * 1000); // Every hour
+  }
 
   try {
     await app.listen({ port: PORT as number, host: HOST });
