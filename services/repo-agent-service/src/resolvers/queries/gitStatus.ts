@@ -1,111 +1,109 @@
 import simpleGit from 'simple-git';
-import { join } from 'path';
-import type { GitStatus, FileChange } from '../../types/generated.js';
+import { Context } from '../context.js';
+import { GitStatus, FileStatus, Stash } from '../../types/generated.js';
+import path from 'path';
+import fs from 'fs/promises';
 
-interface Context {
-  workspaceRoot: string;
-}
-
-export async function gitStatusResolver(
-  parent: unknown,
-  args: { path: string },
+export async function gitStatus(
+  _parent: unknown,
+  { path: repoPath }: { path: string },
   context: Context
 ): Promise<GitStatus> {
-  const fullPath = join(context.workspaceRoot, args.path);
-  const git = simpleGit(fullPath);
-
   try {
+    // Resolve absolute path
+    const absolutePath = path.isAbsolute(repoPath) 
+      ? repoPath 
+      : path.join(context.workspaceRoot, repoPath);
+
     // Check if directory exists and is a git repository
-    const isRepo = await git.checkIsRepo();
-    if (!isRepo) {
-      throw new Error(`Path ${args.path} is not a git repository`);
+    try {
+      await fs.access(path.join(absolutePath, '.git'));
+    } catch {
+      throw new Error(`Not a git repository: ${repoPath}`);
     }
+
+    const git = simpleGit(absolutePath);
+    
+    // Get branch info
+    const branchSummary = await git.branch();
+    const currentBranch = branchSummary.current;
 
     // Get status
     const status = await git.status();
     
-    // Get branch info
-    const branch = await git.branch();
-    const currentBranch = branch.current;
-    
-    // Get tracking info
-    const trackingBranch = status.tracking || null;
-    
+    // Get ahead/behind info
+    let ahead = 0;
+    let behind = 0;
+    let hasRemote = false;
+
+    if (status.tracking) {
+      hasRemote = true;
+      ahead = status.ahead;
+      behind = status.behind;
+    }
+
+    // Get stash list
+    const stashList = await git.stashList();
+    const stashes: Stash[] = stashList.all.map((stash, index) => ({
+      index,
+      message: stash.message || '',
+      timestamp: stash.date || new Date().toISOString()
+    }));
+
     // Process files
-    const files: FileChange[] = [
-      ...status.modified.map(path => ({
-        path,
-        status: 'M',
-        statusDescription: 'Modified',
-        isStaged: status.staged.includes(path),
-        additions: null,
-        deletions: null
-      })),
-      ...status.not_added.map(path => ({
-        path,
-        status: '?',
+    const files: FileStatus[] = [
+      ...status.not_added.map(f => ({
+        path: f,
+        status: '??',
         statusDescription: 'Untracked',
-        isStaged: false,
-        additions: null,
-        deletions: null
+        isStaged: false
       })),
-      ...status.created.map(path => ({
-        path,
+      ...status.created.map(f => ({
+        path: f,
         status: 'A',
         statusDescription: 'Added',
-        isStaged: status.staged.includes(path),
-        additions: null,
-        deletions: null
+        isStaged: true
       })),
-      ...status.deleted.map(path => ({
-        path,
+      ...status.modified.map(f => ({
+        path: f,
+        status: 'M',
+        statusDescription: 'Modified',
+        isStaged: status.staged.includes(f)
+      })),
+      ...status.deleted.map(f => ({
+        path: f,
         status: 'D',
         statusDescription: 'Deleted',
-        isStaged: status.staged.includes(path),
-        additions: null,
-        deletions: null
+        isStaged: status.staged.includes(f)
       })),
-      ...status.renamed.map(({ from, to }) => ({
-        path: to,
+      ...status.renamed.map(r => ({
+        path: r.to,
         status: 'R',
-        statusDescription: `Renamed from ${from}`,
-        isStaged: true,
-        additions: null,
-        deletions: null
+        statusDescription: `Renamed from ${r.from}`,
+        isStaged: true
       }))
     ];
 
-    // Get diff stats if needed
-    if (files.length > 0) {
-      try {
-        const diffSummary = await git.diffSummary(['--cached', 'HEAD']);
-        const unstagedDiffSummary = await git.diffSummary();
-        
-        // Merge diff stats into files
-        [...diffSummary.files, ...unstagedDiffSummary.files].forEach(file => {
-          const fileChange = files.find(f => f.path === file.file);
-          if (fileChange) {
-            fileChange.additions = file.insertions;
-            fileChange.deletions = file.deletions;
-          }
-        });
-      } catch (err) {
-        // Diff stats are optional, continue without them
-        console.warn('Could not get diff stats:', err);
-      }
-    }
+    // Check for conflicts
+    const conflicted = status.conflicted.map(f => ({
+      path: f,
+      status: 'U',
+      statusDescription: 'Conflicted',
+      isStaged: false
+    }));
+
+    files.push(...conflicted);
 
     return {
-      path: args.path,
       branch: currentBranch,
-      trackingBranch,
-      ahead: status.ahead,
-      behind: status.behind,
+      isDirty: status.files.length > 0,
       files,
-      isDirty: files.length > 0,
-      changeCount: files.length
+      ahead,
+      behind,
+      hasRemote,
+      stashes
     };
-  } catch (error) {
-    throw new Error(`Failed to get git status for ${args.path}: ${error.message}`);
+  } catch (error: any) {
+    throw new Error(`Failed to get git status: ${error.message}`);
   }
 }

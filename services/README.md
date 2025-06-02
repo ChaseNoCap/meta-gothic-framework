@@ -6,7 +6,7 @@ This directory contains the GraphQL microservices that power the Meta GOTHIC fra
 
 The system consists of three main services:
 
-1. **repo-agent-service** (Port 3001) - Handles all Git repository operations
+1. **repo-agent-service** (Port 3004) - Handles all Git repository operations
 2. **claude-service** (Port 3002) - Manages Claude AI interactions and sessions
 3. **meta-gothic-app** (Port 3000) - Federation gateway that unifies all services
 
@@ -42,7 +42,7 @@ npm run dev
 ### Access GraphQL Playground
 
 - Federation Gateway: http://localhost:3000/graphql (recommended)
-- Repo Agent Service: http://localhost:3001/graphql
+- Repo Agent Service: http://localhost:3004/graphql
 - Claude Service: http://localhost:3002/graphql
 
 ## Service Details
@@ -124,7 +124,7 @@ npm run build
 - `WORKSPACE_ROOT` - Root directory for Git operations
 
 ### Service-Specific
-- `REPO_AGENT_PORT` - Port for repo-agent-service (default: 3001)
+- `REPO_AGENT_PORT` - Port for repo-agent-service (default: 3004)
 - `CLAUDE_SERVICE_PORT` - Port for claude-service (default: 3002)
 - `GATEWAY_PORT` - Port for federation gateway (default: 3000)
 
