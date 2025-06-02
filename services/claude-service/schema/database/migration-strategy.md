@@ -1,7 +1,7 @@
 # Database Migration Strategy for Agent Runs
 
 ## Current State
-- File-based storage using JSON files in `.claude-runs/` directory
+- File-based storage using JSON files in `/logs/claude-runs/` directory
 - In-memory Map for runtime access
 - Suitable for development and small-scale usage
 

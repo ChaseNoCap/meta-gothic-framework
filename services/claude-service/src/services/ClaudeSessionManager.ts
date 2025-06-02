@@ -42,7 +42,7 @@ export class ClaudeSessionManager extends EventEmitter {
     super();
     
     // Initialize run storage
-    this.runStorage = new RunStorage('.claude-runs');
+    this.runStorage = new RunStorage('/Users/josh/Documents/meta-gothic-framework/logs/claude-runs');
     
     // Initialize cleanup job (runs every 24 hours)
     initializeCleanupJob(this.runStorage, 24);

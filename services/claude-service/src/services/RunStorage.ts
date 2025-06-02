@@ -53,7 +53,7 @@ export class RunStorage {
   private storageDir: string;
   private maxRetentionDays: number = 30;
 
-  constructor(storageDir: string = '.agent-runs') {
+  constructor(storageDir: string = '/Users/josh/Documents/meta-gothic-framework/logs/claude-runs') {
     this.storageDir = storageDir;
     this.initializeStorage();
   }

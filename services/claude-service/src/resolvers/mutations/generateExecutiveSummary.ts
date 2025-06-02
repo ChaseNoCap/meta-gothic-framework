@@ -128,19 +128,37 @@ function parseExecutiveSummary(
   suggestedActions: string[];
 } {
   try {
-    // Try to parse as JSON first
-    const parsed = JSON.parse(rawSummary);
+    // First, check if this is a Claude result wrapper
+    let summaryData: any;
+    try {
+      const wrapper = JSON.parse(rawSummary);
+      if (wrapper.type === 'result' && wrapper.result) {
+        // Extract JSON from the result field, which may be wrapped in ```json...```
+        const resultStr = wrapper.result;
+        const jsonMatch = resultStr.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+          summaryData = JSON.parse(jsonMatch[1]);
+        } else {
+          summaryData = JSON.parse(resultStr);
+        }
+      } else {
+        summaryData = wrapper;
+      }
+    } catch {
+      // If not wrapped, try to parse directly
+      summaryData = JSON.parse(rawSummary);
+    }
     
     return {
-      summary: parsed.summary || rawSummary,
-      themes: (parsed.themes || []).map((t: any) => ({
+      summary: summaryData.summary || rawSummary,
+      themes: (summaryData.themes || []).map((t: any) => ({
         name: t.name || 'Unknown Theme',
         description: t.description || '',
         affectedRepositories: t.affectedRepositories || [],
         impact: (t.impact || 'MINOR') as ImpactLevel
       })),
-      riskLevel: (parsed.riskLevel || 'LOW') as RiskLevel,
-      suggestedActions: parsed.suggestedActions || []
+      riskLevel: (summaryData.riskLevel || 'LOW') as RiskLevel,
+      suggestedActions: summaryData.suggestedActions || []
     };
   } catch {
     // Fallback for non-JSON responses

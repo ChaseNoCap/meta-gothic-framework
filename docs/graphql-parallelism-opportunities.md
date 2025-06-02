@@ -693,7 +693,7 @@ export class ClaudeSessionManager {
 ### Phase 2: Agent Run Storage Infrastructure ✅ COMPLETE
 **What was implemented:**
 - **RunStorage Service** (`/services/claude-service/src/services/RunStorage.ts`)
-  - File-based persistence to `.claude-runs/` directory
+  - File-based persistence to `/logs/claude-runs/` directory
   - Complete CRUD operations for agent runs
   - Run statistics and performance metrics
   - Retry functionality for failed runs
@@ -721,7 +721,7 @@ export class ClaudeSessionManager {
   - Repository pattern prepared for database abstraction
 
 **Storage Details:**
-- Currently uses JSON files: `.claude-runs/{runId}.json`
+- Currently uses JSON files: `/logs/claude-runs/{runId}.json`
 - In-memory Map for fast runtime access
 - Suitable for development and moderate usage
 - Database migration path clearly defined for production scale
