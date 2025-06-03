@@ -4,13 +4,14 @@ import { stitchSchemas } from '@graphql-tools/stitch';
 import { schemaFromExecutor } from '@graphql-tools/wrap';
 import { buildHTTPExecutor } from '@graphql-tools/executor-http';
 import { makeExecutableSchema } from '@graphql-tools/schema';
-import { GraphQLSchema } from 'graphql';
+import { RenameTypes } from '@graphql-tools/wrap';
 
 const PORT = process.env.GATEWAY_PORT || 3000;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.VITE_GITHUB_TOKEN;
+const ENABLE_CACHE = process.env.ENABLE_CACHE !== 'false'; // Cache enabled by default
 
 async function start() {
-  console.log('Starting Yoga Mesh Gateway with GitHub Support...');
+  console.log('Starting Meta-GOTHIC GraphQL Gateway...');
   
   if (!GITHUB_TOKEN) {
     console.warn('⚠️  No GitHub token found. GitHub features will have limited rate limits.');
@@ -32,14 +33,28 @@ async function start() {
     const claudeSubschema = {
       schema: await schemaFromExecutor(claudeExecutor),
       executor: claudeExecutor,
+      transforms: [
+        // Prefix Claude types to avoid conflicts
+        new RenameTypes((name) => {
+          if (['Query', 'Mutation', 'Subscription'].includes(name)) return name;
+          return `Claude_${name}`;
+        }),
+      ],
     };
 
     const repoAgentSubschema = {
       schema: await schemaFromExecutor(repoAgentExecutor),
       executor: repoAgentExecutor,
+      transforms: [
+        // Prefix Repo types to avoid conflicts
+        new RenameTypes((name) => {
+          if (['Query', 'Mutation', 'Subscription'].includes(name)) return name;
+          return `Repo_${name}`;
+        }),
+      ],
     };
 
-    // Create a simple GitHub schema with essential queries
+    // Create GitHub schema with essential queries
     const githubTypeDefs = `
       type GitHubUser {
         login: String!
@@ -353,18 +368,54 @@ async function start() {
       ],
     });
 
+    // Prepare plugins
+    const plugins: any[] = [];
+
+    // Add caching if enabled
+    if (ENABLE_CACHE) {
+      try {
+        const { useResponseCache } = await import('@graphql-yoga/plugin-response-cache');
+        plugins.push(
+          useResponseCache({
+            session: () => null,
+            ttl: 5000, // 5 seconds default
+            ttlPerType: {
+              // Claude types
+              Claude_Health: 5000,
+              Claude_Session: 60000,
+              Claude_AgentRun: 30000,
+              
+              // Repo types
+              Repo_GitStatus: 30000,
+              Repo_Repository: 60000,
+              Repo_Commit: 300000,
+              
+              // GitHub types
+              GitHubUser: 300000, // 5 minutes
+              GitHubRepository: 60000, // 1 minute
+              GitHubWorkflowRun: 10000, // 10 seconds
+            },
+          })
+        );
+        console.log('✓ Response caching enabled');
+      } catch (error) {
+        console.warn('⚠️  Could not enable response caching:', error);
+      }
+    }
+
     // Create Yoga server
     const yoga = createYoga({
       schema: gatewaySchema,
       maskedErrors: false,
       graphiql: true,
+      plugins,
     });
 
     // Create HTTP server
     const server = createServer(yoga);
 
     server.listen(PORT, () => {
-      console.log(`\n🌐 Yoga Mesh Gateway with GitHub ready!`);
+      console.log(`\n🌐 Meta-GOTHIC GraphQL Gateway ready!`);
       console.log(`📍 GraphQL Endpoint: http://localhost:${PORT}/graphql`);
       console.log(`\n📦 Connected services:`);
       console.log(`   • Claude Service: http://localhost:3002/graphql`);
@@ -372,6 +423,9 @@ async function start() {
       console.log(`   • GitHub API: Direct integration`);
       if (GITHUB_TOKEN) {
         console.log(`\n✅ GitHub authenticated - full API access`);
+      }
+      if (ENABLE_CACHE) {
+        console.log(`\n⚡ Response caching enabled for better performance`);
       }
       console.log(`\n🔍 Try these queries:`);
       console.log(`   - health { healthy version }`);

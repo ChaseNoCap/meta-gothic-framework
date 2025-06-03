@@ -4,7 +4,6 @@ import { killSession } from './killSession.js';
 import { createHandoff } from './createHandoff.js';
 import { generateCommitMessages } from './generateCommitMessages.js';
 import { generateExecutiveSummary } from './generateExecutiveSummary.js';
-import { retryAgentRun, cancelAgentRun, retryFailedRuns, deleteOldRuns } from './agentRuns.js';
 
 export const resolvers = {
   executeCommand,
@@ -12,9 +11,5 @@ export const resolvers = {
   killSession,
   createHandoff,
   generateCommitMessages,
-  generateExecutiveSummary,
-  retryAgentRun,
-  cancelAgentRun,
-  retryFailedRuns,
-  deleteOldRuns
+  generateExecutiveSummary
 };

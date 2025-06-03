@@ -7,8 +7,6 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:yoga": "tsx watch src/index-yoga.ts",
-    "dev:yoga-simple": "tsx watch src/index-yoga-simple.ts",
-    "dev:yoga-federation": "tsx watch src/index-yoga-federation.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest",
