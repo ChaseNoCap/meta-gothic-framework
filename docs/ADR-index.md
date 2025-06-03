@@ -144,7 +144,7 @@ This index provides a comprehensive overview of all architectural decisions made
 - Real-time subscription federation
 
 ### ADR-015: GitHub API Hybrid Strategy 🔄
-**Status**: Superseded by ADR-020  
+**Status**: Superseded by ADR-021  
 **Summary**: Use both GitHub REST and GraphQL APIs based on operation type  
 **Key Decisions**:
 - GraphQL for complex relationship queries
@@ -179,14 +179,23 @@ This index provides a comprehensive overview of all architectural decisions made
 - Accept 2-3x performance trade-off
 - Gain multi-source federation abilities
 
-### ADR-020: OpenAPI to GraphQL Transformation Pattern ✅
-**Status**: Accepted  
+### ADR-020: OpenAPI to GraphQL Transformation Pattern 📋
+**Status**: Proposed  
 **Summary**: All REST APIs must be exposed through GraphQL federation gateway  
 **Key Decisions**:
 - Use GraphQL Mesh's OpenAPI handler for REST→GraphQL transformation
 - No direct REST calls from UI components
 - Unified API surface through GraphQL
 - Consistent auth, caching, and error handling
+
+### ADR-021: Direct GitHub REST API Wrapping ✅
+**Status**: Accepted  
+**Summary**: Wrap GitHub REST API directly in GraphQL resolvers for simplicity  
+**Key Decisions**:
+- Direct fetch() calls in resolvers instead of complex OpenAPI
+- Custom GraphQL types for GitHub entities
+- Mutations for workflow triggering and cancellation
+- Simpler implementation than GraphQL Mesh OpenAPI handler
 
 ## Cross-Cutting Architectural Themes
 
@@ -259,7 +268,8 @@ Technology Stack Dependencies:
 ADR-012 (Fastify) → ADR-013 (Mercurius) → ADR-014 (Federation)
 ADR-014 (Federation) → ADR-018 (GraphQL Mesh) → ADR-019 (Yoga Migration)
 ADR-019 (Yoga) → Full GraphQL Mesh Capabilities
-ADR-015 (GitHub Hybrid) → ADR-020 (OpenAPI Transformation) → All REST via GraphQL
+ADR-015 (GitHub Hybrid) → ADR-021 (Direct REST Wrapping) → GitHub API via GraphQL
+ADR-020 (OpenAPI Pattern) → Future REST API integrations
 ```
 
 ## References

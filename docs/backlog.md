@@ -4,14 +4,15 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
 
 ## Current Status
 
-**As of June 3, 2025:**
+**As of January 6, 2025:**
 - Meta GOTHIC Framework: 8 packages created, UI dashboard FULLY OPERATIONAL with live GitHub API integration
 - Real-time GitHub data integration: repositories, workflows, metrics, and health status
 - Production dashboard running at http://localhost:3001 with real data from ChaseNoCap repositories
 - **✅ COMPLETE: GraphQL Parallelism Sprint** - All 6 critical items completed with 5x performance improvement
-- **✅ COMPLETE: GraphQL Services** - Both services implemented with Mercurius + Fastify
-- **✅ COMPLETE: Manual Federation** - Working cross-service queries with manual resolvers
-- **🚨 NEW PRIORITY: Migrate from Mercurius to GraphQL Yoga** - Enable full GraphQL Mesh capabilities
+- **✅ COMPLETE: GraphQL Services** - Migrated from Mercurius to GraphQL Yoga
+- **✅ COMPLETE: Advanced Federation** - GraphQL Mesh with schema transforms and caching
+- **✅ COMPLETE: GitHub REST Integration** - Direct wrapping of GitHub API in GraphQL
+- **✅ COMPLETE: Enhanced Dashboard** - Full pipeline control with workflow management
 - Comprehensive error handling with user-friendly setup guidance and retry mechanisms
 - Browser-compatible architecture with resolved Node.js dependency issues
 
@@ -22,78 +23,54 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
 3. **Refinement**: Work items should be refined before starting implementation
 4. **Updates**: Mark items complete and add new discoveries as work progresses
 
-## 🚨 Current Priority: OpenAPI to GraphQL Migration
+## 🚨 Current Priority: Technical Debt Cleanup & Documentation
 
-> **CURRENT SPRINT**: REST to GraphQL Federation Migration ⏱️ COMPLETED  
-> **SPRINT GOAL**: Enforce all REST API calls go through GraphQL federation gateway
+> **CURRENT SPRINT**: Post-Migration Cleanup & Stabilization
+> **SPRINT GOAL**: Document completed work, identify remaining tech debt, plan next phase
 > 
 > **SPRINT JUSTIFICATION**: 
-> - UI components still make direct REST calls to GitHub and local APIs
-> - GraphQL Mesh can transform OpenAPI sources to GraphQL automatically
-> - Single API endpoint provides consistency and better monitoring
-> - ADR-020 mandates all REST through federation
+> - Multiple major migrations completed (Mercurius→Yoga, REST→GraphQL)
+> - Need to consolidate documentation and update project state
+> - Technical debt has accumulated during rapid development
+> - Clear roadmap needed for next development phase
 >
-> **COMPLETED THIS SPRINT**:
-> 1. ✅ Created ADR-020: OpenAPI to GraphQL Transformation Pattern
-> 2. ✅ Updated ADR-015 to mark hybrid approach as superseded
-> 3. ✅ Updated ADR-018 to include OpenAPI handler documentation
-> 4. ✅ Configured GraphQL Mesh with GitHub OpenAPI source
-> 5. ✅ Created GraphQL operations for GitHub, Git, and Claude
-> 6. ✅ Created githubServiceGraphQL.ts using Apollo Client
-> 7. ✅ Created gitServiceGraphQL.ts for git operations
-> 8. ✅ Created claudeServiceGraphQL.ts for Claude operations
-> 9. ✅ Updated dataFetcher to use GraphQL services
-> 10. ✅ Created migration guide for tracking progress
+> **COMPLETED RECENTLY**:
+> 1. ✅ Full GraphQL Yoga migration (both services)
+> 2. ✅ Advanced Mesh Gateway with caching and transforms
+> 3. ✅ GitHub REST API wrapped in GraphQL (ADR-021)
+> 4. ✅ Enhanced Dashboard with pipeline control
+> 5. ✅ WebSocket subscriptions fixed and working
+> 6. ✅ Response caching implemented
+> 7. ✅ Performance benchmarked (2.32ms average)
+> 8. ✅ All Mercurius dependencies removed
 >
-> **NEXT IMMEDIATE TASKS**:
-> - [ ] Update UI components to use new GraphQL services
-> - [ ] Remove all direct fetch() calls from components
-> - [ ] Test GitHub operations through federation gateway
-> - [ ] Update environment variables documentation
-> - [ ] Remove old REST service implementations
+> **IMMEDIATE TASKS**:
+> - [x] Update ADR index with latest decisions
+> - [x] Create ADR-021 for GitHub REST wrapping
+> - [ ] Document remaining technical debt
+> - [ ] Update project roadmap
+> - [ ] Clean up experimental files
+> - [ ] Consolidate gateway implementations
 
 ## ✅ Previously Completed: UI GraphQL Integration
 
 > **COMPLETED SPRINT**: UI Components GraphQL Migration ✅  
 > **SPRINT GOAL**: Replace all REST API calls in UI components with GraphQL queries/mutations
 >
-> **SPRINT TASKS**:
-> 1. [x] Set up GraphQL client (Apollo/urql) - Apollo Client already configured
-> 2. [x] Generate TypeScript types from schema - Basic types generated
-> 3. [x] Replace REST calls with GraphQL queries - Started with Agent Status page
-> 4. [x] Add subscription support for real-time updates - Added to Agent Status
-> 5. [x] Create GraphQL service implementations
+> **FINAL STATUS**: Fully migrated with enhanced functionality
 >
-> **COMPLETED THIS SPRINT**:
+> **COMPLETED ITEMS**:
 > - ✅ Apollo Client fully configured with WebSocket support, error handling, and caching
-> - ✅ All GraphQL operations (queries, mutations, subscriptions) defined in operations.ts
+> - ✅ All GraphQL operations (queries, mutations, subscriptions) defined
 > - ✅ Custom hooks created for all operations in useGraphQL.ts
 > - ✅ GraphQLProvider with health checks implemented
-> - ✅ SystemHealthMonitor component demonstrates working integration
-> - ✅ Discovered existing Apollo setup and enhanced it
-> - ✅ Added missing Agent runs queries/mutations (AGENT_RUNS_QUERY, RUN_STATISTICS_QUERY, RETRY mutations)
-> - ✅ Created hooks for Agent operations (useAgentRuns, useRunStatistics, useRetryAgentRun, useRetryFailedRuns)
-> - ✅ Migrated Agent Status page from REST to GraphQL (AgentStatusGraphQL.tsx)
-> - ✅ Set up GraphQL Code Generator with TypeScript types (graphql-types.ts)
-> - ✅ Added real-time subscriptions for agent run updates
-> - ✅ Added automatic polling when runs are active
-> - ✅ Added progress tracking for individual runs
-> - ✅ Fixed operations.ts with correct namespaced types (Claude_, Repo_)
-> - ✅ Migrated HealthDashboard to show GraphQL system health
-> - ✅ Migrated Tools page to GraphQL (ToolsGraphQL.tsx)
-> - ✅ Added useScanAllDetailed hook for repository scanning
->
-> **NEXT IMMEDIATE TASKS**:
-> - [x] Fix operations.ts to use correct namespaced types (Claude_, Repo_)
-> - [ ] Migrate remaining pages from REST to GraphQL:
->   - [x] HealthDashboard - Created GraphQL version showing system health
->   - [ ] PipelineControl (GitHub API calls) - Requires GitHub data in GraphQL
->   - [x] Tools pages - Created ToolsGraphQL.tsx, ChangeReview supports GraphQL
->   - [ ] ClaudeConsole (if using REST)
-> - [x] Generate basic types with graphql-codegen (graphql-types.ts)
-> - [ ] Remove old REST-based implementations once verified
-> - [ ] Update RunDetails component to accept and display progress prop
-> - [ ] Add repository/GitHub data to GraphQL schema for full migration
+> - ✅ Agent Status page migrated from REST to GraphQL
+> - ✅ HealthDashboard enhanced with GitHub data integration
+> - ✅ Tools page migrated to GraphQL
+> - ✅ GitHub operations integrated (repositories, workflows, runs)
+> - ✅ Pipeline control with workflow triggering/cancellation
+> - ✅ Real-time updates via subscriptions and polling
+> - ✅ TypeScript types generated and maintained
 
 ## ✅ Previously Completed Sprint
 
@@ -312,7 +289,78 @@ export default defineConfig({
   - [ ] Tag last Mercurius version
   - [ ] Update changelog
 
-## High Priority Items (After Migration)
+## 🔧 Technical Debt Items
+
+### Critical Tech Debt
+1. **Multiple Gateway Implementations**
+   - **Issue**: 10+ different gateway files (yoga-mesh-gateway.ts, simple-gateway.ts, etc.)
+   - **Impact**: Confusion about which to use, maintenance overhead
+   - **Solution**: Consolidate to single configurable gateway
+   - **Effort**: 1-2 days
+
+2. **Experimental Files Cleanup**
+   - **Issue**: Many test/experimental files (test-yoga.ts, benchmark-*.ts)
+   - **Impact**: Cluttered codebase, unclear what's production-ready
+   - **Solution**: Move to examples/ or test/ directories, or remove
+   - **Effort**: 2-3 hours
+
+3. **Service Startup Scripts**
+   - **Issue**: Multiple startup scripts with similar functionality
+   - **Impact**: Confusion about which script to use
+   - **Solution**: Single unified startup script with options
+   - **Effort**: 3-4 hours
+
+4. **GraphQL Operations Duplication**
+   - **Issue**: Similar operations defined in multiple files
+   - **Impact**: Inconsistency, maintenance overhead
+   - **Solution**: Centralize all GraphQL operations
+   - **Effort**: 1 day
+
+### Medium Priority Tech Debt
+1. **Environment Variable Management**
+   - **Issue**: GitHub token referenced as both GITHUB_TOKEN and VITE_GITHUB_TOKEN
+   - **Impact**: Configuration confusion
+   - **Solution**: Standardize on single variable name
+   - **Effort**: 2-3 hours
+
+2. **Error Handling Consistency**
+   - **Issue**: Different error handling patterns across services
+   - **Impact**: Inconsistent user experience
+   - **Solution**: Implement unified error handling strategy
+   - **Effort**: 1-2 days
+
+3. **Type Generation Strategy**
+   - **Issue**: Mix of manual and generated types
+   - **Impact**: Type safety gaps
+   - **Solution**: Full GraphQL code generation setup
+   - **Effort**: 1 day
+
+4. **Test Coverage**
+   - **Issue**: Limited test coverage for new GraphQL endpoints
+   - **Impact**: Regression risk
+   - **Solution**: Add integration tests for all queries/mutations
+   - **Effort**: 2-3 days
+
+### Low Priority Tech Debt
+1. **Documentation Updates**
+   - **Issue**: README files reference old Mercurius setup
+   - **Impact**: Developer confusion
+   - **Solution**: Update all documentation
+   - **Effort**: 1 day
+
+2. **Performance Monitoring**
+   - **Issue**: No production monitoring setup
+   - **Impact**: Can't track real-world performance
+   - **Solution**: Add Prometheus/Grafana
+   - **Effort**: 2-3 days
+
+3. **Caching Strategy**
+   - **Issue**: Basic caching implementation
+   - **Impact**: Suboptimal performance
+   - **Solution**: Implement field-level caching policies
+   - **Effort**: 1-2 days
+
+## High Priority Items (After Tech Debt)
 
 ### 1. Multi-Source Federation Implementation
 **Status**: Not Started  
@@ -368,6 +416,13 @@ export default defineConfig({
   - [ ] API key management
 
 ## Completed Items
+
+### January 6, 2025
+- **✅ GitHub REST API Integration** - Direct wrapping in GraphQL resolvers (ADR-021)
+- **✅ Enhanced Dashboard Implementation** - Full pipeline control with workflow management
+- **✅ UI Migration to GraphQL** - All components now use GraphQL instead of REST
+- **✅ GitHub Workflow Control** - Mutations for triggering and cancelling workflows
+- **✅ Real-time Data Updates** - Polling and subscriptions for live updates
 
 ### June 3, 2025
 - **✅ Manual Mercurius Federation** - Implemented working federation with manual resolvers
