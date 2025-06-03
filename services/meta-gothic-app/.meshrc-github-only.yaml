@@ -1,0 +1,22 @@
+sources:
+  - name: GitHubREST
+    handler:
+      openapi:
+        source: https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
+        operationHeaders:
+          Authorization: Bearer {env.GITHUB_TOKEN}
+          Accept: application/vnd.github.v3+json
+    transforms:
+      - prefix:
+          value: GitHub_
+      - namingConvention:
+          typeNames: pascalCase
+          fieldNames: camelCase
+          enumValues: upperCase
+
+serve:
+  port: 3006
+  cors:
+    origin: true
+    credentials: true
+  playground: true

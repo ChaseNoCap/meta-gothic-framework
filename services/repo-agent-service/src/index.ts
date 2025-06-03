@@ -1,15 +1,41 @@
 import Fastify from 'fastify';
 import mercurius from 'mercurius';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { typeDefs } from './federation-schema.js';
+import { buildSubgraphSchema } from '@apollo/subgraph';
 import { resolvers } from './resolvers/index.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Add entity resolver to resolvers
+const federatedResolvers = {
+  ...resolvers,
+  Repository: {
+    __resolveReference: async (reference: { path: string }, context: any) => {
+      // This would fetch the repository by path
+      // For now, return a basic implementation
+      const repoName = reference.path.split('/').pop() || 'unknown';
+      return {
+        path: reference.path,
+        name: repoName,
+        isDirty: false,
+        branch: 'main',
+        status: {
+          branch: 'main',
+          isDirty: false,
+          files: [],
+          ahead: 0,
+          behind: 0,
+          hasRemote: true,
+          stashes: []
+        }
+      };
+    }
+  }
+};
 
-// Load schema
-const schema = readFileSync(join(__dirname, '../schema/schema.graphql'), 'utf8');
+// Build the federated schema
+const schema = buildSubgraphSchema({ 
+  typeDefs,
+  resolvers: federatedResolvers 
+});
 
 const PORT = process.env.REPO_AGENT_PORT || 3004;
 const HOST = process.env.REPO_AGENT_HOST || '0.0.0.0';
@@ -43,10 +69,9 @@ async function start() {
     };
   });
 
-  // Register GraphQL
+  // Register GraphQL with federation support
   await app.register(mercurius as any, {
     schema,
-    resolvers,
     graphiql: process.env.NODE_ENV !== 'production',
     federationMetadata: true,
     jit: 1,

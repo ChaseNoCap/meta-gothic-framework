@@ -7,6 +7,16 @@ declare module 'fastify' {
   interface FastifyRequest {
     queryStart?: number;
   }
+  interface FastifyInstance {
+    metrics?: {
+      totalRequests: number;
+      graphqlRequests: number;
+      errorRequests: number;
+      avgResponseTime: number;
+      p95ResponseTime: number;
+      p99ResponseTime: number;
+    };
+  }
 }
 
 const PORT = process.env.GATEWAY_PORT || 3000;
@@ -78,6 +88,10 @@ async function start() {
     }
   ];
 
+  // Query complexity analysis
+  const depthLimit = 7;
+  const complexityLimit = 1000;
+  
   // Register the gateway
   await app.register(mercuriusGateway, {
     gateway: {
@@ -90,21 +104,56 @@ async function start() {
         if (error.message?.includes('ECONNREFUSED')) {
           throw new Error(`Service ${service.name} is not available. Please ensure it's running.`);
         }
+        if (error.message?.includes('ETIMEDOUT')) {
+          throw new Error(`Service ${service.name} timed out. The operation took too long.`);
+        }
         throw error;
-      }
+      },
+      // Retry configuration
+      retryServicesConnectionInterval: 2000,
+      retryServicesCount: 3
     },
     graphiql: process.env.NODE_ENV !== 'production',
-    subscription: true,
+    subscription: {
+      // WebSocket configuration
+      onConnect: async (data) => {
+        app.log.debug({ data }, 'WebSocket client connected');
+        return true;
+      },
+      onDisconnect: async (context) => {
+        app.log.debug('WebSocket client disconnected');
+      }
+    },
     context: (request) => {
       return {
         request,
         // Pass through authorization header
         authorization: request.headers.authorization,
         // Add request ID for tracing
-        requestId: request.id
+        requestId: request.id,
+        // Add user info if available
+        user: (request as any).user || null
       };
     }
   });
+  
+  // Helper function to analyze query depth
+  function analyzeQueryDepth(query: string): { depth: number } {
+    // Simple depth analysis - count nested braces
+    let maxDepth = 0;
+    let currentDepth = 0;
+    
+    for (const char of query) {
+      if (char === '{') {
+        currentDepth++;
+        maxDepth = Math.max(maxDepth, currentDepth);
+      } else if (char === '}') {
+        currentDepth--;
+      }
+    }
+    
+    return { depth: maxDepth };
+  }
 
   // Gateway-level hooks
   app.addHook('preHandler', async (request, reply) => {
@@ -162,22 +211,67 @@ async function start() {
   // Service discovery endpoint
   app.get('/services', async (request, reply) => {
     const serviceStatus = await Promise.all(
-      services.map(async (service) => ({
-        name: service.name,
-        url: service.url,
-        healthy: await checkServiceHealth(service.url)
-      }))
+      services.map(async (service) => {
+        const startTime = Date.now();
+        const healthy = await checkServiceHealth(service.url);
+        const responseTime = Date.now() - startTime;
+        
+        return {
+          name: service.name,
+          url: service.url,
+          healthy,
+          responseTime,
+          wsUrl: service.wsUrl
+        };
+      })
     );
     
     return {
       gateway: {
         version: '1.0.0',
-        endpoint: `http://${HOST}:${PORT}/graphql`
+        endpoint: `http://${HOST}:${PORT}/graphql`,
+        websocket: `ws://${HOST}:${PORT}/graphql`,
+        features: [
+          'federation',
+          'subscriptions',
+          'rate-limiting',
+          'query-depth-limiting',
+          'request-tracing'
+        ]
       },
-      services: serviceStatus
+      services: serviceStatus,
+      uptime: process.uptime(),
+      memory: process.memoryUsage()
+    };
+  });
+  
+  // Metrics endpoint
+  app.get('/metrics', async (request, reply) => {
+    return {
+      requests: {
+        total: app.metrics?.totalRequests || 0,
+        graphql: app.metrics?.graphqlRequests || 0,
+        errors: app.metrics?.errorRequests || 0
+      },
+      performance: {
+        averageResponseTime: app.metrics?.avgResponseTime || 0,
+        p95ResponseTime: app.metrics?.p95ResponseTime || 0,
+        p99ResponseTime: app.metrics?.p99ResponseTime || 0
+      },
+      timestamp: new Date().toISOString()
     };
   });
 
+  // Initialize metrics
+  app.metrics = {
+    totalRequests: 0,
+    graphqlRequests: 0,
+    errorRequests: 0,
+    avgResponseTime: 0,
+    p95ResponseTime: 0,
+    p99ResponseTime: 0
+  };
+  
   try {
     await app.listen({ port: PORT as number, host: HOST });
     app.log.info(`🌐 Meta GOTHIC Gateway ready at http://${HOST}:${PORT}/graphql`);
@@ -189,6 +283,12 @@ async function start() {
     if (process.env.NODE_ENV !== 'production') {
       app.log.info(`🚀 GraphiQL playground available at http://${HOST}:${PORT}/graphiql`);
     }
+    
+    app.log.info('Available endpoints:');
+    app.log.info('  - GraphQL: /graphql');
+    app.log.info('  - Health: /health');
+    app.log.info('  - Services: /services');
+    app.log.info('  - Metrics: /metrics');
   } catch (err) {
     app.log.error(err);
     process.exit(1);

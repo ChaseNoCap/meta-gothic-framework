@@ -1,0 +1,21 @@
+# GraphQL Mesh Dependencies to Remove After Migration
+
+These dependencies should be removed after successfully migrating to GraphQL Yoga:
+
+## Production Dependencies
+- @graphql-mesh/runtime
+- @graphql-tools/executor-http  
+- @graphql-tools/graphql-file-loader
+- @graphql-tools/load
+- @graphql-tools/utils (check if used elsewhere)
+- @graphql-tools/wrap
+
+## Dev Dependencies  
+- @graphql-mesh/cli
+- @graphql-mesh/graphql
+- @graphql-mesh/plugin-mock
+- @graphql-mesh/transform-federation
+
+## Note
+Keep these installed until the migration is complete and validated.
+graphql-yoga is already installed and ready for the migration.

@@ -1,0 +1,84 @@
+# Apollo Router Configuration for Meta GOTHIC Framework
+# This implements the hybrid approach: Apollo Router gateway + Mercurius services
+
+# Federation configuration
+federation_version: 2.10
+
+# Server configuration
+server:
+  listen: 0.0.0.0:3000
+  introspection: true
+  landing_page: true
+  graphql_path: /graphql
+
+# CORS configuration for browser clients
+cors:
+  origins:
+    - http://localhost:3001
+    - http://localhost:5173
+  methods:
+    - GET
+    - POST
+  headers:
+    - Content-Type
+    - Authorization
+
+# Subgraph configuration
+subgraphs:
+  repo-agent:
+    routing_url: http://localhost:3004/graphql
+    introspection_headers:
+      accept: "application/json"
+  claude:
+    routing_url: http://localhost:3002/graphql
+    introspection_headers:
+      accept: "application/json"
+
+# Request handling
+limits:
+  # Maximum query depth to prevent abuse
+  max_depth: 15
+  # Maximum query complexity
+  max_complexity: 1000
+  # Request timeout
+  timeout: 30s
+
+# Headers to forward to subgraphs
+headers:
+  all:
+    request:
+      - name: authorization
+        propagate: true
+      - name: x-request-id
+        propagate: true
+
+# Telemetry configuration
+telemetry:
+  # Prometheus metrics endpoint
+  prometheus:
+    listen: 0.0.0.0:9090
+    path: /metrics
+  
+  # Request logging
+  apollo:
+    client_name_header: apollographql-client-name
+    client_version_header: apollographql-client-version
+
+# Query plan caching for performance
+query_planning:
+  cache:
+    in_memory:
+      limit: 512
+
+# Subscription configuration
+subscription:
+  enable: true
+  # WebSocket configuration
+  path: /ws
+  heartbeat_interval: 15s
+
+# Error handling
+error:
+  # Include subgraph errors in response
+  include_subgraph_errors:
+    all: true

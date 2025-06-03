@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "npm run dev:ui",
     "dev:ui": "cd packages/ui-components && npm run dev",
-    "dev:graphql": "./services/start-all-services.sh",
-    "stop:graphql": "./services/stop-all-services.sh",
+    "dev:graphql": "cd services && ./start-yoga-services.sh",
+    "stop:graphql": "cd services && ./stop-all-services.sh",
     "dev:gateway": "cd services/meta-gothic-app && npm run dev",
     "dev:repo-agent": "cd services/repo-agent-service && WORKSPACE_ROOT=$PWD npm run dev",
     "dev:claude": "cd services/claude-service && npm run dev",

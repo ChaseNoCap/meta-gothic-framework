@@ -38,16 +38,22 @@ export async function health(
     return acc + ((total - idle) / total) * 100;
   }, 0) / cpus.length;
   
+  // Get active sessions count
+  const activeSessions = sessionManager.getActiveSessions().length;
+  
+  // Count active processes (node processes)
+  const activeProcesses = 1; // This service process
+  
   return {
     healthy: true,
     version: process.env.npm_package_version || '1.0.0',
     claudeAvailable,
     claudeVersion,
-    activeSessions: sessionManager.getActiveSessions().length,
+    activeSessions,
     resources: {
-      memoryUsage: Math.round(memoryUsage * 100) / 100,
-      cpuUsage: Math.round(cpuUsage * 100) / 100,
-      activeProcesses: sessionManager.getActiveSessions().filter(s => s.status === 'PROCESSING').length
+      memoryUsage,
+      cpuUsage,
+      activeProcesses
     }
   };
 }

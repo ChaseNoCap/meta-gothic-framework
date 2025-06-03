@@ -1,0 +1,614 @@
+schema
+  @link(url: "https://specs.apollo.dev/link/v1.0")
+{
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.10", import: ["@key", "@shareable", "@external"])
+
+directive @link(url: String, as: String, for: link__Purpose, import: [link__Import]) repeatable on SCHEMA
+
+directive @key(fields: federation__FieldSet!, resolvable: Boolean = true) repeatable on OBJECT | INTERFACE
+
+directive @federation__requires(fields: federation__FieldSet!) on FIELD_DEFINITION
+
+directive @federation__provides(fields: federation__FieldSet!) on FIELD_DEFINITION
+
+directive @external(reason: String) on OBJECT | FIELD_DEFINITION
+
+directive @federation__tag(name: String!) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION | SCHEMA
+
+directive @federation__extends on OBJECT | INTERFACE
+
+directive @shareable repeatable on OBJECT | FIELD_DEFINITION
+
+directive @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__override(from: String!, label: String) on FIELD_DEFINITION
+
+directive @federation__composeDirective(name: String) repeatable on SCHEMA
+
+directive @federation__interfaceObject on OBJECT
+
+directive @federation__authenticated on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM
+
+directive @federation__requiresScopes(scopes: [[federation__Scope!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM
+
+directive @federation__policy(policies: [[federation__Policy!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM
+
+directive @federation__context(name: String!) repeatable on INTERFACE | OBJECT | UNION
+
+directive @federation__fromContext(field: federation__ContextFieldValue) on ARGUMENT_DEFINITION
+
+directive @federation__cost(weight: Int!) on ARGUMENT_DEFINITION | ENUM | FIELD_DEFINITION | INPUT_FIELD_DEFINITION | OBJECT | SCALAR
+
+directive @federation__listSize(assumedSize: Int, slicingArguments: [String!], sizedFields: [String!], requireOneSlicingArgument: Boolean = true) on FIELD_DEFINITION
+
+type Query {
+  """List all active Claude sessions"""
+  sessions: [ClaudeSession!]!
+
+  """Get a specific Claude session by ID"""
+  session(id: ID!): ClaudeSession
+
+  """Check health status of the Claude service"""
+  health: HealthStatus!
+
+  """Get agent run by ID"""
+  agentRun(id: ID!): AgentRun
+
+  """List all agent runs with optional filters"""
+  agentRuns(status: RunStatus, repository: String, limit: Int, offset: Int): AgentRunList!
+
+  """Get performance metrics"""
+  performanceMetrics: PerformanceMetrics!
+  _entities(representations: [_Any!]!): [_Entity]!
+  _service: _Service!
+}
+
+type Mutation {
+  """Execute a command in Claude"""
+  executeCommand(input: ClaudeExecuteInput!): ClaudeExecuteResult!
+
+  """Continue an existing Claude session"""
+  continueSession(input: ContinueSessionInput!): ClaudeExecuteResult!
+
+  """Kill a Claude session"""
+  killSession(id: ID!): Boolean!
+
+  """Create a handoff document"""
+  createHandoff(input: HandoffInput!): HandoffResult!
+
+  """Generate commit messages for multiple repositories"""
+  generateCommitMessages(input: BatchCommitMessageInput!): BatchCommitMessageResult!
+
+  """Generate an executive summary from commit messages"""
+  generateExecutiveSummary(input: ExecutiveSummaryInput!): ExecutiveSummaryResult!
+
+  """Retry a failed agent run"""
+  retryAgentRun(id: ID!): AgentRun!
+
+  """Cancel a running agent"""
+  cancelAgentRun(id: ID!): Boolean!
+}
+
+type Subscription {
+  """Stream real-time output from Claude command execution"""
+  commandOutput(sessionId: ID!): CommandOutput!
+
+  """Track progress of a specific agent run"""
+  agentRunProgress(runId: ID!): AgentRunProgressUpdate!
+
+  """Track progress of a batch operation"""
+  batchProgress(batchId: ID!): BatchProgressUpdate!
+}
+
+type ClaudeSession
+  @key(fields: "id")
+{
+  """Unique session identifier"""
+  id: ID!
+
+  """Current status of the session"""
+  status: String!
+
+  """When the session was created"""
+  createdAt: String!
+
+  """Current working directory"""
+  cwd: String
+
+  """Process ID if running"""
+  pid: Int
+}
+
+type HealthStatus {
+  """Overall health status"""
+  status: String!
+
+  """Whether Claude is available"""
+  claudeAvailable: Boolean!
+
+  """Service version"""
+  version: String
+
+  """Uptime in seconds"""
+  uptime: Int
+}
+
+type AgentRun
+  @key(fields: "id")
+{
+  """Unique run identifier"""
+  id: ID!
+
+  """Repository path"""
+  repository: String!
+
+  """Current status"""
+  status: RunStatus!
+
+  """When the run started"""
+  startedAt: String!
+
+  """When the run completed"""
+  completedAt: String
+
+  """Duration in milliseconds"""
+  duration: Int
+
+  """Input provided to the agent"""
+  input: AgentInput!
+
+  """Output from the agent"""
+  output: AgentOutput
+
+  """Error information if failed"""
+  error: RunError
+
+  """Token usage statistics"""
+  tokenUsage: TokenUsage
+
+  """Parent run ID if this is a retry"""
+  parentRunId: ID
+
+  """Child runs if this was retried"""
+  childRuns: [AgentRun!]!
+}
+
+type AgentRunList {
+  """List of agent runs"""
+  runs: [AgentRun!]!
+
+  """Total count for pagination"""
+  totalCount: Int!
+
+  """Whether there are more results"""
+  hasMore: Boolean!
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+type AgentInput {
+  """Type of agent operation"""
+  type: String!
+
+  """Repository path"""
+  repository: String!
+
+  """Additional context"""
+  context: String
+
+  """Raw input data"""
+  raw: String!
+}
+
+type AgentOutput {
+  """Generated commit message"""
+  commitMessage: String
+
+  """Confidence score"""
+  confidence: Float
+
+  """Type of commit"""
+  commitType: String
+
+  """Raw Claude response"""
+  raw: String!
+}
+
+type RunError {
+  """Error message"""
+  message: String!
+
+  """Error code"""
+  code: String
+
+  """Stack trace"""
+  stack: String
+}
+
+type TokenUsage {
+  """Input tokens consumed"""
+  inputTokens: Int!
+
+  """Output tokens generated"""
+  outputTokens: Int!
+
+  """Estimated cost in USD"""
+  estimatedCost: Float
+}
+
+type PerformanceMetrics {
+  """Average response time in ms"""
+  averageResponseTime: Float!
+
+  """Total requests processed"""
+  totalRequests: Int!
+
+  """Success rate percentage"""
+  successRate: Float!
+
+  """Current queue depth"""
+  queueDepth: Int!
+
+  """Active sessions"""
+  activeSessions: Int!
+
+  """Parallel vs sequential comparison"""
+  parallelComparison: ParallelComparison!
+}
+
+type ParallelComparison {
+  """Parallel execution time in ms"""
+  parallelTime: Float!
+
+  """Sequential execution time in ms"""
+  sequentialTime: Float!
+
+  """Speed improvement factor"""
+  speedup: Float!
+
+  """Number of operations"""
+  operationCount: Int!
+}
+
+type CommandOutput {
+  """Type of output (stdout, stderr, exit)"""
+  type: String!
+
+  """Output content"""
+  content: String!
+
+  """Timestamp"""
+  timestamp: String!
+}
+
+type AgentRunProgressUpdate {
+  """Run ID"""
+  runId: ID!
+
+  """Current status"""
+  status: RunStatus!
+
+  """Progress percentage"""
+  progress: Float!
+
+  """Current stage"""
+  stage: String
+
+  """Progress message"""
+  message: String
+
+  """Estimated time remaining in ms"""
+  estimatedTimeRemaining: Int
+}
+
+type BatchProgressUpdate {
+  """Batch ID"""
+  batchId: ID!
+
+  """Total items in batch"""
+  totalItems: Int!
+
+  """Completed items"""
+  completedItems: Int!
+
+  """Failed items"""
+  failedItems: Int!
+
+  """Overall progress percentage"""
+  progress: Float!
+
+  """Current item being processed"""
+  currentItem: String
+
+  """Estimated time remaining in ms"""
+  estimatedTimeRemaining: Int
+}
+
+type ClaudeExecuteResult {
+  """Session ID for the execution"""
+  sessionId: String!
+
+  """Execution status"""
+  status: String!
+
+  """Output if available"""
+  output: String
+
+  """Error if failed"""
+  error: String
+
+  """Process ID"""
+  pid: Int
+}
+
+type HandoffResult {
+  """Whether handoff was created successfully"""
+  success: Boolean!
+
+  """Path to handoff document"""
+  path: String
+
+  """Content of handoff document"""
+  content: String
+
+  """Error if failed"""
+  error: String
+}
+
+type BatchCommitMessageResult {
+  """Total repositories processed"""
+  totalRepositories: Int!
+
+  """Number of successful generations"""
+  successCount: Int!
+
+  """Individual results"""
+  results: [CommitMessageResult!]!
+
+  """Token usage across all operations"""
+  totalTokenUsage: TokenUsage!
+
+  """Total execution time in ms"""
+  executionTime: Int!
+}
+
+type CommitMessageResult {
+  """Repository path"""
+  repositoryPath: String!
+
+  """Repository name"""
+  repositoryName: String!
+
+  """Whether generation succeeded"""
+  success: Boolean!
+
+  """Generated commit message"""
+  message: String
+
+  """Error if failed"""
+  error: String
+
+  """Confidence score (0-1)"""
+  confidence: Float
+
+  """Type of commit (feat, fix, etc.)"""
+  commitType: String
+}
+
+type ExecutiveSummaryResult {
+  """Whether summary generation succeeded"""
+  success: Boolean!
+
+  """Generated summary"""
+  summary: String
+
+  """Error if failed"""
+  error: String
+
+  """Summary metadata"""
+  metadata: SummaryMetadata!
+}
+
+type SummaryMetadata {
+  """Number of repositories analyzed"""
+  repositoryCount: Int!
+
+  """Total changes across all repos"""
+  totalChanges: Int!
+
+  """Identified themes"""
+  themes: [Theme!]!
+
+  """Risk level assessment"""
+  riskLevel: String!
+
+  """Suggested actions"""
+  suggestedActions: [String!]!
+}
+
+type Theme {
+  """Theme name"""
+  name: String!
+
+  """Theme description"""
+  description: String!
+
+  """Repositories affected by this theme"""
+  affectedRepositories: [String!]!
+
+  """Impact assessment"""
+  impact: String!
+}
+
+input ClaudeExecuteInput {
+  """Command to execute"""
+  command: String!
+
+  """Command arguments"""
+  args: [String!]!
+
+  """Project path"""
+  projectPath: String!
+
+  """Environment variables"""
+  env: [EnvVar!]
+}
+
+input EnvVar {
+  """Variable name"""
+  key: String!
+
+  """Variable value"""
+  value: String!
+}
+
+input ContinueSessionInput {
+  """Session ID to continue"""
+  sessionId: ID!
+
+  """Additional input"""
+  input: String!
+}
+
+input HandoffInput {
+  """Session ID"""
+  sessionId: ID!
+
+  """Additional context"""
+  context: String
+}
+
+input BatchCommitMessageInput {
+  """Repositories to process"""
+  repositories: [RepositoryInput!]!
+
+  """Commit style guide"""
+  styleGuide: CommitStyleGuide
+
+  """Global context"""
+  globalContext: String
+
+  """Analyze relationships between changes"""
+  analyzeRelationships: Boolean
+}
+
+input RepositoryInput {
+  """Repository path"""
+  path: String!
+
+  """Repository name"""
+  name: String!
+
+  """Git diff"""
+  diff: String!
+
+  """Changed files"""
+  filesChanged: [String!]!
+
+  """Recent commit messages"""
+  recentCommits: [String!]
+
+  """Additional context"""
+  context: String
+}
+
+input CommitStyleGuide {
+  """Format (conventional, simple, etc.)"""
+  format: String
+
+  """Max length for subject line"""
+  maxLength: Int
+
+  """Include scope in message"""
+  includeScope: Boolean
+
+  """Include body in message"""
+  includeBody: Boolean
+
+  """Example messages"""
+  examples: [String!]
+}
+
+input ExecutiveSummaryInput {
+  """Commit messages to summarize"""
+  commitMessages: [CommitMessageInput!]!
+
+  """Target audience"""
+  audience: String
+
+  """Maximum length"""
+  maxLength: Int
+
+  """Focus areas"""
+  focusAreas: [String!]
+
+  """Include risk assessment"""
+  includeRiskAssessment: Boolean
+
+  """Include recommendations"""
+  includeRecommendations: Boolean
+}
+
+input CommitMessageInput {
+  """Repository name"""
+  repository: String!
+
+  """Commit message"""
+  message: String!
+
+  """Change statistics"""
+  stats: ChangeStats
+}
+
+input ChangeStats {
+  """Number of files changed"""
+  filesChanged: Int!
+
+  """Lines added"""
+  additions: Int!
+
+  """Lines deleted"""
+  deletions: Int!
+}
+
+enum link__Purpose {
+  """
+  `SECURITY` features provide metadata necessary to securely resolve fields.
+  """
+  SECURITY
+
+  """
+  `EXECUTION` features provide metadata necessary for operation execution.
+  """
+  EXECUTION
+}
+
+scalar link__Import
+
+scalar federation__FieldSet
+
+scalar federation__Scope
+
+scalar federation__Policy
+
+scalar federation__ContextFieldValue
+
+scalar _Any
+
+type _Service {
+  sdl: String
+}
+
+union _Entity = AgentRun | ClaudeSession

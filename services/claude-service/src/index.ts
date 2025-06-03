@@ -1,20 +1,11 @@
 import Fastify from 'fastify';
 import mercurius from 'mercurius';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { buildSubgraphSchema } from '@apollo/subgraph';
+import { typeDefs } from './federation-schema.js';
 import { resolvers } from './resolvers/index.js';
 import { ClaudeSessionManager } from './services/ClaudeSessionManager.js';
 import { RunStorage } from './services/RunStorage.js';
 import { createDataLoaders } from './dataloaders/index.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Load and merge schemas
-const mainSchema = readFileSync(join(__dirname, '../schema/schema.graphql'), 'utf8');
-const runsSchema = readFileSync(join(__dirname, '../schema/runs.graphql'), 'utf8');
-const schema = mainSchema + '\n\n' + runsSchema;
 
 const PORT = process.env.CLAUDE_SERVICE_PORT || 3002;
 const HOST = process.env.CLAUDE_SERVICE_HOST || '0.0.0.0';
@@ -26,6 +17,28 @@ const runStorage = new RunStorage();
 // Import progress tracker for event binding
 import { progressTracker } from './services/ProgressTracker.js';
 import { emitAgentRunProgress, emitBatchProgress } from './resolvers/subscriptions/agentRunProgress.js';
+
+// Add entity resolvers for federation
+const federatedResolvers = {
+  ...resolvers,
+  ClaudeSession: {
+    __resolveReference: async (reference: { id: string }, context: any) => {
+      const sessions = await context.sessionManager.getActiveSessions();
+      return sessions.find((s: any) => s.id === reference.id);
+    }
+  },
+  AgentRun: {
+    __resolveReference: async (reference: { id: string }, context: any) => {
+      return await context.runStorage.getRunById(reference.id);
+    }
+  }
+};
+
+// Build the federated schema
+const schema = buildSubgraphSchema({ 
+  typeDefs,
+  resolvers: federatedResolvers 
+});
 
 async function start() {
   const app = Fastify({
@@ -59,10 +72,9 @@ async function start() {
     };
   });
 
-  // Register GraphQL
+  // Register GraphQL with federation support
   await app.register(mercurius as any, {
     schema,
-    resolvers,
     graphiql: process.env.NODE_ENV !== 'production',
     federationMetadata: true,
     jit: 1,

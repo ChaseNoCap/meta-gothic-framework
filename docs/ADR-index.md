@@ -125,8 +125,8 @@ This index provides a comprehensive overview of all architectural decisions made
 - Rich plugin ecosystem
 - Seamless Mercurius integration
 
-### ADR-013: Mercurius Over Apollo Server 📋
-**Status**: Accepted  
+### ADR-013: Mercurius Over Apollo Server 🔄
+**Status**: Superseded by ADR-019  
 **Summary**: Choose Mercurius for GraphQL server with federation support  
 **Key Decisions**:
 - 5x faster than Apollo Gateway
@@ -134,8 +134,8 @@ This index provides a comprehensive overview of all architectural decisions made
 - Apollo Federation v1 compatibility
 - Built-in performance optimizations
 
-### ADR-014: GraphQL Federation Architecture 📋
-**Status**: Accepted  
+### ADR-014: GraphQL Federation Architecture 🔄
+**Status**: Superseded by ADR-018  
 **Summary**: Implement federated GraphQL across three services  
 **Key Decisions**:
 - Service independence with unified API
@@ -143,8 +143,8 @@ This index provides a comprehensive overview of all architectural decisions made
 - Cross-service type relationships
 - Real-time subscription federation
 
-### ADR-015: GitHub API Hybrid Strategy 📋
-**Status**: Accepted  
+### ADR-015: GitHub API Hybrid Strategy 🔄
+**Status**: Superseded by ADR-020  
 **Summary**: Use both GitHub REST and GraphQL APIs based on operation type  
 **Key Decisions**:
 - GraphQL for complex relationship queries
@@ -160,6 +160,33 @@ This index provides a comprehensive overview of all architectural decisions made
 - .npmrc files use ${NPM_TOKEN} placeholder
 - Same token approach for local development and CI/CD
 - Personal Access Token with read:packages and write:packages scopes
+
+### ADR-018: GraphQL Mesh for Federation Implementation 🔄
+**Status**: Superseded by ADR-019  
+**Summary**: Adopt GraphQL Mesh as federation gateway solution  
+**Key Decisions**:
+- Automatic federation detection
+- Native Fastify integration
+- Multi-source federation capabilities
+- Replaced Apollo Router approach
+
+### ADR-019: Migrate from Mercurius to Enable Full GraphQL Mesh ✅
+**Status**: Accepted  
+**Summary**: Migrate all services from Mercurius to GraphQL Yoga for full Mesh capabilities  
+**Key Decisions**:
+- GraphQL Yoga for all services
+- Enable automatic federation
+- Accept 2-3x performance trade-off
+- Gain multi-source federation abilities
+
+### ADR-020: OpenAPI to GraphQL Transformation Pattern ✅
+**Status**: Accepted  
+**Summary**: All REST APIs must be exposed through GraphQL federation gateway  
+**Key Decisions**:
+- Use GraphQL Mesh's OpenAPI handler for REST→GraphQL transformation
+- No direct REST calls from UI components
+- Unified API surface through GraphQL
+- Consistent auth, caching, and error handling
 
 ## Cross-Cutting Architectural Themes
 
@@ -230,7 +257,9 @@ ADR-001 (Dependencies)
 
 Technology Stack Dependencies:
 ADR-012 (Fastify) → ADR-013 (Mercurius) → ADR-014 (Federation)
-ADR-014 (Federation) → ADR-015 (GitHub API Strategy)
+ADR-014 (Federation) → ADR-018 (GraphQL Mesh) → ADR-019 (Yoga Migration)
+ADR-019 (Yoga) → Full GraphQL Mesh Capabilities
+ADR-015 (GitHub Hybrid) → ADR-020 (OpenAPI Transformation) → All REST via GraphQL
 ```
 
 ## References

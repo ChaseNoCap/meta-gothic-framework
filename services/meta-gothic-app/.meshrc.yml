@@ -1,0 +1,18 @@
+sources:
+  - name: ClaudeService
+    handler:
+      graphql:
+        endpoint: http://localhost:3002/graphql
+
+  - name: RepoAgentService  
+    handler:
+      graphql:
+        endpoint: http://localhost:3004/graphql
+
+additionalTypeDefs: |
+  extend type Query {
+    _service: String
+  }
+
+serve:
+  port: 3000

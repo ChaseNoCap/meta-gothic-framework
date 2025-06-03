@@ -1,8 +1,13 @@
 # ADR-015: Use GitHub API Hybrid Strategy (REST + GraphQL)
 
 **Date**: 2025-01-27  
-**Status**: Accepted  
+**Status**: Superseded by ADR-020  
 **Decision Makers**: metaGOTHIC Framework Team  
+**Superseded Date**: 2025-01-06  
+
+> **Note**: This ADR has been superseded by ADR-020 (OpenAPI to GraphQL Transformation Pattern). 
+> The hybrid approach of allowing direct REST calls from UI components is no longer accepted. 
+> All REST APIs must now be exposed through the GraphQL federation gateway using GraphQL Mesh's OpenAPI handler.  
 
 ## Context
 
