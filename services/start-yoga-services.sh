@@ -32,10 +32,12 @@ cd ..
 echo "Waiting for services to start..."
 sleep 5
 
-# Start gateway
-echo "Starting Yoga Mesh Gateway..."
+# Start gateway with GitHub federation
+echo "Starting Yoga Mesh Gateway with GitHub Support..."
 cd meta-gothic-app
-npm run dev:yoga-mesh > /tmp/yoga-mesh-gateway.log 2>&1 &
+# Make sure GitHub token is available
+export GITHUB_TOKEN="${GITHUB_TOKEN:-${VITE_GITHUB_TOKEN}}"
+npm run dev:yoga-mesh-github > /tmp/yoga-mesh-gateway-github.log 2>&1 &
 GATEWAY_PID=$!
 cd ..
 
@@ -47,7 +49,8 @@ echo ""
 echo "✅ Services Status:"
 echo "  - Repo Agent Service: http://localhost:3004/graphql (PID: $REPO_PID)"
 echo "  - Claude Service: http://localhost:3002/graphql (PID: $CLAUDE_PID)"  
-echo "  - Yoga Mesh Gateway: http://localhost:3000/graphql (PID: $GATEWAY_PID)"
+echo "  - Mesh Federation Gateway: http://localhost:3000/graphql (PID: $GATEWAY_PID)"
+echo "    (includes GitHub REST API via OpenAPI)"
 echo ""
 echo "📊 GraphiQL Interface: http://localhost:3000/graphql"
 echo ""
@@ -56,4 +59,4 @@ echo ""
 echo "Logs available at:"
 echo "  - /tmp/repo-agent-yoga.log"
 echo "  - /tmp/claude-yoga.log"
-echo "  - /tmp/yoga-mesh-gateway.log"
+echo "  - /tmp/yoga-mesh-gateway-github.log"
