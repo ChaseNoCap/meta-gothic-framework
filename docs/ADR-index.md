@@ -1,258 +1,118 @@
 # Architecture Decision Records (ADR) Index
 
-This index provides a comprehensive overview of all architectural decisions made for the metaGOTHIC framework.
+This index provides an overview of all architectural decisions for the metaGOTHIC framework. ADRs have been consolidated by topic area for easier navigation.
 
-## ADR Status Legend
-- **Accepted**: ✅ Decision implemented and proven
-- **Proposed**: 📋 Decision documented but not yet implemented
-- **Deprecated**: ⚠️ Decision no longer recommended
-- **Superseded**: 🔄 Replaced by another ADR
+## Status Legend
+- **✅ Implemented**: Decision implemented and proven in production
+- **📋 Proposed**: Decision documented but not yet implemented
+- **🚧 Partial**: Some aspects implemented, others pending
 
-## Core Infrastructure ADRs
+## Consolidated ADRs
 
-### ADR-001: Unified Dependency Strategy ✅
-**Status**: Accepted  
-**Summary**: Defines the dependency update strategy using Git submodules and automated workflows  
+### [ADR-Infrastructure](./ADR-Infrastructure.md) ✅
+**Package Management and CI/CD**  
+Covers Git submodules architecture, automated publishing, NPM authentication, and the meta repository pattern. Fully implemented with 8 packages in production.
+
 **Key Decisions**:
-- Git submodules for package management
-- Automated dependency updates via repository_dispatch
-- Tag-based publishing triggers
+- Git submodules for package independence
+- Automated CI/CD with GitHub Actions
+- Tag-based publishing to GitHub Packages
+- Unified NPM_TOKEN authentication
 
-### ADR-002: Git Submodules Architecture ✅
-**Status**: Accepted  
-**Summary**: Documents the Git submodules approach for managing package repositories  
-**Key Decisions**:
-- Each package in independent repository
-- Meta repository aggregates via submodules
-- Dual development modes (npm link vs install)
+### [ADR-GraphQL](./ADR-GraphQL.md) ✅
+**API Architecture and Implementation**  
+Documents GraphQL-first architecture, technology stack (Fastify + Yoga + Mesh), federation approach, and GitHub API integration. Fully migrated from Mercurius with excellent performance.
 
-### ADR-003: Automated Publishing Infrastructure ✅
-**Status**: Accepted  
-**Summary**: Establishes the automated package publishing pipeline  
 **Key Decisions**:
-- GitHub Actions for CI/CD
-- GitHub Packages as registry
-- Unified workflow template
-- Real-time notifications
+- GraphQL as primary API paradigm
+- GraphQL Yoga for all services
+- GraphQL Mesh for federation
+- Direct REST wrapping for GitHub API
 
-### ADR-004: CI/CD Dashboard Data Collection ✅
-**Status**: Accepted  
-**Summary**: Systematic approach to collect and persist CI/CD metrics across repositories  
+### [ADR-Architecture-Patterns](./ADR-Architecture-Patterns.md) 🚧
+**Core Framework Patterns**  
+Defines GOTHIC pattern, event-driven architecture, and multi-layer caching strategy. Conceptually defined with partial implementation.
+
 **Key Decisions**:
-- GitHub Actions for data collection
-- JSON file persistence
+- GOTHIC (GitHub Orchestrated Tooling for Hierarchical Intelligent Containers)
+- Redis Pub/Sub for events (planned)
+- Three-layer caching architecture
+- Event-driven service communication
+
+### [ADR-AI-Development](./ADR-AI-Development.md) 📋
+**AI Integration and SDLC Patterns**  
+Progressive context loading for token optimization and SDLC state machine for workflow management. Proposed patterns for future AI enhancement.
+
+**Key Decisions**:
+- Hierarchical context loading (1-4 levels)
+- Token budget optimization
+- SDLC phase state machine
+- AI-assisted development workflows
+
+### [ADR-Monitoring](./ADR-Monitoring.md) ✅
+**CI/CD Dashboard and Metrics Collection**  
+Systematic metrics collection across all repositories with centralized dashboard visualization. Fully operational.
+
+**Key Decisions**:
+- Metrics collection during CI/CD
+- JSON-based data persistence
 - Real-time dashboard updates
+- Historical trend tracking
 
-### ADR-017: Hybrid Package Development Approach ✅
-**Status**: Accepted  
-**Summary**: Hybrid approach for metaGOTHIC package development  
-**Key Decisions**:
-- Start with established ecosystem patterns
-- Add domain-specific features incrementally
-- Maintain compatibility while extending functionality
+### [ADR-Future-Patterns](./ADR-Future-Patterns.md) 📋
+**Reserved Patterns for Future Use**  
+Documents patterns considered but not implemented, like OpenAPI transformation. Reserved for future integrations.
 
-## Framework Architecture ADRs
+**Currently Contains**:
+- OpenAPI to GraphQL transformation pattern
+- Placeholder for future architectural patterns
 
-### ADR-005: GraphQL-First Architecture 📋
-**Status**: Proposed  
-**Summary**: Defines GraphQL as the primary API paradigm with strategic REST endpoints  
-**Key Decisions**:
-- GraphQL for service communication
-- REST for webhooks and health checks
-- Smart GitHub API routing
-- Multi-layer caching strategy
+## Quick Decision Reference
 
-### ADR-006: GOTHIC Pattern Architecture 📋
-**Status**: Proposed  
-**Summary**: Establishes GOTHIC (GitHub Orchestrated Tooling for Hierarchical Intelligent Containers) as the foundational pattern  
-**Key Decisions**:
-- GitHub-native development
-- Hierarchical package organization
-- AI-first design principles
-- Container-based deployment
+### Package Management
+- **Independence**: Each package in separate repo → [Infrastructure](./ADR-Infrastructure.md)
+- **Versioning**: Tag-based publishing → [Infrastructure](./ADR-Infrastructure.md)
+- **Dependencies**: Automated updates → [Infrastructure](./ADR-Infrastructure.md)
 
-### ADR-007: Meta Repository Pattern ✅
-**Status**: Accepted  
-**Summary**: Documents the proven meta repository pattern for package management  
-**Key Decisions**:
-- Independent package repositories
-- Git submodules for aggregation
-- Flexible development workflows
-- Automated synchronization
+### API Architecture  
+- **Primary API**: GraphQL over REST → [GraphQL](./ADR-GraphQL.md)
+- **Framework**: Fastify + Yoga → [GraphQL](./ADR-GraphQL.md)
+- **External APIs**: Direct wrapping → [GraphQL](./ADR-GraphQL.md)
 
-### ADR-008: Event-Driven Architecture 📋
-**Status**: Proposed  
-**Summary**: Defines event-driven communication between services  
-**Key Decisions**:
-- Redis Pub/Sub for real-time events
-- Redis Streams for persistence
-- GraphQL subscription bridge
-- Event-based cache invalidation
+### Development Patterns
+- **Architecture**: GOTHIC pattern → [Architecture Patterns](./ADR-Architecture-Patterns.md)
+- **Communication**: Event-driven → [Architecture Patterns](./ADR-Architecture-Patterns.md)
+- **AI Integration**: Progressive loading → [AI Development](./ADR-AI-Development.md)
 
-### ADR-009: Multi-Layer Caching Strategy 📋
-**Status**: Proposed  
-**Summary**: Establishes three-layer caching architecture for performance  
-**Key Decisions**:
-- DataLoader for request-level
-- LRU cache for application memory
-- Redis for distributed cache
-- Event-driven invalidation
+### Operations
+- **Monitoring**: CI/CD dashboard → [Monitoring](./ADR-Monitoring.md)
+- **Caching**: Multi-layer strategy → [Architecture Patterns](./ADR-Architecture-Patterns.md)
+- **Authentication**: NPM_TOKEN → [Infrastructure](./ADR-Infrastructure.md)
 
-### ADR-010: Progressive Context Loading 📋
-**Status**: Proposed  
-**Summary**: Defines intelligent context loading for AI interactions  
-**Key Decisions**:
-- Hierarchical context levels
-- Token optimization strategies
-- Query-based loading
-- SDLC phase awareness
+## Implementation Status Summary
 
-### ADR-011: SDLC State Machine 📋
-**Status**: Proposed  
-**Summary**: Implements formal SDLC phase management with validation  
-**Key Decisions**:
-- Configurable phase definitions
-- Automated validation gates
-- AI-integrated guidance
-- Progress tracking metrics
+### Fully Implemented ✅
+- Git submodules package management
+- Automated CI/CD pipelines
+- GraphQL Yoga migration
+- GraphQL federation with Mesh
+- GitHub API integration
+- CI/CD metrics dashboard
 
-### ADR-012: Fastify Over Express ✅
-**Status**: Accepted  
-**Summary**: Choose Fastify as web framework for superior performance and TypeScript support  
-**Key Decisions**:
-- 2.5x performance improvement over Express
-- Native TypeScript support
-- Rich plugin ecosystem
-- Works well with GraphQL Yoga
+### Partially Implemented 🚧
+- Event-driven architecture (GraphQL subscriptions working)
+- Caching strategy (basic response caching)
+- GOTHIC pattern (conceptual framework)
 
-### ADR-014: GraphQL Federation Architecture ✅
-**Status**: Accepted (Updated for Yoga)  
-**Summary**: Implement federated GraphQL across three services using GraphQL Yoga and Mesh  
-**Key Decisions**:
-- Service independence with unified API
-- GraphQL Yoga for all services
-- GraphQL Mesh for gateway
-- Real-time subscription support
+### Proposed/Future 📋
+- Progressive context loading
+- SDLC state machine
+- Redis event bus
+- Advanced caching layers
+- OpenAPI transformation (for non-GitHub APIs)
 
-### ADR-016: Local NPM Authentication ✅
-**Status**: Accepted  
-**Summary**: Environment variable-based authentication for GitHub Packages access  
-**Key Decisions**:
-- NPM_TOKEN environment variable for all authentication
-- .npmrc files use ${NPM_TOKEN} placeholder
-- Same token approach for local development and CI/CD
-- Personal Access Token with read:packages and write:packages scopes
+## Navigation
 
-### ADR-019: Migrate from Mercurius to GraphQL Yoga ✅
-**Status**: Accepted  
-**Summary**: Migrate all services from Mercurius to GraphQL Yoga for better ecosystem compatibility  
-**Key Decisions**:
-- GraphQL Yoga for all services
-- Enable GraphQL Mesh integration
-- Excellent performance (2.32ms avg)
-- Full WebSocket support
-
-### ADR-020: OpenAPI to GraphQL Transformation Pattern 📋
-**Status**: Proposed (Future Use)  
-**Summary**: Pattern for exposing REST APIs through GraphQL using OpenAPI specs  
-**Key Decisions**:
-- Use GraphQL Mesh's OpenAPI handler for REST→GraphQL transformation
-- Recommended for APIs with good OpenAPI specs
-- Not used for GitHub (see ADR-021)
-- Reserved for future integrations
-
-### ADR-021: Direct GitHub REST API Wrapping ✅
-**Status**: Accepted  
-**Summary**: Wrap GitHub REST API directly in GraphQL resolvers for simplicity  
-**Key Decisions**:
-- Direct fetch() calls in resolvers instead of complex OpenAPI
-- Custom GraphQL types for GitHub entities
-- Mutations for workflow triggering and cancellation
-- Simpler implementation than OpenAPI approach
-
-### ADR-022: GitHub REST API Direct Integration ✅
-**Status**: Accepted  
-**Summary**: Use direct REST integration for GitHub API instead of OpenAPI/GraphQL transformation  
-**Key Decisions**:
-- Direct REST-to-GraphQL mapping for reliability
-- Manual type definitions for accuracy
-- Authentication via environment variables
-- Graceful error handling with fallbacks
-
-## Cross-Cutting Architectural Themes
-
-### 1. **Package Independence**
-- ADR-001, ADR-002, ADR-003, ADR-006 all emphasize independent packages
-- Enables parallel development and clear ownership
-- Proven successful in production
-
-### 2. **Automation First**
-- ADR-001, ADR-003 establish automation patterns
-- ADR-007, ADR-008 extend to service communication
-- Reduces manual overhead and errors
-
-### 3. **AI Integration**
-- ADR-006 (GOTHIC) establishes AI-first principles
-- ADR-010 optimizes for AI token limits
-- ADR-011 integrates AI guidance into SDLC
-
-### 4. **Performance Optimization**
-- ADR-005 uses GraphQL to reduce API calls
-- ADR-009 implements sophisticated caching
-- ADR-010 minimizes token usage
-
-### 5. **Developer Experience**
-- ADR-007 provides flexible development modes
-- ADR-011 guides through SDLC phases
-- All ADRs prioritize clear patterns
-
-## Implementation Priority
-
-### Phase 1: Foundation (Proven Patterns)
-1. Continue using ADR-001, ADR-002, ADR-003, ADR-004, ADR-007
-2. These patterns are proven and operational
-
-### Phase 2: Core Infrastructure (GraphQL & Events)
-1. Implement ADR-005 (GraphQL-First)
-2. Implement ADR-008 (Event-Driven)
-3. Create graphql-toolkit and github-graphql-client packages
-
-### Phase 3: Performance & Intelligence
-1. Implement ADR-009 (Caching)
-2. Implement ADR-010 (Context Loading)
-3. Optimize for scale and cost
-
-### Phase 4: Developer Guidance
-1. Implement ADR-011 (SDLC State Machine)
-2. Integrate with AI assistants
-3. Add metrics and reporting
-
-## Decision Relationships
-
-```
-ADR-006 (GOTHIC Pattern)
-    ├── ADR-005 (GraphQL-First)
-    │   ├── ADR-012 (Fastify Framework)
-    │   ├── ADR-019 (GraphQL Yoga)
-    │   ├── ADR-014 (Federation Architecture)
-    │   └── ADR-021 (GitHub REST Wrapping)
-    ├── ADR-007 (Meta Repository)
-    ├── ADR-008 (Event-Driven)
-    ├── ADR-009 (Caching)
-    ├── ADR-010 (Context Loading)
-    └── ADR-011 (SDLC State Machine)
-
-ADR-001 (Dependencies)
-    ├── ADR-002 (Git Submodules)
-    └── ADR-003 (Publishing)
-
-Technology Stack Dependencies:
-ADR-012 (Fastify) → ADR-019 (GraphQL Yoga) → ADR-014 (Federation with Mesh)
-ADR-014 (Federation) + ADR-019 (Yoga) → Full GraphQL Mesh Capabilities
-ADR-021 (Direct REST Wrapping) → GitHub API via GraphQL
-ADR-020 (OpenAPI Pattern) → Future REST API integrations
-```
-
-## References
-
-- [metaGOTHIC Backlog](./backlog.md)
+- [View Implementation Backlog](./backlog.md)
+- [Troubleshooting Guide](./troubleshooting/)
+- [Migration Guides](./migration/)
