@@ -40,7 +40,7 @@ export async function submodules(
       if (trimmed.startsWith('[submodule')) {
         const match = trimmed.match(/\[submodule "(.+)"\]/);
         if (match) {
-          currentSubmodule = match[1];
+          currentSubmodule = match[1]!;
         }
       } else if (trimmed.startsWith('url =') && currentSubmodule) {
         const url = trimmed.replace('url =', '').trim();

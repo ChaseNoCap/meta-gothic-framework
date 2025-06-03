@@ -80,6 +80,22 @@ export type Commit = {
   timestamp: Scalars['String']['output'];
 };
 
+export type CommitInfo = {
+  __typename?: 'CommitInfo';
+  /** Author name */
+  author: Scalars['String']['output'];
+  /** Commit hash */
+  hash: Scalars['String']['output'];
+  /** Commit message */
+  message: Scalars['String']['output'];
+  /** Repository path */
+  repository: Scalars['String']['output'];
+  /** Short hash (7 characters) */
+  shortHash: Scalars['String']['output'];
+  /** Commit timestamp */
+  timestamp: Scalars['String']['output'];
+};
+
 export type CommitInput = {
   /** Author name (optional) */
   author: InputMaybe<Scalars['String']['input']>;
@@ -103,6 +119,10 @@ export type CommitResult = {
   committedFiles: Array<Scalars['String']['output']>;
   /** Error message if failed */
   error: Maybe<Scalars['String']['output']>;
+  /** Whether the working directory is clean after commit */
+  isClean: Maybe<Scalars['Boolean']['output']>;
+  /** Number of uncommitted files remaining */
+  remainingFiles: Maybe<Scalars['Int']['output']>;
   /** Repository path */
   repository: Scalars['String']['output'];
   /** Whether commit was successful */
@@ -275,6 +295,10 @@ export type Query = {
   __typename?: 'Query';
   /** Get the current git status of a repository */
   gitStatus: GitStatus;
+  /** Check if repository has uncommitted changes */
+  isRepositoryClean: RepositoryCleanStatus;
+  /** Get the latest commit hash for a repository */
+  latestCommit: CommitInfo;
   /** Get comprehensive information about a specific repository */
   repositoryDetails: RepositoryDetails;
   /** Perform a detailed scan with diffs and history */
@@ -291,6 +315,16 @@ export type QueryGitStatusArgs = {
 };
 
 
+export type QueryIsRepositoryCleanArgs = {
+  path: Scalars['String']['input'];
+};
+
+
+export type QueryLatestCommitArgs = {
+  path: Scalars['String']['input'];
+};
+
+
 export type QueryRepositoryDetailsArgs = {
   path: Scalars['String']['input'];
 };
@@ -303,6 +337,18 @@ export type Remote = {
   name: Scalars['String']['output'];
   /** Push URL */
   pushUrl: Scalars['String']['output'];
+};
+
+export type RepositoryCleanStatus = {
+  __typename?: 'RepositoryCleanStatus';
+  /** Whether the repository has uncommitted changes */
+  isClean: Scalars['Boolean']['output'];
+  /** Latest commit hash */
+  latestCommitHash: Scalars['String']['output'];
+  /** Repository path */
+  repository: Scalars['String']['output'];
+  /** Number of uncommitted files */
+  uncommittedFiles: Scalars['Int']['output'];
 };
 
 export type RepositoryConfig = {
@@ -541,6 +587,7 @@ export type ResolversTypes = ResolversObject<{
   Branch: ResolverTypeWrapper<Branch>;
   ChangesByType: ResolverTypeWrapper<ChangesByType>;
   Commit: ResolverTypeWrapper<Commit>;
+  CommitInfo: ResolverTypeWrapper<CommitInfo>;
   CommitInput: CommitInput;
   CommitResult: ResolverTypeWrapper<CommitResult>;
   DetailedRepository: ResolverTypeWrapper<DetailedRepository>;
@@ -556,6 +603,7 @@ export type ResolversTypes = ResolversObject<{
   PushResult: ResolverTypeWrapper<PushResult>;
   Query: ResolverTypeWrapper<{}>;
   Remote: ResolverTypeWrapper<Remote>;
+  RepositoryCleanStatus: ResolverTypeWrapper<RepositoryCleanStatus>;
   RepositoryConfig: ResolverTypeWrapper<RepositoryConfig>;
   RepositoryDetails: ResolverTypeWrapper<RepositoryDetails>;
   RepositoryScan: ResolverTypeWrapper<RepositoryScan>;
@@ -579,6 +627,7 @@ export type ResolversParentTypes = ResolversObject<{
   Branch: Branch;
   ChangesByType: ChangesByType;
   Commit: Commit;
+  CommitInfo: CommitInfo;
   CommitInput: CommitInput;
   CommitResult: CommitResult;
   DetailedRepository: DetailedRepository;
@@ -594,6 +643,7 @@ export type ResolversParentTypes = ResolversObject<{
   PushResult: PushResult;
   Query: {};
   Remote: Remote;
+  RepositoryCleanStatus: RepositoryCleanStatus;
   RepositoryConfig: RepositoryConfig;
   RepositoryDetails: RepositoryDetails;
   RepositoryScan: RepositoryScan;
@@ -642,10 +692,22 @@ export type CommitResolvers<ContextType = Context, ParentType extends ResolversP
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
+export type CommitInfoResolvers<ContextType = Context, ParentType extends ResolversParentTypes['CommitInfo'] = ResolversParentTypes['CommitInfo']> = ResolversObject<{
+  author: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  hash: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  message: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  repository: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  shortHash: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  timestamp: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
 export type CommitResultResolvers<ContextType = Context, ParentType extends ResolversParentTypes['CommitResult'] = ResolversParentTypes['CommitResult']> = ResolversObject<{
   commitHash: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   committedFiles: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
   error: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  isClean: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  remainingFiles: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   repository: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   success: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
@@ -727,6 +789,8 @@ export type PushResultResolvers<ContextType = Context, ParentType extends Resolv
 
 export type QueryResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = ResolversObject<{
   gitStatus: Resolver<ResolversTypes['GitStatus'], ParentType, ContextType, RequireFields<QueryGitStatusArgs, 'path'>>;
+  isRepositoryClean: Resolver<ResolversTypes['RepositoryCleanStatus'], ParentType, ContextType, RequireFields<QueryIsRepositoryCleanArgs, 'path'>>;
+  latestCommit: Resolver<ResolversTypes['CommitInfo'], ParentType, ContextType, RequireFields<QueryLatestCommitArgs, 'path'>>;
   repositoryDetails: Resolver<ResolversTypes['RepositoryDetails'], ParentType, ContextType, RequireFields<QueryRepositoryDetailsArgs, 'path'>>;
   scanAllDetailed: Resolver<ResolversTypes['DetailedScanReport'], ParentType, ContextType>;
   scanAllRepositories: Resolver<Array<ResolversTypes['RepositoryScan']>, ParentType, ContextType>;
@@ -737,6 +801,14 @@ export type RemoteResolvers<ContextType = Context, ParentType extends ResolversP
   fetchUrl: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   name: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   pushUrl: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
+export type RepositoryCleanStatusResolvers<ContextType = Context, ParentType extends ResolversParentTypes['RepositoryCleanStatus'] = ResolversParentTypes['RepositoryCleanStatus']> = ResolversObject<{
+  isClean: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  latestCommitHash: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  repository: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  uncommittedFiles: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
@@ -836,6 +908,7 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   Branch: BranchResolvers<ContextType>;
   ChangesByType: ChangesByTypeResolvers<ContextType>;
   Commit: CommitResolvers<ContextType>;
+  CommitInfo: CommitInfoResolvers<ContextType>;
   CommitResult: CommitResultResolvers<ContextType>;
   DetailedRepository: DetailedRepositoryResolvers<ContextType>;
   DetailedScanReport: DetailedScanReportResolvers<ContextType>;
@@ -847,6 +920,7 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   PushResult: PushResultResolvers<ContextType>;
   Query: QueryResolvers<ContextType>;
   Remote: RemoteResolvers<ContextType>;
+  RepositoryCleanStatus: RepositoryCleanStatusResolvers<ContextType>;
   RepositoryConfig: RepositoryConfigResolvers<ContextType>;
   RepositoryDetails: RepositoryDetailsResolvers<ContextType>;
   RepositoryScan: RepositoryScanResolvers<ContextType>;

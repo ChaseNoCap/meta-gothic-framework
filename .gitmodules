@@ -25,3 +25,12 @@
 [submodule "packages/github-graphql-client"]
 	path = packages/github-graphql-client
 	url = https://github.com/ChaseNoCap/github-graphql-client.git
+[submodule "packages/logger"]
+	path = packages/logger
+	url = https://github.com/ChaseNoCap/logger
+[submodule "packages/event-system"]
+	path = packages/event-system
+	url = https://github.com/ChaseNoCap/event-system
+[submodule "packages/file-system"]
+	path = packages/file-system
+	url = https://github.com/ChaseNoCap/file-system

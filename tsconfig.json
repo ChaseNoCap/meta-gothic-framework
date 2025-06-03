@@ -1,17 +1,15 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2020",
+    // Override base settings for root config
     "module": "ESNext",
-    "moduleResolution": "node",
-    "lib": ["ES2020", "DOM"],
-    "strict": true,
-    "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
+    "lib": ["ES2022", "DOM"],
     "jsx": "react-jsx",
-    "declaration": true,
     "outDir": "dist",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "composite": true,
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
   },
   "include": [
     "packages/*/src/**/*"
@@ -20,9 +18,14 @@
     "node_modules",
     "dist",
     "**/*.test.*",
-    "**/*.spec.*"
+    "**/*.spec.*",
+    "**/*.d.ts"
   ],
   "references": [
-    { "path": "./packages/ui-components" }
+    { "path": "./packages/ui-components" },
+    { "path": "./services/claude-service" },
+    { "path": "./services/repo-agent-service" },
+    { "path": "./services/meta-gothic-app" },
+    { "path": "./services/shared" }
   ]
 }

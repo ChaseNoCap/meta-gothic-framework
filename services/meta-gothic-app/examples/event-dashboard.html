@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta-GOTHIC Event Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .status {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #666;
+        }
+        
+        .status-indicator.connected {
+            background: #4ade80;
+            box-shadow: 0 0 8px #4ade80;
+        }
+        
+        .status-indicator.disconnected {
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+        }
+        
+        .filters {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            background: #3a3a3a;
+            border-color: #4a4a4a;
+        }
+        
+        .filter-btn.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+        
+        .events-container {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            height: 600px;
+            overflow-y: auto;
+        }
+        
+        .event {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+        
+        .event:hover {
+            border-color: #4a4a4a;
+            background: #333;
+        }
+        
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .event-type {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .event-time {
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .event-payload {
+            font-size: 12px;
+            color: #aaa;
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: #1a1a1a;
+            padding: 8px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        
+        .event.claude { border-left: 4px solid #a855f7; }
+        .event.repo { border-left: 4px solid #10b981; }
+        .event.github { border-left: 4px solid #3b82f6; }
+        .event.graphql { border-left: 4px solid #f59e0b; }
+        .event.performance { border-left: 4px solid #ef4444; }
+        .event.cache { border-left: 4px solid #06b6d4; }
+        
+        .stats {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            background: #2a2a2a;
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .clear-btn {
+            padding: 8px 16px;
+            background: #ef4444;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .clear-btn:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Meta-GOTHIC Event Dashboard</h1>
+            <div class="status">
+                <div class="status-item">
+                    <div class="status-indicator" id="connectionStatus"></div>
+                    <span id="connectionText">Disconnected</span>
+                </div>
+                <div class="status-item">
+                    <span>Events: <strong id="eventCount">0</strong></span>
+                </div>
+                <div class="status-item">
+                    <span>Rate: <strong id="eventRate">0</strong>/min</span>
+                </div>
+                <div class="status-item">
+                    <button class="clear-btn" onclick="clearEvents()">Clear Events</button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="filters">
+            <h3>Event Filters</h3>
+            <div class="filter-group">
+                <button class="filter-btn active" data-filter="*" onclick="toggleFilter(this)">All Events</button>
+                <button class="filter-btn" data-filter="claude" onclick="toggleFilter(this)">Claude</button>
+                <button class="filter-btn" data-filter="repo" onclick="toggleFilter(this)">Repository</button>
+                <button class="filter-btn" data-filter="github" onclick="toggleFilter(this)">GitHub</button>
+                <button class="filter-btn" data-filter="graphql" onclick="toggleFilter(this)">GraphQL</button>
+                <button class="filter-btn" data-filter="performance" onclick="toggleFilter(this)">Performance</button>
+                <button class="filter-btn" data-filter="cache" onclick="toggleFilter(this)">Cache</button>
+            </div>
+        </div>
+        
+        <div class="events-container" id="eventsContainer"></div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="claudeCount">0</div>
+                <div class="stat-label">Claude Operations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="gitCount">0</div>
+                <div class="stat-label">Git Operations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="graphqlCount">0</div>
+                <div class="stat-label">GraphQL Queries</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="slowOpsCount">0</div>
+                <div class="stat-label">Slow Operations</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let events = [];
+        let activeFilters = new Set(['*']);
+        let eventCounts = {
+            claude: 0,
+            repo: 0,
+            graphql: 0,
+            performance: 0
+        };
+        let eventTimestamps = [];
+        
+        function connect() {
+            const wsUrl = 'ws://localhost:3000/ws/events';
+            console.log('Connecting to:', wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('Connected to WebSocket');
+                updateConnectionStatus(true);
+                
+                // Subscribe to all events
+                ws.send(JSON.stringify({
+                    type: 'subscribe',
+                    payload: {
+                        eventTypes: ['*']
+                    }
+                }));
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleEvent(data);
+                } catch (error) {
+                    console.error('Failed to parse event:', error);
+                }
+            };
+            
+            ws.onclose = () => {
+                console.log('Disconnected from WebSocket');
+                updateConnectionStatus(false);
+                setTimeout(connect, 5000); // Reconnect after 5 seconds
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus(false);
+            };
+        }
+        
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('connectionStatus');
+            const text = document.getElementById('connectionText');
+            
+            if (connected) {
+                indicator.classList.add('connected');
+                indicator.classList.remove('disconnected');
+                text.textContent = 'Connected';
+            } else {
+                indicator.classList.remove('connected');
+                indicator.classList.add('disconnected');
+                text.textContent = 'Disconnected';
+            }
+        }
+        
+        function handleEvent(event) {
+            if (event.type === 'websocket.connected' || 
+                event.type === 'websocket.subscribed' ||
+                event.type === 'pong') {
+                return; // Skip system events
+            }
+            
+            events.unshift(event);
+            if (events.length > 500) {
+                events = events.slice(0, 500); // Keep last 500 events
+            }
+            
+            // Update counts
+            const category = event.type.split('.')[0];
+            if (eventCounts[category] !== undefined) {
+                eventCounts[category]++;
+                updateStats();
+            }
+            
+            // Track event rate
+            eventTimestamps.push(Date.now());
+            eventTimestamps = eventTimestamps.filter(ts => 
+                ts > Date.now() - 60000 // Keep last minute
+            );
+            
+            updateEventDisplay();
+            updateEventRate();
+        }
+        
+        function updateEventDisplay() {
+            const container = document.getElementById('eventsContainer');
+            const filteredEvents = events.filter(event => {
+                if (activeFilters.has('*')) return true;
+                const category = event.type.split('.')[0];
+                return activeFilters.has(category);
+            });
+            
+            container.innerHTML = filteredEvents.slice(0, 100).map(event => {
+                const category = event.type.split('.')[0];
+                const time = new Date(event.timestamp).toLocaleTimeString();
+                
+                return `
+                    <div class="event ${category}">
+                        <div class="event-header">
+                            <span class="event-type">${event.type}</span>
+                            <span class="event-time">${time}</span>
+                        </div>
+                        <div class="event-payload">${JSON.stringify(event.payload, null, 2)}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('eventCount').textContent = events.length;
+        }
+        
+        function updateStats() {
+            document.getElementById('claudeCount').textContent = eventCounts.claude;
+            document.getElementById('gitCount').textContent = eventCounts.repo;
+            document.getElementById('graphqlCount').textContent = eventCounts.graphql;
+            document.getElementById('slowOpsCount').textContent = eventCounts.performance;
+        }
+        
+        function updateEventRate() {
+            const rate = eventTimestamps.length;
+            document.getElementById('eventRate').textContent = rate;
+        }
+        
+        function toggleFilter(button) {
+            const filter = button.dataset.filter;
+            
+            if (filter === '*') {
+                // Clear all filters and activate only "All"
+                activeFilters.clear();
+                activeFilters.add('*');
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                button.classList.add('active');
+            } else {
+                // Toggle specific filter
+                activeFilters.delete('*');
+                document.querySelector('[data-filter="*"]').classList.remove('active');
+                
+                if (activeFilters.has(filter)) {
+                    activeFilters.delete(filter);
+                    button.classList.remove('active');
+                } else {
+                    activeFilters.add(filter);
+                    button.classList.add('active');
+                }
+                
+                // If no filters active, activate "All"
+                if (activeFilters.size === 0) {
+                    activeFilters.add('*');
+                    document.querySelector('[data-filter="*"]').classList.add('active');
+                }
+            }
+            
+            updateEventDisplay();
+        }
+        
+        function clearEvents() {
+            events = [];
+            eventCounts = { claude: 0, repo: 0, graphql: 0, performance: 0 };
+            eventTimestamps = [];
+            updateEventDisplay();
+            updateStats();
+            updateEventRate();
+        }
+        
+        // Connect on load
+        connect();
+        
+        // Update rate every second
+        setInterval(updateEventRate, 1000);
+    </script>
+</body>
+</html>

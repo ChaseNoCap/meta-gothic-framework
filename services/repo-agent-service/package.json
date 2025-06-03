@@ -16,6 +16,9 @@
   "dependencies": {
     "@apollo/federation-subgraph-compatibility": "^2.2.1",
     "@apollo/subgraph": "^2.10.2",
+    "@chasenocap/event-system": "file:../../packages/event-system",
+    "@chasenocap/logger": "file:../../packages/logger",
+    "@meta-gothic/shared-types": "file:../shared",
     "@envelop/dataloader": "^7.1.3",
     "@envelop/graphql-jit": "^9.1.3",
     "@fastify/cors": "^9.0.1",
@@ -25,7 +28,7 @@
     "graphql": "^16.8.1",
     "graphql-tag": "^2.12.6",
     "graphql-yoga": "^5.13.5",
-    "nanoid": "^5.0.4",
+    "nanoid": "^5.1.5",
     "pino-pretty": "^10.3.1",
     "simple-git": "^3.22.0"
   },

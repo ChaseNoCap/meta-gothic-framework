@@ -5,28 +5,52 @@ import { schemaFromExecutor } from '@graphql-tools/wrap';
 import { buildHTTPExecutor } from '@graphql-tools/executor-http';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { RenameTypes } from '@graphql-tools/wrap';
+import { createLogger } from '@chasenocap/logger';
+import { nanoid } from 'nanoid';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { createRequestEventBus, eventBus as globalEventBus } from './eventBus.js';
+// import type { GraphQLContext } from '@meta-gothic/shared-types'; // Not needed in this file
+import { createGitHubResolvers } from './githubResolvers.js';
+import { useEventTracking } from './plugins/eventTracking.js';
+import { EventBroadcaster } from './websocket/eventBroadcaster.js';
 
-const PORT = process.env.GATEWAY_PORT || 3000;
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.VITE_GITHUB_TOKEN;
-const ENABLE_CACHE = process.env.ENABLE_CACHE !== 'false'; // Cache enabled by default
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Initialize logger
+const logger = createLogger('meta-gothic-gateway', {}, {
+  logDir: join(__dirname, '../../logs/meta-gothic-gateway')
+});
+
+const PORT = process.env['GATEWAY_PORT'] || 3000;
+const GITHUB_TOKEN = process.env['GITHUB_TOKEN'] || process.env['VITE_GITHUB_TOKEN'];
+const ENABLE_CACHE = process.env['ENABLE_CACHE'] !== 'false'; // Cache enabled by default
 
 async function start() {
-  console.log('Starting Meta-GOTHIC GraphQL Gateway...');
+  logger.info('Starting Meta-GOTHIC GraphQL Gateway...');
   
   if (!GITHUB_TOKEN) {
-    console.warn('⚠️  No GitHub token found. GitHub features will have limited rate limits.');
+    logger.warn('No GitHub token found. GitHub features will have limited rate limits.');
   } else {
-    console.log('✓ GitHub token detected');
+    logger.info('GitHub token detected');
   }
 
   try {
     // Create executors for each service
     const claudeExecutor = buildHTTPExecutor({
       endpoint: 'http://127.0.0.1:3002/graphql',
+      headers: (executorRequest) => {
+        const context = executorRequest?.context as any;
+        return context?.headers || {};
+      },
     });
 
     const repoAgentExecutor = buildHTTPExecutor({
       endpoint: 'http://127.0.0.1:3004/graphql',
+      headers: (executorRequest) => {
+        const context = executorRequest?.context as any;
+        return context?.headers || {};
+      },
     });
 
     // Build subschemas from executors
@@ -122,237 +146,8 @@ async function start() {
       }
     `;
 
-    const githubResolvers = {
-      Mutation: {
-        triggerWorkflow: async (_: any, { owner, repo, workflowId, ref = 'main' }: any) => {
-          if (!GITHUB_TOKEN) {
-            throw new Error('GitHub token required for triggering workflows');
-          }
-          
-          try {
-            const response = await fetch(
-              `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowId}/dispatches`,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                  'Accept': 'application/vnd.github.v3+json',
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ ref }),
-              }
-            );
-            
-            if (!response.ok) {
-              const error = await response.text();
-              throw new Error(`GitHub API error: ${response.statusText} - ${error}`);
-            }
-            
-            return true;
-          } catch (error) {
-            console.error('Error triggering workflow:', error);
-            throw error;
-          }
-        },
-        
-        cancelWorkflowRun: async (_: any, { owner, repo, runId }: any) => {
-          if (!GITHUB_TOKEN) {
-            throw new Error('GitHub token required for cancelling workflow runs');
-          }
-          
-          try {
-            const response = await fetch(
-              `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/cancel`,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                  'Accept': 'application/vnd.github.v3+json',
-                },
-              }
-            );
-            
-            if (!response.ok) {
-              const error = await response.text();
-              throw new Error(`GitHub API error: ${response.statusText} - ${error}`);
-            }
-            
-            return true;
-          } catch (error) {
-            console.error('Error cancelling workflow run:', error);
-            throw error;
-          }
-        },
-      },
-      Query: {
-        githubUser: async () => {
-          if (!GITHUB_TOKEN) {
-            throw new Error('GitHub token required for user query');
-          }
-          const response = await fetch('https://api.github.com/user', {
-            headers: {
-              'Authorization': `Bearer ${GITHUB_TOKEN}`,
-              'Accept': 'application/vnd.github.v3+json',
-            },
-          });
-          if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.statusText}`);
-          }
-          const data = await response.json();
-          return {
-            login: data.login,
-            name: data.name,
-            avatarUrl: data.avatar_url,
-            bio: data.bio,
-            company: data.company,
-            location: data.location,
-            publicRepos: data.public_repos,
-          };
-        },
-        
-        githubRepositories: async (_: any, { perPage = 30, page = 1 }: any) => {
-          if (!GITHUB_TOKEN) {
-            throw new Error('GitHub token required for repositories query');
-          }
-          const response = await fetch(
-            `https://api.github.com/user/repos?per_page=${perPage}&page=${page}&sort=updated`,
-            {
-              headers: {
-                'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-              },
-            }
-          );
-          if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.statusText}`);
-          }
-          const repos = await response.json();
-          return repos.map((repo: any) => ({
-            id: repo.id.toString(),
-            name: repo.name,
-            fullName: repo.full_name,
-            description: repo.description,
-            private: repo.private,
-            fork: repo.fork,
-            createdAt: repo.created_at,
-            updatedAt: repo.updated_at,
-            pushedAt: repo.pushed_at,
-            homepage: repo.homepage,
-            size: repo.size,
-            stargazersCount: repo.stargazers_count,
-            watchersCount: repo.watchers_count,
-            language: repo.language,
-            forksCount: repo.forks_count,
-            openIssuesCount: repo.open_issues_count,
-            defaultBranch: repo.default_branch,
-            topics: repo.topics || [],
-            owner: {
-              login: repo.owner.login,
-              avatarUrl: repo.owner.avatar_url,
-            },
-          }));
-        },
-
-        githubRepository: async (_: any, { owner, name }: any) => {
-          if (!GITHUB_TOKEN) {
-            throw new Error('GitHub token required for repository query');
-          }
-          const response = await fetch(
-            `https://api.github.com/repos/${owner}/${name}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-              },
-            }
-          );
-          if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.statusText}`);
-          }
-          const repo = await response.json();
-          return {
-            id: repo.id.toString(),
-            name: repo.name,
-            fullName: repo.full_name,
-            description: repo.description,
-            private: repo.private,
-            fork: repo.fork,
-            createdAt: repo.created_at,
-            updatedAt: repo.updated_at,
-            pushedAt: repo.pushed_at,
-            homepage: repo.homepage,
-            size: repo.size,
-            stargazersCount: repo.stargazers_count,
-            watchersCount: repo.watchers_count,
-            language: repo.language,
-            forksCount: repo.forks_count,
-            openIssuesCount: repo.open_issues_count,
-            defaultBranch: repo.default_branch,
-            topics: repo.topics || [],
-            owner: {
-              login: repo.owner.login,
-              avatarUrl: repo.owner.avatar_url,
-            },
-          };
-        },
-
-        githubWorkflows: async (_: any, { owner, repo }: any) => {
-          if (!GITHUB_TOKEN) {
-            throw new Error('GitHub token required for workflows query');
-          }
-          const response = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/actions/workflows`,
-            {
-              headers: {
-                'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-              },
-            }
-          );
-          if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.statusText}`);
-          }
-          const data = await response.json();
-          return data.workflows.map((workflow: any) => ({
-            id: workflow.id,
-            name: workflow.name,
-            path: workflow.path,
-            state: workflow.state,
-          }));
-        },
-
-        githubWorkflowRuns: async (_: any, { owner, repo, perPage = 10 }: any) => {
-          if (!GITHUB_TOKEN) {
-            throw new Error('GitHub token required for workflow runs query');
-          }
-          const response = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=${perPage}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${GITHUB_TOKEN}`,
-                'Accept': 'application/vnd.github.v3+json',
-              },
-            }
-          );
-          if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.statusText}`);
-          }
-          const data = await response.json();
-          return data.workflow_runs.map((run: any) => ({
-            id: run.id,
-            name: run.name,
-            headBranch: run.head_branch,
-            headSha: run.head_sha,
-            status: run.status,
-            conclusion: run.conclusion,
-            workflowId: run.workflow_id,
-            url: run.html_url,
-            createdAt: run.created_at,
-            updatedAt: run.updated_at,
-          }));
-        },
-      },
-    };
+    // Create GitHub resolvers using the imported function
+    const githubResolvers = createGitHubResolvers(GITHUB_TOKEN);
 
     const githubSchema = makeExecutableSchema({
       typeDefs: githubTypeDefs,
@@ -397,11 +192,19 @@ async function start() {
             },
           })
         );
-        console.log('✓ Response caching enabled');
+        logger.info('Response caching enabled');
       } catch (error) {
-        console.warn('⚠️  Could not enable response caching:', error);
+        logger.warn('Could not enable response caching', { error });
       }
     }
+
+    // Add event tracking plugin
+    plugins.push(
+      useEventTracking({
+        serviceName: 'meta-gothic-gateway',
+        slowQueryThreshold: 1000 // 1 second for gateway operations
+      })
+    );
 
     // Create Yoga server
     const yoga = createYoga({
@@ -409,47 +212,83 @@ async function start() {
       maskedErrors: false,
       graphiql: true,
       plugins,
+      context: ({ request }) => {
+        // Generate correlation ID for request tracking
+        const correlationId = request.headers.get('x-correlation-id') || nanoid();
+        const requestLogger = logger.child({
+          correlationId,
+          method: request.method,
+          url: request.url,
+        });
+
+        // Create request-scoped event bus
+        const eventBus = createRequestEventBus(correlationId);
+
+        // Pass correlation ID to downstream services
+        const headers = {
+          'x-correlation-id': correlationId,
+        };
+
+        return {
+          logger: requestLogger,
+          correlationId,
+          headers,
+          eventBus,
+        };
+      },
     });
 
     // Create HTTP server
     const server = createServer(yoga);
 
+    // Create WebSocket event broadcaster
+    const eventBroadcaster = new EventBroadcaster(server);
+    
+    // Connect global event bus to WebSocket broadcaster
+    eventBroadcaster.setEventBus(globalEventBus);
+    
+    // Also subscribe request event buses to global bus for broadcasting
+    globalEventBus.on('*', () => {
+      // Events from request-scoped buses will be forwarded here
+    });
+
     server.listen(PORT, () => {
-      console.log(`\n🌐 Meta-GOTHIC GraphQL Gateway ready!`);
-      console.log(`📍 GraphQL Endpoint: http://localhost:${PORT}/graphql`);
-      console.log(`\n📦 Connected services:`);
-      console.log(`   • Claude Service: http://localhost:3002/graphql`);
-      console.log(`   • Repo Agent Service: http://localhost:3004/graphql`);
-      console.log(`   • GitHub API: Direct integration`);
-      if (GITHUB_TOKEN) {
-        console.log(`\n✅ GitHub authenticated - full API access`);
-      }
-      if (ENABLE_CACHE) {
-        console.log(`\n⚡ Response caching enabled for better performance`);
-      }
-      console.log(`\n🔍 Try these queries:`);
-      console.log(`   - health { healthy version }`);
-      console.log(`   - githubUser { login name }`);
-      console.log(`   - githubRepositories { name description stargazersCount }`);
+      logger.info('Meta-GOTHIC GraphQL Gateway started', {
+        port: PORT,
+        graphqlEndpoint: `http://localhost:${PORT}/graphql`,
+        webSocketEndpoint: `ws://localhost:${PORT}/ws/events`,
+        services: {
+          claude: 'http://localhost:3002/graphql',
+          repoAgent: 'http://localhost:3004/graphql',
+          github: 'Direct integration'
+        },
+        features: {
+          githubAuthenticated: !!GITHUB_TOKEN,
+          cacheEnabled: ENABLE_CACHE,
+          webSocketEvents: true
+        }
+      });
     });
 
     // Graceful shutdown
     process.on('SIGTERM', () => {
-      console.log('SIGTERM signal received: closing HTTP server');
+      logger.info('SIGTERM signal received: closing HTTP server');
       server.close(() => {
+        logger.info('Server closed successfully');
         process.exit(0);
       });
     });
 
     process.on('SIGINT', () => {
-      console.log('SIGINT signal received: closing HTTP server');
+      logger.info('SIGINT signal received: closing HTTP server');
       server.close(() => {
+        logger.info('Server closed successfully');
         process.exit(0);
       });
     });
 
   } catch (error) {
-    console.error('Failed to start gateway:', error);
+    logger.error('Failed to start gateway', error as Error);
     process.exit(1);
   }
 }

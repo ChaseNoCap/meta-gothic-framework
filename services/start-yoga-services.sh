@@ -17,14 +17,14 @@ sleep 2
 # Start repo-agent-service
 echo "Starting Repo Agent Service (Yoga)..."
 cd repo-agent-service
-WORKSPACE_ROOT="$WORKSPACE_ROOT" npm run dev:yoga > /tmp/repo-agent-yoga.log 2>&1 &
+WORKSPACE_ROOT="$WORKSPACE_ROOT" npm run dev > /tmp/repo-agent-yoga.log 2>&1 &
 REPO_PID=$!
 cd ..
 
 # Start claude-service  
 echo "Starting Claude Service (Yoga)..."
 cd claude-service
-WORKSPACE_ROOT="$WORKSPACE_ROOT" npm run dev:yoga > /tmp/claude-yoga.log 2>&1 &
+WORKSPACE_ROOT="$WORKSPACE_ROOT" npm run dev > /tmp/claude-yoga.log 2>&1 &
 CLAUDE_PID=$!
 cd ..
 

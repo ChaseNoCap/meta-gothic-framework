@@ -9,6 +9,19 @@ export async function sessions(
   _args: {},
   context: Context
 ): Promise<ClaudeSession[]> {
-  const { sessionManager } = context;
-  return sessionManager.getActiveSessions();
+  const { sessionManager, logger } = context;
+  const operationLogger = logger.child({ operation: 'sessions' });
+  
+  operationLogger.debug('Fetching active sessions');
+  
+  try {
+    const activeSessions = await sessionManager.getActiveSessions();
+    operationLogger.info('Active sessions retrieved', { 
+      count: activeSessions.length 
+    });
+    return activeSessions;
+  } catch (error) {
+    operationLogger.error('Failed to fetch sessions', error as Error);
+    throw error;
+  }
 }

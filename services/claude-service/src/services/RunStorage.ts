@@ -1,14 +1,49 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { RunStatus as SharedRunStatus } from '@meta-gothic/shared-types';
 
+// Extend the shared RunStatus with Claude-specific statuses
 export enum RunStatus {
   QUEUED = 'QUEUED',
-  RUNNING = 'RUNNING',
+  RUNNING = SharedRunStatus.RUNNING,
   SUCCESS = 'SUCCESS',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED',
+  FAILED = SharedRunStatus.FAILED,
+  CANCELLED = SharedRunStatus.CANCELLED,
   RETRYING = 'RETRYING',
+  // Additional statuses from shared
+  PENDING = SharedRunStatus.PENDING,
+  STARTED = SharedRunStatus.STARTED,
+  COMPLETED = SharedRunStatus.COMPLETED,
+  TIMEOUT = SharedRunStatus.TIMEOUT
+}
+
+// Helper to convert to shared status
+export function toSharedRunStatus(status: RunStatus): SharedRunStatus {
+  switch (status) {
+    case RunStatus.QUEUED:
+      return SharedRunStatus.PENDING;
+    case RunStatus.SUCCESS:
+      return SharedRunStatus.COMPLETED;
+    case RunStatus.RETRYING:
+      return SharedRunStatus.RUNNING;
+    case RunStatus.RUNNING:
+      return SharedRunStatus.RUNNING;
+    case RunStatus.FAILED:
+      return SharedRunStatus.FAILED;
+    case RunStatus.CANCELLED:
+      return SharedRunStatus.CANCELLED;
+    case RunStatus.TIMEOUT:
+      return SharedRunStatus.TIMEOUT;
+    case RunStatus.PENDING:
+      return SharedRunStatus.PENDING;
+    case RunStatus.STARTED:
+      return SharedRunStatus.STARTED;
+    case RunStatus.COMPLETED:
+      return SharedRunStatus.COMPLETED;
+    default:
+      return SharedRunStatus.PENDING;
+  }
 }
 
 export interface AgentInput {

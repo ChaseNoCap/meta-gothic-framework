@@ -94,7 +94,7 @@ export async function commitChanges(
       commitHash: latestCommit.hash,
       error: null,
       repository: repoPath,
-      committedFiles,
+      committedFiles: committedFiles.filter((f): f is string => f !== undefined),
       isClean, // Add this to help clients know if working directory is clean
       remainingFiles: postCommitStatus.files.length // Number of uncommitted files remaining
     };

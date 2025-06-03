@@ -1,0 +1,61 @@
+{
+  "name": "@meta-gothic/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for the Meta-GOTHIC framework",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./context": {
+      "types": "./dist/types/context.d.ts",
+      "import": "./dist/types/context.js"
+    },
+    "./common": {
+      "types": "./dist/types/common.d.ts",
+      "import": "./dist/types/common.js"
+    },
+    "./results": {
+      "types": "./dist/types/results.d.ts",
+      "import": "./dist/types/results.js"
+    },
+    "./metadata": {
+      "types": "./dist/types/metadata.d.ts",
+      "import": "./dist/types/metadata.js"
+    },
+    "./guards": {
+      "types": "./dist/types/guards.d.ts",
+      "import": "./dist/types/guards.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "type-check": "tsc --noEmit",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "typescript",
+    "types",
+    "meta-gothic",
+    "shared"
+  ],
+  "author": "Meta-GOTHIC Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "@chasenocap/logger": "file:../../packages/logger",
+    "@chasenocap/event-system": "file:../../packages/event-system"
+  }
+}

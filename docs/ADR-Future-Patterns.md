@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This ADR documents patterns that are not currently used but may be valuable for future integrations. Currently contains the OpenAPI to GraphQL transformation pattern, which was considered for GitHub but ultimately rejected in favor of direct wrapping (ADR-021).
+This ADR documents patterns that are not currently used but may be valuable for future integrations. Currently contains the OpenAPI to GraphQL transformation pattern, which was considered for GitHub but ultimately rejected in favor of direct wrapping (see ADR-GraphQL).
 
 ## OpenAPI to GraphQL Transformation Pattern
 
@@ -78,6 +78,32 @@ sources:
 ## Status
 
 Reserved for future use. Currently not implemented in favor of simpler, more direct approaches for our current integrations.
+
+## Infrastructure Packages Under Evaluation
+
+### Structured Logging Pattern
+**Package**: @chasenocap/logger  
+**Pattern**: Winston-based structured logging with child contexts
+**Benefits**: AI-analyzable logs, session tracking, daily rotation
+**Status**: Recommended for adoption
+
+### Decorator-Based Caching  
+**Package**: @chasenocap/cache
+**Pattern**: Method-level caching with @Cacheable decorator
+**Benefits**: Simple API, TTL support, zero dependencies
+**Status**: Recommended - aligns with multi-layer caching strategy in ADR-Architecture-Patterns
+
+### Event-Driven Decorators
+**Package**: @chasenocap/event-system
+**Pattern**: @Emits and @Traces decorators for automatic events
+**Benefits**: Real-time updates, performance monitoring
+**Status**: Recommended - implements event-driven architecture from ADR-Architecture-Patterns
+
+### File System Abstraction
+**Package**: @chasenocap/file-system
+**Pattern**: Testable abstraction over Node.js fs
+**Benefits**: Easy mocking, consistent error handling
+**Status**: Recommended for testability
 
 ## Future Patterns to Consider
 
