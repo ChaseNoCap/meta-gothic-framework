@@ -5,10 +5,9 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "dev:yoga": "tsx watch src/index-yoga.ts",
+    "dev": "tsx watch src/index-yoga.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/index-yoga.js",
     "test": "vitest",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
