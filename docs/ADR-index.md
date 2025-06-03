@@ -116,41 +116,23 @@ This index provides a comprehensive overview of all architectural decisions made
 - AI-integrated guidance
 - Progress tracking metrics
 
-### ADR-012: Fastify Over Express 📋
+### ADR-012: Fastify Over Express ✅
 **Status**: Accepted  
 **Summary**: Choose Fastify as web framework for superior performance and TypeScript support  
 **Key Decisions**:
 - 2.5x performance improvement over Express
 - Native TypeScript support
 - Rich plugin ecosystem
-- Seamless Mercurius integration
+- Works well with GraphQL Yoga
 
-### ADR-013: Mercurius Over Apollo Server 🔄
-**Status**: Superseded by ADR-019  
-**Summary**: Choose Mercurius for GraphQL server with federation support  
-**Key Decisions**:
-- 5x faster than Apollo Gateway
-- Native Fastify integration
-- Apollo Federation v1 compatibility
-- Built-in performance optimizations
-
-### ADR-014: GraphQL Federation Architecture 🔄
-**Status**: Superseded by ADR-018  
-**Summary**: Implement federated GraphQL across three services  
+### ADR-014: GraphQL Federation Architecture ✅
+**Status**: Accepted (Updated for Yoga)  
+**Summary**: Implement federated GraphQL across three services using GraphQL Yoga and Mesh  
 **Key Decisions**:
 - Service independence with unified API
-- Entity ownership per service
-- Cross-service type relationships
-- Real-time subscription federation
-
-### ADR-015: GitHub API Hybrid Strategy 🔄
-**Status**: Superseded by ADR-021  
-**Summary**: Use both GitHub REST and GraphQL APIs based on operation type  
-**Key Decisions**:
-- GraphQL for complex relationship queries
-- REST for CRUD operations and webhooks
-- Smart routing based on use case
-- Optimized rate limiting strategy
+- GraphQL Yoga for all services
+- GraphQL Mesh for gateway
+- Real-time subscription support
 
 ### ADR-016: Local NPM Authentication ✅
 **Status**: Accepted  
@@ -161,32 +143,23 @@ This index provides a comprehensive overview of all architectural decisions made
 - Same token approach for local development and CI/CD
 - Personal Access Token with read:packages and write:packages scopes
 
-### ADR-018: GraphQL Mesh for Federation Implementation 🔄
-**Status**: Superseded by ADR-019  
-**Summary**: Adopt GraphQL Mesh as federation gateway solution  
-**Key Decisions**:
-- Automatic federation detection
-- Native Fastify integration
-- Multi-source federation capabilities
-- Replaced Apollo Router approach
-
-### ADR-019: Migrate from Mercurius to Enable Full GraphQL Mesh ✅
+### ADR-019: Migrate from Mercurius to GraphQL Yoga ✅
 **Status**: Accepted  
-**Summary**: Migrate all services from Mercurius to GraphQL Yoga for full Mesh capabilities  
+**Summary**: Migrate all services from Mercurius to GraphQL Yoga for better ecosystem compatibility  
 **Key Decisions**:
 - GraphQL Yoga for all services
-- Enable automatic federation
-- Accept 2-3x performance trade-off
-- Gain multi-source federation abilities
+- Enable GraphQL Mesh integration
+- Excellent performance (2.32ms avg)
+- Full WebSocket support
 
 ### ADR-020: OpenAPI to GraphQL Transformation Pattern 📋
-**Status**: Proposed  
-**Summary**: All REST APIs must be exposed through GraphQL federation gateway  
+**Status**: Proposed (Future Use)  
+**Summary**: Pattern for exposing REST APIs through GraphQL using OpenAPI specs  
 **Key Decisions**:
 - Use GraphQL Mesh's OpenAPI handler for REST→GraphQL transformation
-- No direct REST calls from UI components
-- Unified API surface through GraphQL
-- Consistent auth, caching, and error handling
+- Recommended for APIs with good OpenAPI specs
+- Not used for GitHub (see ADR-021)
+- Reserved for future integrations
 
 ### ADR-021: Direct GitHub REST API Wrapping ✅
 **Status**: Accepted  
@@ -195,7 +168,7 @@ This index provides a comprehensive overview of all architectural decisions made
 - Direct fetch() calls in resolvers instead of complex OpenAPI
 - Custom GraphQL types for GitHub entities
 - Mutations for workflow triggering and cancellation
-- Simpler implementation than GraphQL Mesh OpenAPI handler
+- Simpler implementation than OpenAPI approach
 
 ## Cross-Cutting Architectural Themes
 
@@ -251,24 +224,23 @@ This index provides a comprehensive overview of all architectural decisions made
 ADR-006 (GOTHIC Pattern)
     ├── ADR-005 (GraphQL-First)
     │   ├── ADR-012 (Fastify Framework)
-    │   ├── ADR-013 (Mercurius GraphQL)
-    │   └── ADR-014 (Federation Architecture)
+    │   ├── ADR-019 (GraphQL Yoga)
+    │   ├── ADR-014 (Federation Architecture)
+    │   └── ADR-021 (GitHub REST Wrapping)
     ├── ADR-007 (Meta Repository)
     ├── ADR-008 (Event-Driven)
     ├── ADR-009 (Caching)
     ├── ADR-010 (Context Loading)
-    ├── ADR-011 (SDLC State Machine)
-    └── ADR-015 (GitHub API Strategy)
+    └── ADR-011 (SDLC State Machine)
 
 ADR-001 (Dependencies)
     ├── ADR-002 (Git Submodules)
     └── ADR-003 (Publishing)
 
 Technology Stack Dependencies:
-ADR-012 (Fastify) → ADR-013 (Mercurius) → ADR-014 (Federation)
-ADR-014 (Federation) → ADR-018 (GraphQL Mesh) → ADR-019 (Yoga Migration)
-ADR-019 (Yoga) → Full GraphQL Mesh Capabilities
-ADR-015 (GitHub Hybrid) → ADR-021 (Direct REST Wrapping) → GitHub API via GraphQL
+ADR-012 (Fastify) → ADR-019 (GraphQL Yoga) → ADR-014 (Federation with Mesh)
+ADR-014 (Federation) + ADR-019 (Yoga) → Full GraphQL Mesh Capabilities
+ADR-021 (Direct REST Wrapping) → GitHub API via GraphQL
 ADR-020 (OpenAPI Pattern) → Future REST API integrations
 ```
 

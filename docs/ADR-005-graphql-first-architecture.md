@@ -121,7 +121,7 @@ Services:
       
   repo-agent-service:
     type: GraphQL Service  
-    framework: Mercurius + Fastify
+    framework: GraphQL Yoga + Fastify
     features:
       - GitHub API routing
       - Multi-layer caching
@@ -129,7 +129,7 @@ Services:
       
   claude-service:
     type: GraphQL Service
-    framework: Mercurius + Fastify
+    framework: GraphQL Yoga + Fastify
     features:
       - Streaming subscriptions
       - Session management
@@ -238,7 +238,7 @@ const wsServer = new WebSocketServer({
 ## References
 
 - [GraphQL Best Practices](https://graphql.org/learn/best-practices/)
-- [Mercurius Documentation](https://mercurius.dev/)
+- [GraphQL Yoga Documentation](https://the-guild.dev/graphql/yoga-server)
 - [Apollo Federation](https://www.apollographql.com/docs/federation/)
 - [GitHub GraphQL API](https://docs.github.com/en/graphql)
 

@@ -1,20 +1,20 @@
 # ADR-020: OpenAPI to GraphQL Transformation Pattern
 
 ## Status
-Accepted
+Proposed (Future Use)
+
+## Update Note
+This ADR was originally created for GitHub REST API integration, but ADR-021 (Direct GitHub REST Wrapping) was implemented instead due to complexity concerns with the OpenAPI approach. This pattern remains valid and recommended for future REST API integrations where OpenAPI specifications are available and well-maintained.
 
 ## Context
-The metaGOTHIC framework requires integration with various external APIs, particularly GitHub's REST API for operations not available in their GraphQL API. Our UI components currently make direct REST API calls, violating our principle of having a single, unified GraphQL API surface.
+The metaGOTHIC framework will require integration with various external REST APIs. Our UI components should not make direct REST API calls, instead following our principle of having a single, unified GraphQL API surface.
 
-GitHub operations only available via REST include:
-- Workflow dispatch and management
-- Artifact upload/download
-- Release creation and management
-- File operations (create/update/delete)
-- Webhook configuration
-- Secrets management
-- Deployment environments
-- GitHub Pages operations
+Examples of REST APIs that could benefit from this pattern:
+- npm Registry API for package information
+- Docker Hub API for container management
+- Cloud provider APIs (AWS, GCP, Azure)
+- Third-party service APIs with OpenAPI specs
+- Internal microservices with REST interfaces
 
 ## Decision
 We will use GraphQL Mesh's OpenAPI handler to transform all REST API endpoints into GraphQL operations. This ensures:
@@ -25,18 +25,21 @@ We will use GraphQL Mesh's OpenAPI handler to transform all REST API endpoints i
 
 ### Implementation Pattern
 ```yaml
-# .meshrc.yaml
+# .meshrc.yaml example for future REST API integration
 sources:
-  - name: GitHubREST
+  - name: NPMRegistry
     handler:
       openapi:
-        source: https://api.github.com/openapi.json
+        source: https://registry.npmjs.org/openapi.json  # hypothetical
         operationHeaders:
-          Authorization: Bearer {env.GITHUB_TOKEN}
+          Authorization: Bearer {env.NPM_TOKEN}
     transforms:
       - namingConvention:
           typeNames: pascalCase
           fieldNames: camelCase
+      - prefix:
+          value: NPM_
+          includeRootOperations: true
 ```
 
 ## Consequences
@@ -77,7 +80,14 @@ sources:
    - Configure appropriate cache hints
    - Respect REST API cache headers
 
+## Current Status
+While this pattern was not used for GitHub integration (see ADR-021), it remains the recommended approach for future REST API integrations where:
+1. A well-maintained OpenAPI specification exists
+2. The API surface is large and would be tedious to wrap manually
+3. Automatic type generation is desired
+4. The REST API changes frequently
+
 ## References
-- ADR-018: GraphQL Mesh Federation Architecture
-- ADR-015: GitHub API Hybrid Strategy (superseded)
+- ADR-019: GraphQL Yoga Migration (current architecture)
+- ADR-021: Direct GitHub REST Wrapping (alternative approach used)
 - GraphQL Mesh OpenAPI Handler: https://www.graphql-mesh.com/docs/handlers/openapi

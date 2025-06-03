@@ -1,27 +1,18 @@
-# ADR-014: Implement GraphQL Federation Over Monolithic Schema
+# ADR-014: GraphQL Federation Architecture with Yoga and Mesh
 
-**Date**: 2025-01-27  
-**Status**: Accepted  
+**Date**: 2025-01-27 (Updated: 2025-01-06)  
+**Status**: Accepted (Updated from Mercurius to Yoga)  
 **Decision Makers**: metaGOTHIC Framework Team  
 
 ## Context
 
-The metaGOTHIC platform consists of three distinct services handling different domains: GitHub operations, AI processing, and orchestration. We need to design a GraphQL API architecture that maintains service independence while providing a unified interface.
+The metaGOTHIC platform consists of three distinct services handling different domains: GitHub operations, AI processing, and orchestration. We need a GraphQL API architecture that maintains service independence while providing a unified interface.
 
-### Current State
-- Three services planned: meta-gothic-app, repo-agent-service, claude-service
-- Each service has distinct responsibilities and data domains
-- Need unified GraphQL API for frontend consumption
-- Performance and scalability are critical requirements
-
-### Problem Statement
-We need a GraphQL architecture that:
-1. Maintains clear service boundaries and responsibilities
-2. Enables independent development and deployment
-3. Provides unified API for frontend clients
-4. Supports type-safe cross-service relationships
-5. Scales with service complexity and load
-6. Enables real-time features across services
+### Current State (Updated)
+- Three services implemented: meta-gothic-app (gateway), repo-agent-service, claude-service
+- Each service uses GraphQL Yoga instead of Mercurius
+- GraphQL Mesh provides federation capabilities
+- GitHub REST API integrated via direct wrapping (ADR-021)
 
 ### Requirements
 - **Service Independence**: Each service owns its domain schema
@@ -33,369 +24,217 @@ We need a GraphQL architecture that:
 
 ## Decision
 
-Implement **GraphQL Federation** using Mercurius federation capabilities.
+Implement **GraphQL Federation** using GraphQL Yoga services with GraphQL Mesh as the federation gateway.
 
-### Chosen Solution
+### Current Architecture
 
-#### Federation Architecture
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                meta-gothic-app (Port 3000)                 │
-│                Federation Gateway                           │
+│                meta-gothic-app (Port 3000)                  │
+│                GraphQL Mesh Gateway                         │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │           @mercuriusjs/gateway                      │   │
-│  │  • Schema composition                               │   │
-│  │  • Query planning                                   │   │
-│  │  • Cross-service resolution                         │   │
-│  │  • Subscription aggregation                         │   │
+│  │           GraphQL Mesh + Yoga                       │   │
+│  │  • Schema stitching                                │   │
+│  │  • Response caching                                │   │
+│  │  • GitHub REST wrapping                           │   │
+│  │  • Cross-service resolution                        │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
-           │                           │
-           ▼                           ▼
-┌─────────────────────────┐  ┌─────────────────────────┐
-│  repo-agent-service     │  │    claude-service       │
-│     (Port 3001)         │  │     (Port 3002)         │
-│                         │  │                         │
-│ ┌─────────────────────┐ │  │ ┌─────────────────────┐ │
-│ │@mercuriusjs/federation│ │  │@mercuriusjs/federation│ │
-│ │  • Repository       │ │  │  • AIAnalysis       │ │
-│ │  • PullRequest      │ │  │  • Repository ext   │ │
-│ │  • Workflow         │ │  │  • AI Operations    │ │
-│ └─────────────────────┘ │  │ └─────────────────────┘ │
-└─────────────────────────┘  └─────────────────────────┘
+           │                    │                    │
+           ▼                    ▼                    ▼
+┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────┐
+│  repo-agent-service │  │   claude-service    │  │  GitHub REST API  │
+│   (Port 3004)       │  │    (Port 3002)      │  │   (Direct Wrap)   │
+│                     │  │                     │  │                   │
+│ ┌─────────────────┐ │  │ ┌─────────────────┐ │  │ ┌───────────────┐ │
+│ │  GraphQL Yoga   │ │  │ │  GraphQL Yoga   │ │  │ │ REST Resolvers│ │
+│ │  • Repository   │ │  │ │  • AIAnalysis   │ │  │ │ • Repositories│ │
+│ │  • Git ops      │ │  │ │  • Sessions     │ │  │ │ • Workflows   │ │
+│ │  • Commits      │ │  │ │  • Subscriptions│ │  │ │ • Actions     │ │
+│ └─────────────────┘ │  │ └─────────────────┘ │  │ └───────────────┘ │
+└─────────────────────┘  └─────────────────────┘  └─────────────────┘
 ```
 
-#### Service Domain Boundaries
+### Service Domain Boundaries
 
-**repo-agent-service (GitHub Domain)**
+**repo-agent-service (Git Operations)**
 ```graphql
-# Primary entities owned by this service
-type Repository @key(fields: "id") {
-  id: ID!
-  owner: String!
-  name: String!
-  description: String
-  stars: Int!
-  healthScore: Float
-  pullRequests: [PullRequest!]!
-  workflows: [Workflow!]!
-  branches: [Branch!]!
+type Query {
+  repositoryDetails(path: String!): Repository
+  gitStatus(repositoryPath: String!): GitStatus
+  latestCommit(repositoryPath: String!): Commit
+  isRepositoryClean(repositoryPath: String!): Boolean!
+  submodules: [Submodule!]!
+  scanAllRepositories: [Repository!]!
+  scanAllDetailed: [RepositoryDetailed!]!
 }
 
-type PullRequest @key(fields: "id") {
-  id: ID!
-  number: Int!
-  title: String!
-  state: PullRequestState!
-  repository: Repository!
-  author: User!
-}
-
-type Workflow @key(fields: "id") {
-  id: ID!
-  name: String!
-  status: WorkflowStatus!
-  repository: Repository!
-}
-
-extend type Query {
-  repository(owner: String!, name: String!): Repository
-  repositories(owner: String!): [Repository!]!
-  pullRequest(owner: String!, repo: String!, number: Int!): PullRequest
-}
-
-extend type Mutation {
-  createPullRequest(input: CreatePRInput!): PullRequest!
-  mergePullRequest(input: MergePRInput!): PullRequest!
-}
-
-extend type Subscription {
-  repositoryUpdated(owner: String!, name: String!): Repository!
-  pullRequestUpdated(repositoryId: ID!): PullRequest!
+type Mutation {
+  commitChanges(input: CommitInput!): CommitResult!
+  pushChanges(repository: String!): PushResult!
+  executeGitCommand(input: GitCommandInput!): GitCommandResult!
+  batchCommit(repositories: [String!]!, message: String!): BatchCommitResult!
 }
 ```
 
-**claude-service (AI Domain)**
+**claude-service (AI Operations)**
 ```graphql
-# AI-specific entities
-type AIAnalysis @key(fields: "id") {
-  id: ID!
-  repositoryId: String!
-  type: AnalysisType!
-  prompt: String!
-  response: String!
-  tokenCount: Int!
-  cost: Float!
-  status: AnalysisStatus!
-  createdAt: DateTime!
-  completedAt: DateTime
+type Query {
+  health: Health!
+  session(sessionId: String!): Session
+  sessions(status: SessionStatus): [Session!]!
+  agentRuns(status: String, phase: String): [AgentRun!]!
+  performanceMetrics: PerformanceMetrics!
 }
 
-type AISession @key(fields: "id") {
-  id: ID!
-  repositoryId: String!
-  analyses: [AIAnalysis!]!
-  totalCost: Float!
+type Mutation {
+  executeCommand(input: ExecuteCommandInput!): ExecuteCommandResult!
+  killSession(sessionId: String!): Boolean!
+  continueSession(sessionId: String!, command: String!): Session!
+  generateCommitMessages(input: GenerateCommitMessagesInput!): BatchCommitMessage!
+  generateExecutiveSummary(repositoryPath: String!): ExecutiveSummary!
 }
 
-# Extend Repository with AI capabilities
-extend type Repository @key(fields: "id") {
-  id: ID! @external
-  owner: String! @external
-  name: String! @external
-  
-  # AI-related fields
-  analyses: [AIAnalysis!]!
-  latestAnalysis: AIAnalysis
-  aiSession: AISession!
-  
-  # AI operations
-  generateCodeReview(pullRequestId: ID!): AIAnalysis!
-  generateDocumentation: AIAnalysis!
-  analyzeSecurityVulnerabilities: AIAnalysis!
-}
-
-extend type Mutation {
-  generateAnalysis(input: GenerateAnalysisInput!): AIAnalysis!
-  cancelAnalysis(id: ID!): Boolean!
-  createAISession(repositoryId: ID!): AISession!
-}
-
-extend type Subscription {
-  analysisProgress(analysisId: ID!): AIAnalysisProgress!
-  repositoryAnalysisUpdated(repositoryId: ID!): AIAnalysis!
+type Subscription {
+  commandOutput(sessionId: String!): String!
+  agentRunProgress(runId: String!): AgentRunProgress!
 }
 ```
 
-#### Federation Gateway Configuration
+**GitHub Integration (Direct REST Wrapping)**
+```graphql
+type Query {
+  githubUser: GitHubUser
+  githubRepositories(perPage: Int = 30, page: Int = 1): [GitHubRepository!]!
+  githubWorkflows(owner: String!, repo: String!): [GitHubWorkflow!]!
+  githubWorkflowRuns(owner: String!, repo: String!, perPage: Int = 10): [GitHubWorkflowRun!]!
+}
+
+type Mutation {
+  triggerWorkflow(owner: String!, repo: String!, workflowId: String!, ref: String = "main"): Boolean!
+  cancelWorkflowRun(owner: String!, repo: String!, runId: Int!): Boolean!
+}
+```
+
+### Implementation with Yoga and Mesh
+
 ```typescript
-// meta-gothic-app federation gateway setup
-import Fastify from 'fastify';
-import gateway from '@mercuriusjs/gateway';
+// Advanced Mesh Gateway Implementation
+import { createYoga } from 'graphql-yoga';
+import { stitchSchemas } from '@graphql-tools/stitch';
+import { schemaFromExecutor } from '@graphql-tools/wrap';
+import { buildHTTPExecutor } from '@graphql-tools/executor-http';
 
-const app = Fastify({ logger: true });
+// Create executors for each service
+const claudeExecutor = buildHTTPExecutor({
+  endpoint: 'http://127.0.0.1:3002/graphql',
+});
 
-await app.register(gateway, {
-  gateway: {
-    services: [
-      { 
-        name: 'repo-agent', 
-        url: 'http://repo-agent-service:3001/graphql',
-        wsUrl: 'ws://repo-agent-service:3001/graphql',
-        mandatory: true,
-        rewriteHeaders: (headers) => {
-          // Forward authentication headers
-          return {
-            authorization: headers.authorization
-          };
-        }
-      },
-      { 
-        name: 'claude', 
-        url: 'http://claude-service:3002/graphql',
-        wsUrl: 'ws://claude-service:3002/graphql',
-        mandatory: true,
-        rewriteHeaders: (headers) => {
-          return {
-            authorization: headers.authorization
-          };
-        }
-      }
-    ],
-    pollingInterval: 10000, // Schema polling
-    retryServicesCount: 3,
-    retryServicesInterval: 5000
+const repoAgentExecutor = buildHTTPExecutor({
+  endpoint: 'http://127.0.0.1:3004/graphql',
+});
+
+// Build schemas with transforms
+const claudeSubschema = {
+  schema: await schemaFromExecutor(claudeExecutor),
+  executor: claudeExecutor,
+  transforms: [
+    new PrefixTransform({
+      value: 'Claude_',
+      includeRootOperations: false,
+    }),
+  ],
+};
+
+// Stitch all schemas together
+const gatewaySchema = stitchSchemas({
+  subschemas: [claudeSubschema, repoAgentSubschema, { schema: githubSchema }],
+  typeMergingOptions: {
+    validationSettings: { strictNullComparison: false }
   },
-  subscription: true,
-  graphiql: true,
-  
-  // Performance optimizations
-  queryDepth: 12,
-  jit: 1,
-  
-  // Federation-specific error handling
-  errorHandler: (error, request, reply) => {
-    // Log federation errors
-    request.log.error(error, 'Federation error');
-    
-    // Return user-friendly error
-    reply.code(500).send({
-      error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-    });
-  }
+  resolvers: {
+    Query: {
+      // Cross-service resolvers
+      systemHealth: {
+        resolve: async (_, __, context, info) => {
+          const health = await delegateToSchema({
+            schema: claudeSubschema,
+            operation: 'query',
+            fieldName: 'health',
+            context,
+            info,
+          });
+          const gitStatus = await delegateToSchema({
+            schema: repoAgentSubschema,
+            operation: 'query',
+            fieldName: 'gitStatus',
+            args: { repositoryPath: process.cwd() },
+            context,
+            info,
+          });
+          return {
+            ...health,
+            gitBranch: gitStatus?.branch || 'unknown',
+            hasUncommittedChanges: gitStatus?.hasUncommittedChanges || false,
+          };
+        },
+      },
+    },
+  },
+});
+
+// Create Yoga server with caching
+const yoga = createYoga({
+  schema: gatewaySchema,
+  plugins: [
+    useResponseCache({
+      session: () => null,
+      ttl: 5000,
+      ttlPerType: {
+        Health: 5000,
+        GitStatus: 30000,
+      },
+    }),
+  ],
 });
 ```
 
-#### Cross-Service Query Resolution
-```graphql
-# Example federated query
-query RepositoryWithAIAnalysis($owner: String!, $name: String!) {
-  repository(owner: $owner, name: $name) {
-    # Fields from repo-agent-service
-    id
-    name
-    owner
-    stars
-    healthScore
-    
-    pullRequests(first: 5) {
-      number
-      title
-      state
-    }
-    
-    # Fields from claude-service (via federation)
-    analyses(last: 3) {
-      type
-      status
-      tokenCount
-      cost
-    }
-    
-    latestAnalysis {
-      response
-      createdAt
-    }
-  }
-}
-```
+## Key Differences from Original Design
 
-#### Real-time Federation
-```typescript
-// Cross-service subscription handling
-const resolvers = {
-  Subscription: {
-    repositoryWithAIUpdates: {
-      subscribe: async (root, args, context) => {
-        // Subscribe to both services
-        const repoUpdates = context.pubsub.subscribe(`repo:${args.repositoryId}`);
-        const aiUpdates = context.pubsub.subscribe(`ai:${args.repositoryId}`);
-        
-        // Merge subscription streams
-        return mergeSubscriptions([repoUpdates, aiUpdates]);
-      }
-    }
-  }
-};
-```
+1. **GraphQL Yoga instead of Mercurius**: Better compatibility with GraphQL Mesh
+2. **Direct REST Wrapping**: GitHub API wrapped directly instead of using OpenAPI
+3. **Schema Stitching**: Using @graphql-tools/stitch instead of Apollo Federation
+4. **Response Caching**: Built-in caching plugin for performance
+5. **WebSocket Support**: Fixed implementation for subscriptions
 
-### Implementation Standards
+## Performance Metrics
 
-#### Entity Resolution
-```typescript
-// Reference resolver pattern for federation
-const resolvers = {
-  Repository: {
-    __resolveReference: async (reference: { id: string }, context) => {
-      // Resolve repository by ID for federation
-      return await context.dataSources.github.getRepository(reference.id);
-    }
-  }
-};
-```
-
-#### Error Propagation
-```typescript
-// Federation-aware error handling
-class FederationError extends Error {
-  constructor(
-    message: string,
-    public service: string,
-    public originalError?: Error
-  ) {
-    super(message);
-    this.name = 'FederationError';
-  }
-}
-
-// Error formatting for federation
-const formatError = (error: GraphQLError) => {
-  if (error.originalError instanceof FederationError) {
-    return {
-      message: error.message,
-      service: error.originalError.service,
-      path: error.path,
-      extensions: {
-        code: 'FEDERATION_ERROR',
-        service: error.originalError.service
-      }
-    };
-  }
-  return error;
-};
-```
-
-## Alternatives Considered
-
-### Option 1: Monolithic GraphQL Schema
-- **Pros**: Simple setup, single service, easier debugging
-- **Cons**: Tight coupling, single point of failure, scaling issues
-- **Reason for rejection**: Violates service independence principles
-
-### Option 2: Schema Stitching
-- **Pros**: Flexible schema combination, custom resolution logic
-- **Cons**: Manual schema management, complex error handling, performance overhead
-- **Reason for rejection**: Federation provides better tooling and standards
-
-### Option 3: REST APIs with GraphQL Gateway
-- **Pros**: Service independence, familiar REST patterns
-- **Cons**: Data fetching inefficiency, complex aggregation, no type safety
-- **Reason for rejection**: Loses GraphQL benefits, poor frontend DX
-
-### Option 4: Multiple GraphQL Endpoints
-- **Pros**: Complete service independence, simple implementation
-- **Cons**: Frontend complexity, no unified schema, duplicate queries
-- **Reason for rejection**: Poor frontend developer experience
+Current implementation achieves:
+- Average latency: 2.32ms for cross-service queries
+- P95 latency: 7.74ms
+- Cache hit latency: <1ms
+- Memory usage: ~90MB per service
 
 ## Consequences
 
 ### Positive
-- ✅ **Service Independence**: Clear boundaries, independent development
-- ✅ **Unified Interface**: Single GraphQL endpoint for frontend
-- ✅ **Type Safety**: Strongly typed cross-service relationships
-- ✅ **Performance**: Efficient query planning and execution
-- ✅ **Scalability**: Independent service scaling based on load
-- ✅ **Real-time**: Federation-aware subscription handling
+- ✅ **Modern Stack**: Latest GraphQL tools and best practices
+- ✅ **Excellent Performance**: Sub-10ms latency for most operations
+- ✅ **Flexible Integration**: Easy to add new data sources
+- ✅ **Developer Experience**: Better debugging and GraphiQL support
 
 ### Negative
-- ⚠️ **Complexity**: Federation adds architectural complexity
-- ⚠️ **Debugging**: Errors can span multiple services
-- ⚠️ **Network**: Additional network calls for cross-service queries
-
-### Risks & Mitigations
-- **Risk**: Service dependency failures
-  - **Mitigation**: Circuit breakers, fallback responses, service redundancy
-  
-- **Risk**: Schema evolution conflicts
-  - **Mitigation**: Schema governance, breaking change policies, versioning
-  
-- **Risk**: Performance degradation
-  - **Mitigation**: Query optimization, caching, monitoring
-
-## Validation
-
-### Success Criteria
-- [ ] Unified GraphQL schema accessible from single endpoint
-- [ ] Cross-service queries resolve correctly
-- [ ] Real-time subscriptions work across services
-- [ ] Independent service deployment without downtime
-- [ ] Query performance meets <200ms target for complex operations
-
-### Testing Approach
-- Federation integration tests
-- Cross-service query performance testing
-- Service failure scenario testing
-- Schema evolution compatibility testing
-- End-to-end user workflow testing
+- ⚠️ **Migration Complexity**: Required full rewrite from Mercurius
+- ⚠️ **Learning Curve**: New tools and patterns to learn
 
 ## References
 
-- [Apollo Federation Specification](https://www.apollographql.com/docs/federation/)
-- [Mercurius Federation Documentation](https://mercurius.dev/#/docs/federation)
-- [GraphQL Federation Best Practices](https://www.apollographql.com/docs/federation/federation-spec/)
-- [Schema Design for Federation](https://www.apollographql.com/docs/federation/entities/)
+- [GraphQL Yoga Documentation](https://the-guild.dev/graphql/yoga-server)
+- [GraphQL Mesh Documentation](https://the-guild.dev/graphql/mesh)
+- [ADR-019: Yoga Migration](./ADR-019-migrate-from-mercurius-to-yoga.md)
+- [ADR-021: GitHub REST Wrapping](./ADR-021-direct-github-rest-wrapping.md)
 
 ## Changelog
 
-- **2025-01-27**: Initial federation architecture decision
+- **2025-01-27**: Initial federation architecture with Mercurius
+- **2025-01-06**: Updated to reflect GraphQL Yoga implementation

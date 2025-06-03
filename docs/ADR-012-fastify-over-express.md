@@ -78,17 +78,34 @@ await server.register(async function (fastify) {
 
 #### GraphQL Integration
 ```typescript
-// Seamless Mercurius integration
-await server.register(require('mercurius'), {
-  schema: buildFederationSchema(typeDefs),
-  resolvers,
-  subscription: true,
-  graphiql: true
+// Seamless GraphQL Yoga integration
+import { createYoga } from 'graphql-yoga';
+import { useGraphQLSSE } from '@graphql-yoga/plugin-graphql-sse';
+
+const yoga = createYoga({
+  schema,
+  plugins: [
+    useGraphQLSSE(),
+    // Other plugins
+  ],
 });
 
-// Federation support
-await server.register(require('@mercuriusjs/federation'), {
-  schema: buildFederationSchema(typeDefs)
+// Fastify route handler
+server.route({
+  url: '/graphql',
+  method: ['GET', 'POST', 'OPTIONS'],
+  handler: async (req, reply) => {
+    const response = await yoga.handleNodeRequest(req, {
+      req,
+      reply,
+    });
+    response.headers.forEach((value, key) => {
+      reply.header(key, value);
+    });
+    reply.status(response.status);
+    reply.send(response.body);
+    return reply;
+  },
 });
 ```
 
@@ -134,7 +151,7 @@ async function registerPlugins(server: FastifyInstance) {
   await server.register(require('@fastify/rate-limit'));
   
   // GraphQL plugin
-  await server.register(require('mercurius'), config);
+  // GraphQL Yoga is configured separately and added as a route
   
   // Service-specific plugins
   await server.register(require('@fastify/websocket')); // For real-time
@@ -165,7 +182,7 @@ async function registerPlugins(server: FastifyInstance) {
 - ✅ **Superior Performance**: 2.5x faster than Express enables better scalability
 - ✅ **TypeScript Native**: Excellent developer experience with type safety
 - ✅ **Plugin System**: Rich ecosystem with proper encapsulation
-- ✅ **GraphQL Integration**: Mercurius provides optimal GraphQL performance
+- ✅ **GraphQL Integration**: GraphQL Yoga provides excellent GraphQL performance with modern features
 - ✅ **Modern Patterns**: Built-in async/await, schema validation
 - ✅ **Consistency**: Same framework across all services
 
@@ -203,7 +220,7 @@ async function registerPlugins(server: FastifyInstance) {
 
 - [Fastify Performance Benchmarks](https://fastify.io/benchmarks/)
 - [Fastify TypeScript Documentation](https://fastify.io/docs/latest/Reference/TypeScript/)
-- [Mercurius Fastify Integration](https://mercurius.dev/)
+- [GraphQL Yoga Fastify Integration](https://the-guild.dev/graphql/yoga-server/docs/integrations/integration-with-fastify)
 - [Fastify Plugin Development](https://fastify.io/docs/latest/Guides/Plugins-Guide/)
 
 ## Changelog

@@ -2,7 +2,7 @@
 
 ## Migration Summary
 
-The metaGOTHIC UI components have been fully migrated from REST to GraphQL. All API calls now go through the GraphQL federation gateway, implementing ADR-020.
+The metaGOTHIC UI components have been fully migrated from REST to GraphQL. All API calls now go through the GraphQL federation gateway, implementing ADR-005 (GraphQL-First Architecture) and ADR-021 (Direct GitHub REST Wrapping).
 
 ## What Was Done
 
@@ -29,7 +29,7 @@ The metaGOTHIC UI components have been fully migrated from REST to GraphQL. All 
 - ✅ Updated service exports to use GraphQL by default
 
 ### 4. Updated Documentation
-- ✅ Created ADR-020 for OpenAPI transformation pattern
+- ✅ Created ADR-021 for Direct GitHub REST Wrapping
 - ✅ Updated ADR-015 to mark hybrid approach as superseded
 - ✅ Updated environment variables documentation
 - ✅ Created GraphQL architecture guide
@@ -67,7 +67,7 @@ VITE_GITHUB_TOKEN=your_github_token
 3. **Better Caching**: Field-level caching with Apollo
 4. **Real-time Updates**: WebSocket subscriptions
 5. **Consistent Auth**: Handled at gateway level
-6. **No Direct REST**: Complies with ADR-020
+6. **GraphQL-First**: Complies with ADR-005 and ADR-021
 
 ## GitHub OpenAPI Status
 
