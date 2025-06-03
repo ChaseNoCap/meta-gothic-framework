@@ -170,6 +170,15 @@ This index provides a comprehensive overview of all architectural decisions made
 - Mutations for workflow triggering and cancellation
 - Simpler implementation than OpenAPI approach
 
+### ADR-022: GitHub REST API Direct Integration ✅
+**Status**: Accepted  
+**Summary**: Use direct REST integration for GitHub API instead of OpenAPI/GraphQL transformation  
+**Key Decisions**:
+- Direct REST-to-GraphQL mapping for reliability
+- Manual type definitions for accuracy
+- Authentication via environment variables
+- Graceful error handling with fallbacks
+
 ## Cross-Cutting Architectural Themes
 
 ### 1. **Package Independence**
