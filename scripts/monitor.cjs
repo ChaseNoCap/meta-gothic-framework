@@ -23,7 +23,8 @@ const services = [
   { name: 'ui', displayName: 'UI Components', port: 3001 },
   { name: 'gateway', displayName: 'GraphQL Gateway', port: 3000 },
   { name: 'claude-service', displayName: 'Claude Service', port: 3002 },
-  { name: 'repo-agent-service', displayName: 'Repo Agent Service', port: 3004 }
+  { name: 'repo-agent-service', displayName: 'Repo Agent Service', port: 3004 },
+  { name: 'github-mesh', displayName: 'GitHub Service', port: 3005 }
 ];
 
 // Terminal cursor control

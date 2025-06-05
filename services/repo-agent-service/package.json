@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index-yoga.ts",
+    "dev:federation": "tsx src/index-federation.ts",
     "dev:watch": "tsx watch src/index-yoga.ts",
     "build": "tsc",
     "start": "node dist/index-yoga.js",

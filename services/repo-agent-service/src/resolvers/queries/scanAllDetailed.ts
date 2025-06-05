@@ -146,14 +146,25 @@ export async function scanAllDetailed(
         const diffs = await getDiffs(repo.path);
         
         return {
-          name: repo.name,
+          // Core Repository fields
           path: repo.path,
+          name: repo.name,
+          branch: status.branch,
+          isDirty: status.isDirty,
+          uncommittedCount: status.files.length,
+          type: repo.type,
+          // Extended fields for DetailedScanReport
           status,
           stagedDiff: diffs.staged,
           unstagedDiff: diffs.unstaged,
           recentCommits,
           remotes,
-          config
+          config,
+          // These will be resolved by field resolvers if needed
+          branches: [],
+          tags: [],
+          size: null,
+          packageInfo: null
         };
       })
     );

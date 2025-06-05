@@ -1,0 +1,122 @@
+sources:
+  # GitHub REST API as GraphQL
+  - name: GitHub
+    handler:
+      openapi:
+        source: https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
+        operationHeaders:
+          Authorization: Bearer {env.GITHUB_TOKEN}
+          Accept: application/vnd.github.v3+json
+    transforms:
+      - namingConvention:
+          typeNames: pascalCase
+          fieldNames: camelCase
+      - prefix:
+          value: GitHub_
+          ignore:
+            - Query
+            - Mutation
+
+  # Claude GraphQL Service
+  - name: Claude
+    handler:
+      graphql:
+        endpoint: http://localhost:3002/graphql
+    transforms:
+      - prefix:
+          value: Claude_
+          ignore:
+            - Query
+            - Mutation
+            - Subscription
+
+  # Repo Agent GraphQL Service
+  - name: RepoAgent
+    handler:
+      graphql:
+        endpoint: http://localhost:3004/graphql
+    transforms:
+      - prefix:
+          value: RepoAgent_
+          ignore:
+            - Query
+            - Mutation
+
+# Global transforms and features
+transforms:
+  # Cache GitHub API responses
+  - cache:
+      - field: Query.users_getAuthenticated
+        ttl: 300 # 5 minutes
+      - field: Query.repos_listForAuthenticatedUser
+        ttl: 60  # 1 minute
+      - field: Query.actions_listRepoWorkflows
+        ttl: 300
+
+  # Rate limiting for GitHub
+  - rateLimiting:
+      - type: Query.users_getAuthenticated
+        max: 60
+        ttl: 3600
+      - type: Query.repos_listForAuthenticatedUser  
+        max: 100
+        ttl: 3600
+
+  # Custom resolvers to link data
+  - resolversComposition:
+      - resolver: 'GitHub_Repository.localRepository'
+        composer: ./mesh/resolvers/linkLocalRepository.js
+      - resolver: 'RepoAgent_Repository.githubData'
+        composer: ./mesh/resolvers/linkGitHubData.js
+
+# Additional type definitions
+additionalTypeDefs: |
+  extend type GitHub_Repository {
+    """Link to local repository data"""
+    localRepository: RepoAgent_Repository
+  }
+  
+  extend type RepoAgent_Repository {
+    """Link to GitHub repository data"""
+    githubData: GitHub_Repository
+  }
+  
+  extend type Claude_ClaudeSession {
+    """Repository this session is working on"""
+    repository: RepoAgent_Repository
+  }
+
+# Server configuration
+serve:
+  endpoint: /graphql
+  port: 3000
+  cors:
+    origin: '*'
+    credentials: true
+  
+# Plugins
+plugins:
+  - responseCache:
+      ttl: 60
+      includeExtensionMetadata: true
+      
+  - prometheus:
+      endpoint: /metrics
+      
+  - logger:
+      level: info
+
+# Development features
+devMode: true
+
+# Output
+documents:
+  - ./src/**/*.graphql
+
+codegen:
+  generates:
+    ./src/generated/mesh.ts:
+      plugins:
+        - typescript
+        - typescript-resolvers
+        - typescript-mesh

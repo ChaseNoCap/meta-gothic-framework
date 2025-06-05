@@ -1,0 +1,14 @@
+federation_version: 2.10
+subgraphs:
+  claude:
+    routing_url: http://localhost:3002/graphql
+    schema:
+      file: ./claude-schema-federated.graphql
+  repo-agent:
+    routing_url: http://localhost:3004/graphql
+    schema:
+      file: ./repo-agent-schema-federated.graphql
+  github-mesh:
+    routing_url: http://localhost:3005/graphql
+    schema:
+      file: ./github-mesh-schema.graphql

@@ -10,7 +10,8 @@ const services = [
   { name: 'gateway', port: 3000 },
   { name: 'ui', port: 3001 },
   { name: 'claude-service', port: 3002 },
-  { name: 'repo-agent-service', port: 3004 }
+  { name: 'repo-agent-service', port: 3004 },
+  { name: 'github-mesh', port: 3005 }
 ];
 
 // Ports that need to be available
@@ -182,19 +183,53 @@ function startServices() {
       return;
     }
     
-    const pm2Start = spawn('pm2', ['start', ecosystemPath], {
-      stdio: 'inherit',
-      cwd: path.join(__dirname, '..')
-    });
-    
-    pm2Start.on('close', (code) => {
-      if (code === 0) {
-        logSuccess('All services started with PM2');
-        resolve();
-      } else {
-        reject(new Error(`PM2 start failed with code ${code}`));
-      }
-    });
+    // Run pre-flight checks first
+    logInfo('Running pre-flight checks...');
+    const preflightPath = path.join(__dirname, 'preflight-check.cjs');
+    if (fs.existsSync(preflightPath)) {
+      const preflight = spawn('node', [preflightPath], {
+        stdio: 'inherit',
+        cwd: path.join(__dirname, '..')
+      });
+      
+      preflight.on('close', (code) => {
+        if (code !== 0) {
+          logError('Pre-flight checks failed. Please fix the issues above.');
+          reject(new Error('Pre-flight checks failed'));
+          return;
+        }
+        
+        // If checks pass, start PM2
+        const pm2Start = spawn('pm2', ['start', ecosystemPath], {
+          stdio: 'inherit',
+          cwd: path.join(__dirname, '..')
+        });
+        
+        pm2Start.on('close', (code) => {
+          if (code === 0) {
+            logSuccess('All services started with PM2');
+            resolve();
+          } else {
+            reject(new Error(`PM2 start failed with code ${code}`));
+          }
+        });
+      });
+    } else {
+      // If no preflight check, start directly
+      const pm2Start = spawn('pm2', ['start', ecosystemPath], {
+        stdio: 'inherit',
+        cwd: path.join(__dirname, '..')
+      });
+      
+      pm2Start.on('close', (code) => {
+        if (code === 0) {
+          logSuccess('All services started with PM2');
+          resolve();
+        } else {
+          reject(new Error(`PM2 start failed with code ${code}`));
+        }
+      });
+    }
   });
 }
 
@@ -202,25 +237,87 @@ function startServices() {
 function waitForHealth(service, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
-    const url = `http://localhost:${service.port}/health`;
+    const port = service.port;
+    
+    // Different services have different health check methods
+    let url, isGraphQL = false;
+    
+    if (service.name === 'gateway') {
+      // Gateway has a dedicated health endpoint
+      url = `http://localhost:${port}/health`;
+    } else if (service.name === 'ui') {
+      // UI service just needs to respond
+      url = `http://localhost:${port}/`;
+    } else {
+      // GraphQL services (claude-service, repo-agent-service, github-mesh)
+      url = `http://localhost:${port}/graphql`;
+      isGraphQL = true;
+    }
+    
+    let lastError = null;
     
     const check = () => {
-      fetch(url)
-        .then(response => {
-          if (response.ok) {
-            logSuccess(`${service.name} is healthy`);
-            resolve();
-          } else {
-            throw new Error(`Health check returned ${response.status}`);
-          }
+      if (isGraphQL) {
+        // For GraphQL services, check if they respond to introspection
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: '{ __schema { queryType { name } } }' })
         })
-        .catch(() => {
-          if (Date.now() - start > timeout) {
-            reject(new Error(`${service.name} health check timeout`));
-          } else {
-            setTimeout(check, 1000);
-          }
-        });
+          .then(response => {
+            if (response.ok) {
+              return response.json();
+            } else {
+              lastError = `GraphQL returned ${response.status}`;
+              throw new Error(lastError);
+            }
+          })
+          .then(data => {
+            if (data && data.data && data.data.__schema) {
+              logSuccess(`${service.name} is healthy (GraphQL responding)`);
+              resolve();
+            } else {
+              lastError = 'GraphQL schema not available';
+              throw new Error(lastError);
+            }
+          })
+          .catch((error) => {
+            lastError = error.message;
+            if (Date.now() - start > timeout) {
+              // Get more detailed error info
+              exec(`pm2 logs ${service.name} --lines 20 --nostream`, (execError, stdout, stderr) => {
+                const logs = stdout || stderr || 'No logs available';
+                reject(new Error(`${service.name} health check timeout on ${url}\nLast error: ${lastError}\nRecent logs:\n${logs}`));
+              });
+            } else {
+              setTimeout(check, 1000);
+            }
+          });
+      } else {
+        // For non-GraphQL services, just check HTTP response
+        fetch(url)
+          .then(response => {
+            if (response.ok) {
+              logSuccess(`${service.name} is healthy`);
+              resolve();
+            } else {
+              lastError = `Health check returned ${response.status}`;
+              throw new Error(lastError);
+            }
+          })
+          .catch((error) => {
+            lastError = error.message;
+            if (Date.now() - start > timeout) {
+              // Get more detailed error info
+              exec(`pm2 logs ${service.name} --lines 20 --nostream`, (execError, stdout, stderr) => {
+                const logs = stdout || stderr || 'No logs available';
+                reject(new Error(`${service.name} health check timeout on ${url}\nLast error: ${lastError}\nRecent logs:\n${logs}`));
+              });
+            } else {
+              setTimeout(check, 1000);
+            }
+          });
+      }
     };
     
     setTimeout(check, 2000); // Initial delay
