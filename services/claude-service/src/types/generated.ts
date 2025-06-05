@@ -125,15 +125,6 @@ export type BatchProgress = {
   totalOperations: Scalars['Int']['output'];
 };
 
-export type ChangeStats = {
-  /** Lines added */
-  additions: Scalars['Int']['input'];
-  /** Lines deleted */
-  deletions: Scalars['Int']['input'];
-  /** Files changed */
-  filesChanged: Scalars['Int']['input'];
-};
-
 export type ClaudeExecuteInput = {
   /** Additional context to provide */
   context: InputMaybe<ContextInput>;
@@ -250,15 +241,6 @@ export type CommandOutput = {
   type: OutputType;
 };
 
-export type CommitMessageInfo = {
-  /** Commit message */
-  message: Scalars['String']['input'];
-  /** Repository name */
-  repository: Scalars['String']['input'];
-  /** Change statistics */
-  stats: InputMaybe<ChangeStats>;
-};
-
 export type CommitMessageResult = {
   __typename?: 'CommitMessageResult';
   /** Suggested commit type (feat, fix, chore, etc.) */
@@ -322,33 +304,6 @@ export type ExecutionMetadata = {
   startTime: Scalars['String']['output'];
 };
 
-export type ExecutiveSummaryInput = {
-  /** Target audience for summary */
-  audience: InputMaybe<Scalars['String']['input']>;
-  /** Commit messages to summarize */
-  commitMessages: Array<CommitMessageInfo>;
-  /** Focus areas for summary */
-  focusAreas: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Whether to include recommendations */
-  includeRecommendations: InputMaybe<Scalars['Boolean']['input']>;
-  /** Whether to include risk assessment */
-  includeRiskAssessment: InputMaybe<Scalars['Boolean']['input']>;
-  /** Desired summary length */
-  maxLength: InputMaybe<Scalars['Int']['input']>;
-};
-
-export type ExecutiveSummaryResult = {
-  __typename?: 'ExecutiveSummaryResult';
-  /** Error if generation failed */
-  error: Maybe<Scalars['String']['output']>;
-  /** Summary metadata */
-  metadata: SummaryMetadata;
-  /** Whether summary generation succeeded */
-  success: Scalars['Boolean']['output'];
-  /** The generated executive summary */
-  summary: Maybe<Scalars['String']['output']>;
-};
-
 export type HandoffInput = {
   /** Whether to include full history */
   includeFullHistory: InputMaybe<Scalars['Boolean']['input']>;
@@ -374,16 +329,6 @@ export type HandoffResult = {
   success: Scalars['Boolean']['output'];
 };
 
-export type ImpactLevel =
-  /** Critical impact on core functionality */
-  | 'CRITICAL'
-  /** Major impact, may break compatibility */
-  | 'MAJOR'
-  /** Minor impact on functionality */
-  | 'MINOR'
-  /** Moderate impact, backwards compatible */
-  | 'MODERATE';
-
 export type Mutation = {
   __typename?: 'Mutation';
   /** Cancel a running agent */
@@ -398,8 +343,6 @@ export type Mutation = {
   executeCommand: ClaudeExecuteResult;
   /** Generate commit messages for multiple repositories */
   generateCommitMessages: BatchCommitMessageResult;
-  /** Generate executive summary from multiple commit messages */
-  generateExecutiveSummary: ExecutiveSummaryResult;
   /** Kill an active Claude session */
   killSession: Scalars['Boolean']['output'];
   /** Retry a failed run */
@@ -431,11 +374,6 @@ export type MutationExecuteCommandArgs = {
 
 export type MutationGenerateCommitMessagesArgs = {
   input: BatchCommitMessageInput;
-};
-
-
-export type MutationGenerateExecutiveSummaryArgs = {
-  input: ExecutiveSummaryInput;
 };
 
 
@@ -603,16 +541,6 @@ export type RepositoryCount = {
   repository: Scalars['String']['output'];
 };
 
-export type RiskLevel =
-  /** Critical risks requiring immediate action */
-  | 'CRITICAL'
-  /** Significant risks requiring attention */
-  | 'HIGH'
-  /** No significant risks identified */
-  | 'LOW'
-  /** Minor risks that should be monitored */
-  | 'MEDIUM';
-
 export type RunError = {
   __typename?: 'RunError';
   code: Scalars['String']['output'];
@@ -718,32 +646,6 @@ export type SubscriptionCommandOutputArgs = {
   sessionId: Scalars['ID']['input'];
 };
 
-export type SummaryMetadata = {
-  __typename?: 'SummaryMetadata';
-  /** Number of repositories analyzed */
-  repositoryCount: Scalars['Int']['output'];
-  /** Risk assessment */
-  riskLevel: RiskLevel;
-  /** Suggested actions */
-  suggestedActions: Array<Scalars['String']['output']>;
-  /** Key themes identified */
-  themes: Array<Theme>;
-  /** Total changes summarized */
-  totalChanges: Scalars['Int']['output'];
-};
-
-export type Theme = {
-  __typename?: 'Theme';
-  /** Affected repositories */
-  affectedRepositories: Array<Scalars['String']['output']>;
-  /** Theme description */
-  description: Scalars['String']['output'];
-  /** Impact level */
-  impact: ImpactLevel;
-  /** Theme name */
-  name: Scalars['String']['output'];
-};
-
 export type TimeRange = {
   __typename?: 'TimeRange';
   /** Duration in minutes */
@@ -845,7 +747,6 @@ export type ResolversTypes = ResolversObject<{
   BatchCommitMessageResult: ResolverTypeWrapper<BatchCommitMessageResult>;
   BatchProgress: ResolverTypeWrapper<BatchProgress>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
-  ChangeStats: ChangeStats;
   ClaudeExecuteInput: ClaudeExecuteInput;
   ClaudeExecuteResult: ResolverTypeWrapper<ClaudeExecuteResult>;
   ClaudeHealthStatus: ResolverTypeWrapper<ClaudeHealthStatus>;
@@ -854,19 +755,15 @@ export type ResolversTypes = ResolversObject<{
   CommandHistoryItem: ResolverTypeWrapper<CommandHistoryItem>;
   CommandOptions: CommandOptions;
   CommandOutput: ResolverTypeWrapper<CommandOutput>;
-  CommitMessageInfo: CommitMessageInfo;
   CommitMessageResult: ResolverTypeWrapper<CommitMessageResult>;
   CommitStyleGuide: CommitStyleGuide;
   ContextInput: ContextInput;
   ContinueSessionInput: ContinueSessionInput;
   ExecutionMetadata: ResolverTypeWrapper<ExecutionMetadata>;
-  ExecutiveSummaryInput: ExecutiveSummaryInput;
-  ExecutiveSummaryResult: ResolverTypeWrapper<ExecutiveSummaryResult>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   HandoffInput: HandoffInput;
   HandoffResult: ResolverTypeWrapper<HandoffResult>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
-  ImpactLevel: ImpactLevel;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   Mutation: ResolverTypeWrapper<{}>;
   OperationMetrics: ResolverTypeWrapper<OperationMetrics>;
@@ -877,7 +774,6 @@ export type ResolversTypes = ResolversObject<{
   Query: ResolverTypeWrapper<{}>;
   RepositoryCommitInfo: RepositoryCommitInfo;
   RepositoryCount: ResolverTypeWrapper<RepositoryCount>;
-  RiskLevel: RiskLevel;
   RunError: ResolverTypeWrapper<RunError>;
   RunStatistics: ResolverTypeWrapper<RunStatistics>;
   RunStatus: RunStatus;
@@ -887,8 +783,6 @@ export type ResolversTypes = ResolversObject<{
   StatusCount: ResolverTypeWrapper<StatusCount>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subscription: ResolverTypeWrapper<{}>;
-  SummaryMetadata: ResolverTypeWrapper<SummaryMetadata>;
-  Theme: ResolverTypeWrapper<Theme>;
   TimeRange: ResolverTypeWrapper<TimeRange>;
   TokenUsage: ResolverTypeWrapper<TokenUsage>;
 }>;
@@ -904,7 +798,6 @@ export type ResolversParentTypes = ResolversObject<{
   BatchCommitMessageResult: BatchCommitMessageResult;
   BatchProgress: BatchProgress;
   Boolean: Scalars['Boolean']['output'];
-  ChangeStats: ChangeStats;
   ClaudeExecuteInput: ClaudeExecuteInput;
   ClaudeExecuteResult: ClaudeExecuteResult;
   ClaudeHealthStatus: ClaudeHealthStatus;
@@ -913,14 +806,11 @@ export type ResolversParentTypes = ResolversObject<{
   CommandHistoryItem: CommandHistoryItem;
   CommandOptions: CommandOptions;
   CommandOutput: CommandOutput;
-  CommitMessageInfo: CommitMessageInfo;
   CommitMessageResult: CommitMessageResult;
   CommitStyleGuide: CommitStyleGuide;
   ContextInput: ContextInput;
   ContinueSessionInput: ContinueSessionInput;
   ExecutionMetadata: ExecutionMetadata;
-  ExecutiveSummaryInput: ExecutiveSummaryInput;
-  ExecutiveSummaryResult: ExecutiveSummaryResult;
   Float: Scalars['Float']['output'];
   HandoffInput: HandoffInput;
   HandoffResult: HandoffResult;
@@ -940,8 +830,6 @@ export type ResolversParentTypes = ResolversObject<{
   StatusCount: StatusCount;
   String: Scalars['String']['output'];
   Subscription: {};
-  SummaryMetadata: SummaryMetadata;
-  Theme: Theme;
   TimeRange: TimeRange;
   TokenUsage: TokenUsage;
 }>;
@@ -1096,14 +984,6 @@ export type ExecutionMetadataResolvers<ContextType = Context, ParentType extends
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type ExecutiveSummaryResultResolvers<ContextType = Context, ParentType extends ResolversParentTypes['ExecutiveSummaryResult'] = ResolversParentTypes['ExecutiveSummaryResult']> = ResolversObject<{
-  error: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  metadata: Resolver<ResolversTypes['SummaryMetadata'], ParentType, ContextType>;
-  success: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  summary: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-}>;
-
 export type HandoffResultResolvers<ContextType = Context, ParentType extends ResolversParentTypes['HandoffResult'] = ResolversParentTypes['HandoffResult']> = ResolversObject<{
   content: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   documentPath: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -1120,7 +1000,6 @@ export type MutationResolvers<ContextType = Context, ParentType extends Resolver
   deleteOldRuns: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   executeCommand: Resolver<ResolversTypes['ClaudeExecuteResult'], ParentType, ContextType, RequireFields<MutationExecuteCommandArgs, 'input'>>;
   generateCommitMessages: Resolver<ResolversTypes['BatchCommitMessageResult'], ParentType, ContextType, RequireFields<MutationGenerateCommitMessagesArgs, 'input'>>;
-  generateExecutiveSummary: Resolver<ResolversTypes['ExecutiveSummaryResult'], ParentType, ContextType, RequireFields<MutationGenerateExecutiveSummaryArgs, 'input'>>;
   killSession: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationKillSessionArgs, 'id'>>;
   retryAgentRun: Resolver<ResolversTypes['AgentRun'], ParentType, ContextType, RequireFields<MutationRetryAgentRunArgs, 'runId'>>;
   retryFailedRuns: Resolver<Array<ResolversTypes['AgentRun']>, ParentType, ContextType, RequireFields<MutationRetryFailedRunsArgs, 'runIds'>>;
@@ -1223,23 +1102,6 @@ export type SubscriptionResolvers<ContextType = Context, ParentType extends Reso
   commandOutput: SubscriptionResolver<ResolversTypes['CommandOutput'], "commandOutput", ParentType, ContextType, RequireFields<SubscriptionCommandOutputArgs, 'sessionId'>>;
 }>;
 
-export type SummaryMetadataResolvers<ContextType = Context, ParentType extends ResolversParentTypes['SummaryMetadata'] = ResolversParentTypes['SummaryMetadata']> = ResolversObject<{
-  repositoryCount: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  riskLevel: Resolver<ResolversTypes['RiskLevel'], ParentType, ContextType>;
-  suggestedActions: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
-  themes: Resolver<Array<ResolversTypes['Theme']>, ParentType, ContextType>;
-  totalChanges: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-}>;
-
-export type ThemeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['Theme'] = ResolversParentTypes['Theme']> = ResolversObject<{
-  affectedRepositories: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
-  description: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  impact: Resolver<ResolversTypes['ImpactLevel'], ParentType, ContextType>;
-  name: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-}>;
-
 export type TimeRangeResolvers<ContextType = Context, ParentType extends ResolversParentTypes['TimeRange'] = ResolversParentTypes['TimeRange']> = ResolversObject<{
   durationMinutes: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   end: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -1270,7 +1132,6 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   CommandOutput: CommandOutputResolvers<ContextType>;
   CommitMessageResult: CommitMessageResultResolvers<ContextType>;
   ExecutionMetadata: ExecutionMetadataResolvers<ContextType>;
-  ExecutiveSummaryResult: ExecutiveSummaryResultResolvers<ContextType>;
   HandoffResult: HandoffResultResolvers<ContextType>;
   Mutation: MutationResolvers<ContextType>;
   OperationMetrics: OperationMetricsResolvers<ContextType>;
@@ -1284,8 +1145,6 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   SessionSummary: SessionSummaryResolvers<ContextType>;
   StatusCount: StatusCountResolvers<ContextType>;
   Subscription: SubscriptionResolvers<ContextType>;
-  SummaryMetadata: SummaryMetadataResolvers<ContextType>;
-  Theme: ThemeResolvers<ContextType>;
   TimeRange: TimeRangeResolvers<ContextType>;
   TokenUsage: TokenUsageResolvers<ContextType>;
 }>;

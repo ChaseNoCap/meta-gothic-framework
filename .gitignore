@@ -48,4 +48,6 @@ test-results/
 # Package locks (using npm)
 yarn.lock
 pnpm-lock.yaml
+
+# Gateway environment file with GitHub token
 .env.gateway

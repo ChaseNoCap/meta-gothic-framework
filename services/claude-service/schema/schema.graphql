@@ -30,9 +30,6 @@ type Mutation {
   
   """Generate commit messages for multiple repositories"""
   generateCommitMessages(input: BatchCommitMessageInput!): BatchCommitMessageResult!
-  
-  """Generate executive summary from multiple commit messages"""
-  generateExecutiveSummary(input: ExecutiveSummaryInput!): ExecutiveSummaryResult!
 }
 
 type Subscription {
@@ -303,78 +300,6 @@ type CommitMessageResult {
   commitType: String
 }
 
-type ExecutiveSummaryResult {
-  """Whether summary generation succeeded"""
-  success: Boolean!
-  
-  """The generated executive summary"""
-  summary: String
-  
-  """Error if generation failed"""
-  error: String
-  
-  """Summary metadata"""
-  metadata: SummaryMetadata!
-}
-
-type SummaryMetadata {
-  """Number of repositories analyzed"""
-  repositoryCount: Int!
-  
-  """Total changes summarized"""
-  totalChanges: Int!
-  
-  """Key themes identified"""
-  themes: [Theme!]!
-  
-  """Risk assessment"""
-  riskLevel: RiskLevel!
-  
-  """Suggested actions"""
-  suggestedActions: [String!]!
-}
-
-type Theme {
-  """Theme name"""
-  name: String!
-  
-  """Theme description"""
-  description: String!
-  
-  """Affected repositories"""
-  affectedRepositories: [String!]!
-  
-  """Impact level"""
-  impact: ImpactLevel!
-}
-
-enum RiskLevel {
-  """No significant risks identified"""
-  LOW
-  
-  """Minor risks that should be monitored"""
-  MEDIUM
-  
-  """Significant risks requiring attention"""
-  HIGH
-  
-  """Critical risks requiring immediate action"""
-  CRITICAL
-}
-
-enum ImpactLevel {
-  """Minor impact on functionality"""
-  MINOR
-  
-  """Moderate impact, backwards compatible"""
-  MODERATE
-  
-  """Major impact, may break compatibility"""
-  MAJOR
-  
-  """Critical impact on core functionality"""
-  CRITICAL
-}
 
 # Input Types
 
@@ -502,47 +427,6 @@ input CommitStyleGuide {
   examples: [String!]
 }
 
-input ExecutiveSummaryInput {
-  """Commit messages to summarize"""
-  commitMessages: [CommitMessageInfo!]!
-  
-  """Target audience for summary"""
-  audience: String
-  
-  """Desired summary length"""
-  maxLength: Int
-  
-  """Focus areas for summary"""
-  focusAreas: [String!]
-  
-  """Whether to include risk assessment"""
-  includeRiskAssessment: Boolean
-  
-  """Whether to include recommendations"""
-  includeRecommendations: Boolean
-}
-
-input CommitMessageInfo {
-  """Repository name"""
-  repository: String!
-  
-  """Commit message"""
-  message: String!
-  
-  """Change statistics"""
-  stats: ChangeStats
-}
-
-input ChangeStats {
-  """Files changed"""
-  filesChanged: Int!
-  
-  """Lines added"""
-  additions: Int!
-  
-  """Lines deleted"""
-  deletions: Int!
-}
 
 # Performance Monitoring Types
 

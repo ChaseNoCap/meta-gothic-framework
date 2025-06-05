@@ -412,45 +412,529 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     recentCommits: string[];
     context?: string;
   }): string {
-    return `Generate a conventional commit message for the following changes in ${input.repository}:
+    return `Generate a DETAILED conventional commit message for the following changes in ${input.repository}.
 
-Diff:
+REQUIREMENTS:
+1. Analyze the diff thoroughly to understand what changed and WHY
+2. Use conventional commit format: type(scope): description
+3. The description should explain the business value, not just what changed
+4. Include a detailed body with bullet points explaining:
+   - What was added/removed/modified
+   - Why these changes were made
+   - The impact on the system
+5. If there are breaking changes, add a BREAKING CHANGE section
+
+EXAMPLES OF GOOD COMMIT MESSAGES:
+
+feat(auth): implement OAuth2 authentication flow to enhance security
+
+• Add OAuth2Provider service with Google and GitHub support
+• Implement token refresh mechanism with automatic retry
+• Create middleware for protecting API endpoints
+• Add comprehensive test suite covering edge cases
+
+This enables users to login with their existing accounts and improves
+overall system security by eliminating password storage.
+
+---
+
+refactor(api): restructure service layer to improve maintainability
+
+• Extract business logic from controllers into dedicated services
+• Implement dependency injection for better testability
+• Consolidate error handling into centralized middleware
+• Remove 500+ lines of duplicated code across endpoints
+
+Reduces technical debt and makes the codebase more maintainable for
+future development. All existing APIs remain backward compatible.
+
+---
+
+fix(payments): resolve race condition in concurrent transactions
+
+• Add distributed locking mechanism using Redis
+• Implement retry logic with exponential backoff
+• Fix transaction isolation level in database queries
+• Add monitoring alerts for failed transactions
+
+This prevents duplicate charges that were occurring when users
+double-clicked the payment button. Improves payment reliability by 99.9%.
+
+BREAKING CHANGE: PaymentService.process() now requires a lockKey parameter
+
+---
+
+NOW ANALYZE THIS DIFF:
+
+Repository: ${input.repository}
+
+Recent commits for style reference:
+${input.recentCommits.slice(0, 5).map(c => `• ${c}`).join('\n')}
+
+${input.context ? `Additional context: ${input.context}` : ''}
+
+Git diff to analyze:
 ${input.diff}
 
-Recent commits:
-${input.recentCommits.join('\n')}
-
-${input.context ? `Context: ${input.context}` : ''}
-
-Follow conventional commit format (type(scope): description).`;
+Generate a commit message following the examples above. Be specific about what changed and why it matters.`;
   }
 
   private async generateCommitMessageFromDiff(diff: string, recentCommits: string[]): Promise<string> {
-    // Simple implementation that analyzes the diff
-    // In production, this would call Claude API
+    // Claude-style commit message generation focusing on understanding the changes
+    console.log('[DEBUG] generateCommitMessageFromDiff called with diff length:', diff.length);
+    console.log('[DEBUG] First 200 chars of diff:', diff.substring(0, 200));
     
-    const lines = diff.split('\n');
-    const filesChanged = lines.filter(l => l.startsWith('+++') || l.startsWith('---')).length / 2;
-    const additions = lines.filter(l => l.startsWith('+')).length;
-    const deletions = lines.filter(l => l.startsWith('-')).length;
-    
-    // Determine commit type based on changes
-    let type = 'chore';
-    if (diff.includes('function') || diff.includes('class')) {
-      type = additions > deletions ? 'feat' : 'refactor';
-    } else if (diff.includes('test') || diff.includes('spec')) {
-      type = 'test';
-    } else if (diff.includes('README') || diff.includes('.md')) {
-      type = 'docs';
-    } else if (deletions > additions) {
-      type = 'fix';
+    // If diff is empty or too short, return a fallback message
+    if (!diff || diff.length < 10) {
+      console.log('[DEBUG] Diff is empty or too short, using fallback');
+      return 'chore: update files';
     }
     
-    // Generate a simple message
-    const action = additions > deletions ? 'add' : deletions > additions ? 'remove' : 'update';
-    const scope = filesChanged === 1 ? 'file' : 'files';
+    // Check if this is a file list format (used when diff is too large)
+    if (diff.startsWith('Files changed')) {
+      console.log('[DEBUG] Detected file list format instead of full diff');
+      return this.generateCommitMessageFromFileList(diff, recentCommits);
+    }
     
-    return `${type}: ${action} ${filesChanged} ${scope} with ${additions} additions and ${deletions} deletions`;
+    const lines = diff.split('\n');
+    const fileChanges: Map<string, { additions: string[], deletions: string[], isNew: boolean, isDeleted: boolean }> = new Map();
+    let currentFile = '';
+    
+    // Parse the diff to understand changes per file
+    for (const line of lines) {
+      if (line.startsWith('diff --git')) {
+        const match = line.match(/b\/(.+)$/);
+        if (match) currentFile = match[1];
+      } else if (line.startsWith('new file mode')) {
+        if (currentFile) {
+          fileChanges.set(currentFile, { additions: [], deletions: [], isNew: true, isDeleted: false });
+        }
+      } else if (line.startsWith('deleted file mode')) {
+        if (currentFile) {
+          fileChanges.set(currentFile, { additions: [], deletions: [], isNew: false, isDeleted: true });
+        }
+      } else if (line.startsWith('+++') || line.startsWith('---')) {
+        if (currentFile && !fileChanges.has(currentFile)) {
+          fileChanges.set(currentFile, { additions: [], deletions: [], isNew: false, isDeleted: false });
+        }
+      } else if (line.startsWith('+') && !line.startsWith('+++')) {
+        const change = fileChanges.get(currentFile);
+        if (change) change.additions.push(line.substring(1).trim());
+      } else if (line.startsWith('-') && !line.startsWith('---')) {
+        const change = fileChanges.get(currentFile);
+        if (change) change.deletions.push(line.substring(1).trim());
+      }
+    }
+    
+    console.log('[DEBUG] Parsed file changes:', fileChanges.size, 'files');
+    
+    // Deep analysis of what actually changed
+    const analysis = {
+      features: [] as string[],
+      fixes: [] as string[],
+      refactors: [] as string[],
+      removals: [] as string[],
+      configurations: [] as string[],
+      dependencies: [] as string[],
+      types: [] as string[],
+      tests: [] as string[]
+    };
+    
+    // Analyze each file's content to understand the changes
+    for (const [filePath, changes] of fileChanges.entries()) {
+      const fileName = filePath.split('/').pop() || '';
+      const additions = changes.additions.join('\n');
+      const deletions = changes.deletions.join('\n');
+      
+      // Analyze what was added/removed to understand the change
+      if (changes.isNew) {
+        if (filePath.includes('resolver') || additions.includes('resolver')) {
+          analysis.features.push(`GraphQL resolver for ${this.extractFunctionality(additions)}`);
+        } else if (filePath.includes('service') || additions.includes('Service')) {
+          analysis.features.push(`${this.extractServiceName(additions)} service`);
+        } else if (filePath.includes('component') || additions.includes('React.FC')) {
+          analysis.features.push(`${this.extractComponentName(additions)} component`);
+        } else if (additions.includes('interface') || additions.includes('type')) {
+          analysis.types.push(`type definitions for ${this.extractTypeName(additions)}`);
+        } else if (filePath.includes('test') || additions.includes('describe(')) {
+          analysis.tests.push(`test coverage for ${this.extractTestSubject(additions)}`);
+        }
+      } else if (changes.isDeleted) {
+        if (deletions.includes('export')) {
+          analysis.removals.push(`deprecated ${this.extractRemovedFunctionality(fileName, deletions)}`);
+        }
+      } else {
+        // Modified files - understand what changed
+        if (additions.includes('fix') || additions.includes('Fixed') || 
+            (additions.includes('!') && deletions.includes('?')) ||
+            (additions.includes('catch') && !deletions.includes('catch'))) {
+          analysis.fixes.push(this.extractFixDescription(additions, deletions));
+        }
+        
+        if (additions.includes('async') && deletions.includes('then') ||
+            additions.includes('=>') && deletions.includes('function')) {
+          analysis.refactors.push('modernize asynchronous code patterns');
+        }
+        
+        if (filePath.includes('package.json')) {
+          analysis.dependencies.push(this.extractDependencyChanges(additions, deletions));
+        }
+        
+        if (filePath.includes('config') || filePath.includes('settings')) {
+          analysis.configurations.push(this.extractConfigChanges(additions, deletions));
+        }
+      }
+    }
+    
+    // Determine the primary change type and build message
+    let commitType = 'chore';
+    let primaryChange = '';
+    let details: string[] = [];
+    
+    if (analysis.features.length > 0) {
+      commitType = 'feat';
+      primaryChange = analysis.features[0];
+      if (analysis.features.length > 1) {
+        details = analysis.features.slice(1).map(f => `Also implements ${f}`);
+      }
+    } else if (analysis.fixes.length > 0) {
+      commitType = 'fix';
+      primaryChange = analysis.fixes[0];
+      if (analysis.fixes.length > 1) {
+        details = analysis.fixes.slice(1).map(f => `Additionally ${f}`);
+      }
+    } else if (analysis.refactors.length > 0) {
+      commitType = 'refactor';
+      primaryChange = analysis.refactors[0];
+      details = analysis.refactors.slice(1);
+    } else if (analysis.removals.length > 0) {
+      commitType = 'chore';
+      primaryChange = `remove ${analysis.removals.join(' and ')}`;
+    } else if (analysis.tests.length > 0) {
+      commitType = 'test';
+      primaryChange = `add ${analysis.tests[0]}`;
+    } else if (analysis.configurations.length > 0) {
+      commitType = 'build';
+      primaryChange = analysis.configurations[0];
+    } else if (analysis.dependencies.length > 0) {
+      commitType = 'build';
+      primaryChange = analysis.dependencies[0];
+    }
+    
+    // If no specific change was detected, analyze the files more generally
+    if (!primaryChange) {
+      console.log('[DEBUG] No primary change detected, analyzing files more generally');
+      
+      // Look at what kinds of files changed
+      const changedFileTypes = new Set<string>();
+      const modifiedFunctions: string[] = [];
+      
+      for (const [filePath, changes] of fileChanges.entries()) {
+        const ext = filePath.split('.').pop() || '';
+        changedFileTypes.add(ext);
+        
+        // Try to extract what was modified
+        const allContent = [...changes.additions, ...changes.deletions].join('\n');
+        const funcMatch = allContent.match(/(?:function|const|class|interface|type)\s+(\w+)/g);
+        if (funcMatch) {
+          funcMatch.forEach(match => {
+            const name = match.replace(/^(function|const|class|interface|type)\s+/, '');
+            if (name && !modifiedFunctions.includes(name)) {
+              modifiedFunctions.push(name);
+            }
+          });
+        }
+      }
+      
+      if (modifiedFunctions.length > 0) {
+        primaryChange = `update ${modifiedFunctions.slice(0, 3).join(', ')}${modifiedFunctions.length > 3 ? ' and others' : ''}`;
+      } else if (fileChanges.size === 1) {
+        const fileName = Array.from(fileChanges.keys())[0].split('/').pop()?.replace(/\.[^.]+$/, '') || 'file';
+        primaryChange = `update ${fileName}`;
+      } else {
+        primaryChange = `update ${fileChanges.size} files across the codebase`;
+      }
+    }
+    
+    // Extract scope from file paths
+    const directories = new Set<string>();
+    for (const [filePath] of fileChanges) {
+      const parts = filePath.split('/');
+      if (parts.length > 1) {
+        directories.add(parts[0]);
+      }
+    }
+    
+    let scope = '';
+    if (directories.size === 1) {
+      scope = Array.from(directories)[0];
+    } else if (fileChanges.size === 1) {
+      const fileName = Array.from(fileChanges.keys())[0].split('/').pop()?.replace(/\.[^.]+$/, '');
+      if (fileName) scope = fileName;
+    }
+    
+    // Build the commit message
+    const typeWithScope = scope ? `${commitType}(${scope})` : commitType;
+    let message = `${typeWithScope}: ${primaryChange}`;
+    
+    console.log('[DEBUG] Generated message:', message);
+    
+    // Add explanation of why this change matters
+    if (analysis.types.length > 0) {
+      details.push(`Introduces ${analysis.types.join(' and ')}`);
+    }
+    
+    if (details.length > 0) {
+      message += '\n\n' + details.join('. ') + '.';
+    }
+    
+    // Add context about the impact
+    const impact = this.analyzeImpact(analysis, fileChanges);
+    if (impact) {
+      message += `\n\n${impact}`;
+    }
+    
+    // Check for breaking changes
+    const hasBreakingChanges = diff.includes('BREAKING') || 
+      analysis.removals.some(r => r.includes('export')) ||
+      fileChanges.has('schema.graphql') ||
+      fileChanges.has('package.json');
+      
+    if (hasBreakingChanges) {
+      message += '\n\nBREAKING CHANGE: This change may require updates to dependent code';
+    }
+    
+    return message;
+  }
+  
+  private extractFunctionality(content: string): string {
+    // Extract what functionality is being added
+    const match = content.match(/export\s+(?:async\s+)?function\s+(\w+)|export\s+const\s+(\w+)|type\s+Mutation\s*=\s*{[^}]*(\w+):/);
+    if (match) {
+      const name = match[1] || match[2] || match[3];
+      return name.replace(/([A-Z])/g, ' $1').trim().toLowerCase();
+    }
+    return 'new functionality';
+  }
+  
+  private extractServiceName(content: string): string {
+    const match = content.match(/class\s+(\w*Service)|export\s+class\s+(\w+)|new\s+(\w*Service)/);
+    if (match) {
+      const name = match[1] || match[2] || match[3];
+      return name.replace('Service', '').replace(/([A-Z])/g, ' $1').trim();
+    }
+    return 'new';
+  }
+  
+  private extractComponentName(content: string): string {
+    const match = content.match(/export\s+(?:const|function)\s+(\w+):|const\s+(\w+)\s*:\s*React\.FC|function\s+(\w+)\(/);
+    if (match) {
+      const name = match[1] || match[2] || match[3];
+      return name.replace(/([A-Z])/g, ' $1').trim();
+    }
+    return 'UI';
+  }
+  
+  private extractTypeName(content: string): string {
+    const match = content.match(/(?:export\s+)?(?:interface|type)\s+(\w+)/);
+    if (match) {
+      return match[1].replace(/([A-Z])/g, ' $1').trim().toLowerCase();
+    }
+    return 'data structures';
+  }
+  
+  private extractTestSubject(content: string): string {
+    const match = content.match(/describe\(['"`]([^'"`]+)['"`]/);
+    if (match) {
+      return match[1].toLowerCase();
+    }
+    return 'new functionality';
+  }
+  
+  private extractRemovedFunctionality(fileName: string, content: string): string {
+    const match = content.match(/export\s+(?:async\s+)?function\s+(\w+)|export\s+const\s+(\w+)|export\s+class\s+(\w+)/);
+    if (match) {
+      const name = match[1] || match[2] || match[3];
+      return name.replace(/([A-Z])/g, ' $1').trim().toLowerCase();
+    }
+    return fileName.replace(/\.[^.]+$/, '');
+  }
+  
+  private extractFixDescription(additions: string, deletions: string): string {
+    // Analyze what was fixed
+    if (additions.includes('null') && !deletions.includes('null')) {
+      return 'add null safety checks';
+    }
+    if (additions.includes('try') && !deletions.includes('try')) {
+      return 'improve error handling';
+    }
+    if (additions.includes('===') && deletions.includes('==')) {
+      return 'fix type comparison issues';
+    }
+    if (additions.includes('await') && !deletions.includes('await')) {
+      return 'resolve async operation handling';
+    }
+    return 'resolve edge case issues';
+  }
+  
+  private extractDependencyChanges(additions: string, deletions: string): string {
+    const added = additions.match(/"([^"]+)":\s*"[^"]+"/g) || [];
+    const removed = deletions.match(/"([^"]+)":\s*"[^"]+"/g) || [];
+    
+    if (added.length > removed.length) {
+      const newDep = added[0]?.match(/"([^"]+)"/)?.[1];
+      return `add ${newDep} dependency`;
+    } else if (removed.length > added.length) {
+      const oldDep = removed[0]?.match(/"([^"]+)"/)?.[1];
+      return `remove ${oldDep} dependency`;
+    } else {
+      return 'update dependencies';
+    }
+  }
+  
+  private extractConfigChanges(additions: string, deletions: string): string {
+    if (additions.includes('env') || additions.includes('ENV')) {
+      return 'update environment configuration';
+    }
+    if (additions.includes('port') || additions.includes('PORT')) {
+      return 'modify service port configuration';
+    }
+    return 'update configuration settings';
+  }
+  
+  private analyzeImpact(analysis: any, fileChanges: Map<string, any>): string {
+    const impacts: string[] = [];
+    
+    if (analysis.features.length > 0) {
+      impacts.push('This enhancement extends the system\'s capabilities');
+    }
+    if (analysis.fixes.length > 0) {
+      impacts.push('Improves system stability and reliability');
+    }
+    if (analysis.refactors.length > 0) {
+      impacts.push('Enhances code maintainability and developer experience');
+    }
+    if (analysis.removals.length > 0) {
+      impacts.push('Reduces codebase complexity by removing unused code');
+    }
+    
+    return impacts.join('. ') + (impacts.length > 0 ? '.' : '');
+  }
+  
+  private generateCommitMessageFromFileList(fileList: string, recentCommits: string[]): string {
+    // Parse the file list format: "Files changed (N):\nM path/to/file\nA path/to/other"
+    console.log('[DEBUG] Generating commit message from file list');
+    
+    const lines = fileList.split('\n');
+    const fileChanges: Array<{ status: string, path: string }> = [];
+    
+    // Skip the header line and parse file changes
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.length > 2) {
+        const status = line.substring(0, 1);
+        const path = line.substring(2);
+        fileChanges.push({ status, path });
+      }
+    }
+    
+    console.log('[DEBUG] Parsed', fileChanges.length, 'file changes from list');
+    
+    // Analyze files by their paths and names to understand the change
+    const analysis = {
+      newFiles: [] as string[],
+      modifiedFiles: [] as string[],
+      deletedFiles: [] as string[],
+      fileTypes: new Set<string>(),
+      directories: new Set<string>(),
+      components: [] as string[],
+      services: [] as string[],
+      types: [] as string[],
+      tests: [] as string[]
+    };
+    
+    for (const { status, path } of fileChanges) {
+      const fileName = path.split('/').pop() || '';
+      const ext = fileName.split('.').pop() || '';
+      const dir = path.split('/')[0];
+      
+      analysis.fileTypes.add(ext);
+      if (dir !== path) analysis.directories.add(dir);
+      
+      // Categorize by status
+      if (status === 'A' || status === '??') {
+        analysis.newFiles.push(fileName);
+        if (path.includes('component') || fileName.includes('Component')) {
+          analysis.components.push(fileName.replace(/\.(tsx?|jsx?)$/, ''));
+        } else if (path.includes('service') || fileName.includes('Service')) {
+          analysis.services.push(fileName.replace(/\.(ts|js)$/, ''));
+        } else if (path.includes('types') || fileName.includes('.d.ts')) {
+          analysis.types.push(fileName.replace(/\.(d\.)?ts$/, ''));
+        } else if (path.includes('test') || fileName.includes('.test.') || fileName.includes('.spec.')) {
+          analysis.tests.push(fileName.replace(/\.(test|spec)\.(ts|js)$/, ''));
+        }
+      } else if (status === 'M' || status === 'MM') {
+        analysis.modifiedFiles.push(fileName);
+      } else if (status === 'D') {
+        analysis.deletedFiles.push(fileName);
+      }
+    }
+    
+    // Build commit message based on analysis
+    let commitType = 'chore';
+    let primaryChange = '';
+    let scope = '';
+    
+    // Determine scope
+    if (analysis.directories.size === 1) {
+      scope = Array.from(analysis.directories)[0];
+    }
+    
+    // Determine type and primary change
+    if (analysis.components.length > 0) {
+      commitType = 'feat';
+      primaryChange = `add ${analysis.components[0]}${analysis.components.length > 1 ? ' and other components' : ' component'}`;
+    } else if (analysis.services.length > 0) {
+      commitType = 'feat';
+      primaryChange = `implement ${analysis.services[0]}${analysis.services.length > 1 ? ' and related services' : ''}`;
+    } else if (analysis.tests.length > 0) {
+      commitType = 'test';
+      primaryChange = `add tests for ${analysis.tests[0]}${analysis.tests.length > 1 ? ' and others' : ''}`;
+    } else if (analysis.deletedFiles.length > analysis.newFiles.length) {
+      commitType = 'chore';
+      primaryChange = `remove deprecated files`;
+    } else if (analysis.modifiedFiles.length > 0 && analysis.newFiles.length === 0) {
+      commitType = 'refactor';
+      primaryChange = `update ${analysis.modifiedFiles.length === 1 ? analysis.modifiedFiles[0].replace(/\.[^.]+$/, '') : 'multiple components'}`;
+    } else if (analysis.newFiles.length > 0) {
+      commitType = 'feat';
+      primaryChange = `add ${analysis.newFiles[0].replace(/\.[^.]+$/, '')}${analysis.newFiles.length > 1 ? ' and related files' : ''}`;
+    } else {
+      primaryChange = 'update project files';
+    }
+    
+    const typeWithScope = scope ? `${commitType}(${scope})` : commitType;
+    let message = `${typeWithScope}: ${primaryChange}`;
+    
+    // Add context if we have more details
+    const details: string[] = [];
+    if (analysis.types.length > 0) {
+      details.push(`Includes type definitions for ${analysis.types.join(', ')}`);
+    }
+    if (analysis.newFiles.length > 1 || analysis.modifiedFiles.length > 1) {
+      const summary = [];
+      if (analysis.newFiles.length > 0) summary.push(`${analysis.newFiles.length} new files`);
+      if (analysis.modifiedFiles.length > 0) summary.push(`${analysis.modifiedFiles.length} modifications`);
+      if (analysis.deletedFiles.length > 0) summary.push(`${analysis.deletedFiles.length} deletions`);
+      details.push(`Changes include ${summary.join(', ')}`);
+    }
+    
+    if (details.length > 0) {
+      message += '\n\n' + details.join('. ') + '.';
+    }
+    
+    console.log('[DEBUG] Generated message from file list:', message);
+    return message;
   }
 
   private async executeAgentRun(run: AgentRun): Promise<void> {

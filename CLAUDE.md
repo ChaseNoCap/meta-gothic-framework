@@ -263,6 +263,11 @@ Load context progressively based on the task:
 - Maintain high test coverage
 - Update CLAUDE.md with changes
 
+## 🔐 Important: Protected Files
+
+**DO NOT MODIFY**: The following files contain sensitive configuration and should never be edited:
+- `.env.gateway` - Contains GitHub token and other sensitive environment variables
+
 ## 🚨 Current Priority: Tools Page ThemeContext Fix
 
 **IMMEDIATE TASK**: The Tools page at `/tools` has a runtime error due to missing ThemeContext.

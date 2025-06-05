@@ -38,27 +38,17 @@ export async function generateCommitMessages(
         .update(JSON.stringify({ name: repo.name, diff: repo.diff }))
         .digest('hex');
       
-      // Try to use cached result if available
-      const result = await withCache(
-        runCache,
-        `commit-msg:${cacheKey}`,
-        async () => {
-          // This will be automatically queued by ClaudeSessionManager's p-queue
-          // with concurrency=5 and rate limiting of 3 per second
-          const result = await sessionManager.generateCommitMessage({
-            repository: repo.name,
-            diff: repo.diff,
-            recentCommits: repo.recentCommits || [],
-            context: repo.context
-          });
-          
-          // Add run to batch for tracking
-          progressTracker.addRunToBatch(batchId, result.runId, repo.name);
-          
-          return result;
-        },
-        300 // Cache for 5 minutes
-      );
+      // TEMPORARILY DISABLED CACHE to get fresh commit messages
+      // TODO: Re-enable cache after testing
+      const result = await sessionManager.generateCommitMessage({
+        repository: repo.name,
+        diff: repo.diff,
+        recentCommits: repo.recentCommits || [],
+        context: repo.context
+      });
+      
+      // Add run to batch for tracking
+      progressTracker.addRunToBatch(batchId, result.runId, repo.name);
       
       return {
         repositoryPath: repo.path,
