@@ -10,7 +10,10 @@
     "build:ui": "cd packages/ui-components && npm run build",
     "build:packages": "for dir in packages/*/; do (cd \"$dir\" && npm run build); done",
     "test": "for dir in packages/*/; do (cd \"$dir\" && npm test); done",
-    "lint": "for dir in packages/*/; do (cd \"$dir\" && npm run lint); done"
+    "lint": "for dir in packages/*/; do (cd \"$dir\" && npm run lint); done",
+    "git:commit": "./scripts/git-commit-hierarchical.sh",
+    "git:push": "./scripts/git-push-hierarchical.sh",
+    "git:sync": "./scripts/git-commit-hierarchical.sh && ./scripts/git-push-hierarchical.sh"
   },
   "devDependencies": {
     "@types/node": "^20.11.10",
