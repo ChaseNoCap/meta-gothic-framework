@@ -100,6 +100,7 @@ const yoga = createYoga({
       sessionManager: sharedSessionManager, // Use shared instance
       runStorage: sharedRunStorage,        // Use shared instance
       progressTracker: sharedProgressTracker, // Use shared instance
+      workspaceRoot: process.env.WORKSPACE_ROOT || process.cwd(),
     };
   },
   maskedErrors: false,

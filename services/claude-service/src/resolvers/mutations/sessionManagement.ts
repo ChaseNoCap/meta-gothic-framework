@@ -9,44 +9,64 @@ export async function forkSession(
 ) {
   const { sessionId, messageIndex, name, includeHistory } = input;
   
+  console.log('[ForkSession] Input:', { sessionId, messageIndex, name, includeHistory });
+  
   // Get the original session
   const originalSession = context.sessionManager.getSession(sessionId);
   if (!originalSession) {
     throw new Error(`Session ${sessionId} not found`);
   }
+  
+  console.log('[ForkSession] Original session history length:', originalSession.history?.length || 0);
 
   // Create a new session ID
   const forkedSessionId = uuidv4();
   
   // Get history up to the fork point
-  const historyToInclude = includeHistory && messageIndex !== undefined
-    ? originalSession.history.slice(0, messageIndex + 1)
+  const originalHistory = originalSession.history || [];
+  const historyToInclude = includeHistory && messageIndex !== undefined && originalHistory.length > 0
+    ? originalHistory.slice(0, messageIndex + 1)
+    : includeHistory
+    ? originalHistory
     : [];
 
-  // Create the forked session
-  const forkedSession = {
+  // Create the forked session in the correct format for SessionData
+  const forkedSessionData = {
     id: forkedSessionId,
-    createdAt: new Date().toISOString(),
-    lastActivity: new Date().toISOString(),
-    status: 'IDLE',
+    process: undefined,
+    status: 'ACTIVE' as const, // Set to active so commands can be executed
+    createdAt: new Date(),
+    lastActivity: new Date(),
     workingDirectory: originalSession.workingDirectory,
+    history: historyToInclude,
     metadata: {
       ...originalSession.metadata,
+      name: name || `Fork of ${originalSession.metadata?.name || 'Session'}`,
       forkedFrom: sessionId,
-      forkPoint: messageIndex || originalSession.history.length
-    },
-    history: historyToInclude
+      forkPoint: messageIndex || (originalSession.history?.length || 0)
+    }
   };
 
   // Store the forked session
-  context.sessionManager.sessions.set(forkedSessionId, forkedSession);
+  context.sessionManager.sessions.set(forkedSessionId, forkedSessionData);
+  
+  console.log('[ForkSession] Forked session history length:', forkedSessionData.history.length);
+  console.log('[ForkSession] Forked session ID:', forkedSessionId);
+  console.log('[ForkSession] First history entry:', forkedSessionData.history[0]);
+  console.log('[ForkSession] Session manager type:', context.sessionManager.constructor.name);
+  console.log('[ForkSession] Sessions in manager:', Array.from(context.sessionManager.sessions.keys()));
+  
+  // Get the mapped version for return
+  const forkedSession = context.sessionManager.getSession(forkedSessionId);
+  console.log('[ForkSession] Retrieved forked session:', forkedSession ? 'Found' : 'Not found');
+  console.log('[ForkSession] Retrieved session history length:', forkedSession?.history?.length || 0);
 
   return {
     session: forkedSession,
     parentSession: originalSession,
     forkMetadata: {
       forkedAt: new Date().toISOString(),
-      forkPoint: messageIndex || originalSession.history.length,
+      forkPoint: messageIndex || (originalSession.history?.length || 0),
       sharedMessages: historyToInclude.length
     }
   };
@@ -113,14 +133,16 @@ export async function createSessionFromTemplate(
   template.usageCount++;
   template.lastUsedAt = new Date().toISOString();
 
-  // Create new session
+  // Create new session in the correct format for SessionData
   const sessionId = uuidv4();
-  const session = {
+  const sessionData = {
     id: sessionId,
-    createdAt: new Date().toISOString(),
-    lastActivity: new Date().toISOString(),
-    status: 'IDLE',
+    process: undefined,
+    status: 'IDLE' as const,
+    createdAt: new Date(),
+    lastActivity: new Date(),
     workingDirectory: process.cwd(),
+    history: [],
     metadata: {
       projectContext: template.initialContext,
       model: template.settings.model,
@@ -131,13 +153,13 @@ export async function createSessionFromTemplate(
       },
       flags: template.settings.customFlags,
       fromTemplate: templateId
-    },
-    history: []
+    }
   };
 
-  context.sessionManager.sessions.set(sessionId, session);
+  context.sessionManager.sessions.set(sessionId, sessionData);
 
-  return session;
+  // Return the mapped version
+  return context.sessionManager.getSession(sessionId);
 }
 
 // Batch session operations
@@ -172,7 +194,7 @@ export async function batchSessionOperation(
           break;
         case 'TAG':
           // Add tags to session metadata
-          const tagSession = context.sessionManager.getSession(sessionId);
+          const tagSession = context.sessionManager.sessions.get(sessionId);
           if (tagSession) {
             tagSession.metadata.tags = parameters ? JSON.parse(parameters) : [];
             resultData = { tagged: true };

@@ -83,7 +83,19 @@ export class ClaudeSessionManager extends EventEmitter {
    */
   getSession(id: string): ClaudeSession | null {
     const session = this.sessions.get(id);
-    return session ? this.mapToClaudeSession(session) : null;
+    if (!session) {
+      console.log(`[SessionManager] Session ${id} not found in map`);
+      return null;
+    }
+    
+    console.log(`[SessionManager] Session ${id} found, history:`, session.history);
+    
+    try {
+      return this.mapToClaudeSession(session);
+    } catch (error) {
+      console.error(`[SessionManager] Error mapping session ${id}:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -266,8 +278,17 @@ export class ClaudeSessionManager extends EventEmitter {
       // Check if we have an existing session to resume
       const existingSession = this.sessions.get(sessionId);
       if (existingSession && existingSession.history.length > 0) {
-        // Resume existing session
-        args.push('--resume', sessionId);
+        // Only use --resume if this session has been used with Claude CLI before
+        // Check if the last history entry has a response (indicating Claude has seen it)
+        const hasClaudeHistory = existingSession.history.some(h => h.response);
+        if (hasClaudeHistory) {
+          args.push('--resume', sessionId);
+        } else {
+          // For forked sessions or sessions with only copied history,
+          // we need to build context into the prompt
+          const contextPrompt = this.buildContextualPrompt(existingSession.history, prompt);
+          prompt = contextPrompt;
+        }
       }
       
       // Add any custom flags
@@ -296,9 +317,11 @@ export class ClaudeSessionManager extends EventEmitter {
           workingDirectory: options.workingDirectory || process.cwd(),
           history: [],
           metadata: {
+            name: undefined,
+            projectContext: options.context?.projectContext,
             model: options.commandOptions?.model || 'claude-3-opus',
             tokenUsage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
-            flags: args
+            flags: args || []
           }
         };
         this.sessions.set(sessionId, session);
@@ -492,6 +515,14 @@ Respond with ONLY the commit message, no explanations.`;
    * Map internal session to GraphQL type
    */
   private mapToClaudeSession(session: SessionData): ClaudeSession {
+    if (!session) {
+      console.error('[mapToClaudeSession] Received null/undefined session');
+      throw new Error('Cannot map null session');
+    }
+    
+    const history = session.history || [];
+    console.log(`[mapToClaudeSession] Mapping session ${session.id}, history length: ${history.length}`);
+    
     return {
       id: session.id,
       createdAt: session.createdAt.toISOString(),
@@ -499,8 +530,14 @@ Respond with ONLY the commit message, no explanations.`;
       status: session.status,
       pid: session.process?.pid || null,
       workingDirectory: session.workingDirectory,
-      metadata: session.metadata,
-      history: session.history
+      metadata: {
+        name: session.metadata?.name || undefined,
+        projectContext: session.metadata?.projectContext || undefined,
+        model: session.metadata?.model || 'claude-3-opus',
+        tokenUsage: session.metadata?.tokenUsage || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
+        flags: session.metadata?.flags || []
+      },
+      history: history
     };
   }
 
@@ -509,6 +546,32 @@ Respond with ONLY the commit message, no explanations.`;
    */
   getRunStorage(): RunStorage {
     return this.runStorage;
+  }
+
+  /**
+   * Build a contextual prompt that includes conversation history
+   */
+  private buildContextualPrompt(history: any[], newPrompt: string): string {
+    if (!history || history.length === 0) {
+      return newPrompt;
+    }
+
+    // Build conversation context from history
+    let context = "Previous conversation:\n\n";
+    
+    history.forEach((entry, index) => {
+      if (entry.prompt) {
+        context += `Human: ${entry.prompt}\n\n`;
+      }
+      if (entry.response) {
+        context += `Assistant: ${entry.response}\n\n`;
+      }
+    });
+    
+    // Add current prompt
+    context += `Human: ${newPrompt}`;
+    
+    return context;
   }
 
   /**

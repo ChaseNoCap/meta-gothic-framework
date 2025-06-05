@@ -9,6 +9,12 @@ export async function session(
   { id }: { id: string },
   context: Context
 ): Promise<ClaudeSession | null> {
+  console.log('[Session Query] Looking for session:', id);
   const { sessionManager } = context;
-  return sessionManager.getSession(id);
+  const session = sessionManager.getSession(id);
+  console.log('[Session Query] Found session:', session ? 'Yes' : 'No');
+  if (session) {
+    console.log('[Session Query] Session history length:', session.history?.length || 0);
+  }
+  return session;
 }

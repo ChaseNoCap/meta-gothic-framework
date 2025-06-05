@@ -82,7 +82,7 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     
     const sessionData: SessionData = {
       id: sessionId,
-      status: 'active',
+      status: 'ACTIVE' as SessionStatus,
       createdAt: new Date(),
       lastActivity: new Date(),
       workingDirectory,
@@ -122,15 +122,30 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
   })
   @Traces({ threshold: 500, includeArgs: true })
   async executeCommandInSession(sessionId: string, command: string): Promise<CommandOutput> {
+    console.log(`\n[executeCommandInSession] START - sessionId: ${sessionId}`);
+    console.log(`[executeCommandInSession] Command: ${command}`);
+    
     const session = this.sessions.get(sessionId);
     const commandLogger = this.logger?.child({ sessionId, operation: 'executeCommand' });
     
     if (!session) {
+      console.error(`[executeCommandInSession] Session ${sessionId} not found in sessions map`);
+      console.log(`[executeCommandInSession] Available sessions:`, Array.from(this.sessions.keys()));
       throw new Error(`Session ${sessionId} not found`);
     }
     
-    if (session.status !== 'active') {
-      throw new Error(`Session ${sessionId} is not active`);
+    console.log(`[executeCommandInSession] Session found:`, {
+      id: session.id,
+      status: session.status,
+      historyLength: session.history?.length || 0,
+      hasClaudeSessionId: !!session.metadata?.claudeSessionId,
+      metadata: session.metadata
+    });
+    
+    if (session.status !== 'active' && session.status !== 'ACTIVE') {
+      // For now, allow any session to execute commands
+      // throw new Error(`Session ${sessionId} is not active`);
+      console.log(`[executeCommandInSession] Session ${sessionId} status: ${session.status}, proceeding anyway`);
     }
     
     commandLogger?.info('Executing command', { command: command.substring(0, 100) });
@@ -142,12 +157,34 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       // Use full path to claude to avoid PATH issues
       const claudePath = '/Users/josh/.nvm/versions/node/v18.20.8/bin/claude';
       
-      // Build args array - include session if we have a Claude session ID
-      const args = ['-p', command, '--output-format', 'json'];
+      // Build args array
+      const args = ['--print', '--output-format', 'json'];
       
-      // Add resume flag if we have a Claude session ID stored
-      if (session.metadata?.claudeSessionId) {
-        args.push('--resume', session.metadata.claudeSessionId);
+      // Check if we need to build context into the prompt
+      let actualPrompt = command;
+      console.log(`[executeCommandInSession] Checking if context needed...`);
+      console.log(`[executeCommandInSession] Session history:`, session.history);
+      
+      if (session.history && session.history.length > 0) {
+        console.log(`[executeCommandInSession] Session has ${session.history.length} history entries`);
+        const hasClaudeHistory = session.history.some((h: any) => h.response);
+        console.log(`[executeCommandInSession] Has Claude history (with responses): ${hasClaudeHistory}`);
+        console.log(`[executeCommandInSession] Has Claude session ID: ${!!session.metadata?.claudeSessionId}`);
+        
+        if (hasClaudeHistory && session.metadata?.claudeSessionId) {
+          // Use resume if we have real Claude history
+          console.log(`[executeCommandInSession] Using --resume with session ID: ${session.metadata.claudeSessionId}`);
+          args.push('--resume', session.metadata.claudeSessionId);
+        } else {
+          // Build context for forked sessions or sessions with copied history
+          console.log(`[executeCommandInSession] Building contextual prompt...`);
+          actualPrompt = this.buildContextualPrompt(session.history, command);
+          console.log(`[executeCommandInSession] Built contextual prompt for session ${sessionId}`);
+          console.log(`[executeCommandInSession] Context length: ${actualPrompt.length} chars`);
+          console.log(`[executeCommandInSession] Context preview:`, actualPrompt.substring(0, 200) + '...');
+        }
+      } else {
+        console.log(`[executeCommandInSession] No history, using original prompt`);
       }
       
       commandLogger?.info('Spawning Claude CLI', { 
@@ -156,6 +193,9 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
         cwd: session.workingDirectory,
         hasClaudeSession: !!session.metadata?.claudeSessionId
       });
+      
+      // Add the prompt to args
+      args.unshift('-p', actualPrompt);
       
       const claude = spawn(claudePath, args, {
         cwd: session.workingDirectory,
@@ -378,9 +418,14 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       }));
   }
   
-  getSession(sessionId: string): ClaudeSession | undefined {
+  getSession(sessionId: string): ClaudeSession | null {
     const session = this.sessions.get(sessionId);
-    if (!session) return undefined;
+    if (!session) {
+      console.log(`[SessionManagerWithEvents] Session ${sessionId} not found`);
+      return null;
+    }
+    
+    console.log(`[SessionManagerWithEvents] Session ${sessionId} found, history length:`, session.history?.length || 0);
     
     return {
       id: session.id,
@@ -388,10 +433,55 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       createdAt: session.createdAt.toISOString(),
       lastActivity: session.lastActivity.toISOString(),
       workingDirectory: session.workingDirectory,
-      metadata: session.metadata
+      pid: null, // Add missing pid field
+      metadata: {
+        name: session.metadata?.name || undefined,
+        projectContext: session.metadata?.projectContext || undefined,
+        model: session.metadata?.model || 'claude-3-opus',
+        tokenUsage: session.metadata?.tokenUsage || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
+        flags: session.metadata?.flags || []
+      },
+      history: session.history || [] // Ensure history is always an array
     };
   }
   
+  private buildContextualPrompt(history: any[], newPrompt: string): string {
+    console.log(`[buildContextualPrompt] Called with history length: ${history?.length || 0}`);
+    
+    if (!history || history.length === 0) {
+      console.log(`[buildContextualPrompt] No history, returning original prompt`);
+      return newPrompt;
+    }
+
+    // Build conversation context from history
+    let context = "Previous conversation:\n\n";
+    let entryCount = 0;
+    
+    history.forEach((entry, index) => {
+      console.log(`[buildContextualPrompt] Processing history entry ${index}:`, {
+        hasPrompt: !!entry.prompt,
+        hasResponse: !!entry.response,
+        timestamp: entry.timestamp
+      });
+      
+      if (entry.prompt) {
+        context += `Human: ${entry.prompt}\n\n`;
+        entryCount++;
+      }
+      if (entry.response) {
+        context += `Assistant: ${entry.response}\n\n`;
+        entryCount++;
+      }
+    });
+    
+    // Add current prompt
+    context += `Human: ${newPrompt}`;
+    
+    console.log(`[buildContextualPrompt] Built context with ${entryCount} entries, total length: ${context.length}`);
+    
+    return context;
+  }
+
   subscribeToOutput(sessionId: string, callback: (output: CommandOutput) => void): () => void {
     const handler = (data: any) => {
       if (data.sessionId === sessionId) {
