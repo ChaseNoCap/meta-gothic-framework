@@ -48,3 +48,4 @@ test-results/
 # Package locks (using npm)
 yarn.lock
 pnpm-lock.yaml
+.env.gateway

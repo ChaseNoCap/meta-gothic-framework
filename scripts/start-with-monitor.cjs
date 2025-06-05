@@ -78,13 +78,40 @@ function startService(name, command, args, cwd, logFile) {
     logStream.write(`[STARTUP ${new Date().toISOString()}] Command: ${command} ${args.join(' ')}\n`);
     logStream.write(`[STARTUP ${new Date().toISOString()}] Working Directory: ${cwd}\n`);
     
+    // Load environment variables
+    let envVars = { 
+      ...process.env, 
+      NODE_ENV: 'development',
+      WORKSPACE_ROOT: path.join(__dirname, '..')
+    };
+    
+    // For gateway service, check for GitHub token
+    if (name === 'gateway') {
+      // First check if token is already in environment
+      if (!envVars.GITHUB_TOKEN) {
+        // Try to load from .env.gateway file
+        const envFile = path.join(__dirname, '../.env.gateway');
+        if (fs.existsSync(envFile)) {
+          const envContent = fs.readFileSync(envFile, 'utf8');
+          envContent.split('\n').forEach(line => {
+            const [key, value] = line.split('=');
+            if (key && value && !key.startsWith('#')) {
+              envVars[key.trim()] = value.trim();
+            }
+          });
+        }
+      }
+      
+      if (!envVars.GITHUB_TOKEN || envVars.GITHUB_TOKEN === 'your_github_token_here') {
+        log('  ⚠️  No GitHub token found for gateway. GitHub features will be limited.', 'yellow');
+      } else {
+        log('  ✅ GitHub token found for gateway', 'green');
+      }
+    }
+    
     const proc = spawn(command, args, {
       cwd,
-      env: { 
-        ...process.env, 
-        NODE_ENV: 'development',
-        WORKSPACE_ROOT: path.join(__dirname, '..')
-      },
+      env: envVars,
       stdio: ['ignore', 'pipe', 'pipe']
     });
     
