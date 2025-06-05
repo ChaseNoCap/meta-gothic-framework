@@ -49,18 +49,19 @@ async function executeGitCommand(
 
 async function getChangedFiles(repoPath: string): Promise<string[]> {
   console.log('[getChangedFiles] Checking path:', repoPath);
-  const result = await executeGitCommand('git status --porcelain', repoPath);
-  console.log('[getChangedFiles] Result:', result);
   
-  if (!result.success || !result.output) {
+  // Check for any changes (staged or unstaged)
+  const diffResult = await executeGitCommand('git diff --name-only HEAD', repoPath);
+  console.log('[getChangedFiles] Diff result:', diffResult);
+  
+  if (!diffResult.success || !diffResult.output) {
     console.log('[getChangedFiles] No changes or error');
     return [];
   }
   
-  const files = result.output
+  const files = diffResult.output
     .split('\n')
-    .filter(line => line.trim())
-    .map(line => line.substring(3).trim());
+    .filter(line => line.trim());
     
   console.log('[getChangedFiles] Found files:', files);
   return files;
@@ -72,9 +73,14 @@ async function commitRepository(
   options: Omit<HierarchicalCommitInput, 'message'>
 ): Promise<CommitResult> {
   try {
+    console.log('[commitRepository] Starting commit for:', repoPath);
+    console.log('[commitRepository] Message:', message);
+    console.log('[commitRepository] Options:', options);
+    
     // Check if there are changes
     const changedFiles = await getChangedFiles(repoPath);
     if (changedFiles.length === 0) {
+      console.log('[commitRepository] No changes in', repoPath);
       return {
         success: true,
         repository: repoPath,
