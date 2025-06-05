@@ -273,26 +273,60 @@ export class ClaudeSessionManager extends EventEmitter {
       let output = '';
       let errorOutput = '';
 
-      // Create/update session
-      const session: SessionData = {
-        id: sessionId,
-        process: claude,
-        status: 'PROCESSING',
-        createdAt: new Date(),
-        lastActivity: new Date(),
-        workingDirectory: options.workingDirectory || process.cwd(),
-        history: [],
-        metadata: {
-          model: options.commandOptions?.model || 'claude-3-opus',
-          tokenUsage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
-          flags: args
-        }
-      };
+      // Get existing session or create new one
+      let session = this.sessions.get(sessionId);
       
-      this.sessions.set(sessionId, session);
+      if (!session) {
+        // Create new session
+        session = {
+          id: sessionId,
+          process: claude,
+          status: 'PROCESSING',
+          createdAt: new Date(),
+          lastActivity: new Date(),
+          workingDirectory: options.workingDirectory || process.cwd(),
+          history: [],
+          metadata: {
+            model: options.commandOptions?.model || 'claude-3-opus',
+            tokenUsage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
+            flags: args
+          }
+        };
+        this.sessions.set(sessionId, session);
+      } else {
+        // Update existing session
+        session.process = claude;
+        session.status = 'PROCESSING';
+        session.lastActivity = new Date();
+      }
+      
+      // Add this command to history
+      session.history.push({
+        timestamp: new Date(),
+        prompt: prompt,
+        response: null, // Will be updated when complete
+        executionTime: 0,
+        success: false
+      });
 
-      // Send prompt
-      claude.stdin.write(prompt);
+      // Build prompt with history for context
+      let fullPrompt = prompt;
+      
+      if (session.history.length > 0) {
+        // Include recent conversation history for context
+        const recentHistory = session.history.slice(-5); // Last 5 exchanges
+        const historyContext = recentHistory
+          .filter(h => h.response) // Only include completed exchanges
+          .map(h => `Human: ${h.prompt}\nAssistant: ${h.response}`)
+          .join('\n\n');
+        
+        if (historyContext) {
+          fullPrompt = `${historyContext}\n\nHuman: ${prompt}\nAssistant:`;
+        }
+      }
+      
+      // Send prompt with history
+      claude.stdin.write(fullPrompt);
       claude.stdin.end();
 
       // Handle stdout
@@ -329,6 +363,14 @@ export class ClaudeSessionManager extends EventEmitter {
       claude.on('close', (code) => {
         session.status = code === 0 ? 'IDLE' : 'ERROR';
         session.lastActivity = new Date();
+        
+        // Update the last history entry with the response
+        const lastHistoryEntry = session.history[session.history.length - 1];
+        if (lastHistoryEntry) {
+          lastHistoryEntry.response = output;
+          lastHistoryEntry.executionTime = Date.now() - lastHistoryEntry.timestamp.getTime();
+          lastHistoryEntry.success = code === 0;
+        }
         
         if (code !== 0) {
           reject(new Error(`Claude exited with code ${code}: ${errorOutput}`));

@@ -28,6 +28,12 @@ const logger = createLogger('claude-service', {}, {
 
 const PORT = process.env['CLAUDE_PORT'] || 3002;
 
+// Create shared instances that persist across requests
+const sharedEventBus = createRequestEventBus('shared');
+const sharedSessionManager = new ClaudeSessionManager(sharedEventBus, logger, 'shared');
+const sharedRunStorage = new RunStorage();
+const sharedProgressTracker = new ProgressTracker(sharedEventBus, sharedRunStorage);
+
 // Build federated schema
 const schema = buildSubgraphSchema([
   {
@@ -39,14 +45,14 @@ const schema = buildSubgraphSchema([
 // Add reference resolvers for federation
 const federatedResolvers = {
   ClaudeSession: {
-    __resolveReference(reference: { id: string }, context: Context) {
-      return context.sessionManager.getSession(reference.id);
+    __resolveReference(reference: { id: string }) {
+      return sharedSessionManager.getSession(reference.id);
     },
   },
   Repository: {
-    claudeSessions(repository: { path: string }, _args: any, context: Context) {
+    claudeSessions(repository: { path: string }) {
       // Return sessions that are working on this repository
-      const allSessions = context.sessionManager.getAllSessions();
+      const allSessions = sharedSessionManager.getAllSessions();
       return allSessions.filter(session => 
         session.workingDirectory.includes(repository.path)
       );
@@ -83,26 +89,17 @@ const yoga = createYoga({
       url: request.url,
     });
 
-    // Create request-scoped event bus
-    const eventBus = createRequestEventBus(correlationId);
-    
-    // Create session manager with events
-    const sessionManager = new ClaudeSessionManager(eventBus, requestLogger, correlationId);
-    
-    // Create run storage
-    const runStorage = new RunStorage();
-    
-    // Create progress tracker
-    const progressTracker = new ProgressTracker(eventBus, runStorage);
+    // Create request-scoped event bus for request-specific events
+    const requestEventBus = createRequestEventBus(correlationId);
 
     return {
       request,
       logger: requestLogger,
       correlationId,
-      eventBus,
-      sessionManager,
-      runStorage,
-      progressTracker,
+      eventBus: requestEventBus,
+      sessionManager: sharedSessionManager, // Use shared instance
+      runStorage: sharedRunStorage,        // Use shared instance
+      progressTracker: sharedProgressTracker, // Use shared instance
     };
   },
   maskedErrors: false,
