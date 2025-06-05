@@ -1,4 +1,4 @@
-# Troubleshooting: Workspace Root and Repository Discovery Issues
+r# Troubleshooting: Workspace Root and Repository Discovery Issues
 
 ## Problem Symptoms
 - Change Review page shows "📁 Discovered 0 repositories in the workspace"
