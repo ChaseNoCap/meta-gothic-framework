@@ -562,10 +562,7 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     recentCommits: string[];
     context?: string;
   }): string {
-    // Much simpler prompt - let Claude look at the actual repo
-    return `Look at the uncommitted changes in the repository "${input.repository}" and write a conventional commit message.
-
-Output only a single line commit message in format: type(scope): description
-Be concise. No explanations.`;
+    // Super simple prompt - just ask for a commit message
+    return `Create a commit message for the pending changes in ${input.repository}. Return only the commit message, nothing else.`;
   }
 }
