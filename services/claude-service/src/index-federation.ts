@@ -103,8 +103,8 @@ const yoga = createYoga({
       workspaceRoot: process.env.WORKSPACE_ROOT || process.cwd(),
     };
   },
-  maskedErrors: false,
-  graphiql: true,
+  maskedErrors: process.env.NODE_ENV !== 'production',
+  graphiql: process.env.NODE_ENV !== 'production',
 });
 
 // Create HTTP server
