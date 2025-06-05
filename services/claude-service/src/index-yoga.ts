@@ -27,8 +27,14 @@ const logger = createLogger('claude-service', {}, {
 
 const PORT = process.env.CLAUDE_SERVICE_PORT || 3002;
 
-// Initialize services - session manager will be created per request with event bus
+// Initialize services - shared across all requests
 const runStorage = new RunStorage();
+
+// Create a shared event bus for the service
+const sharedEventBus = createRequestEventBus('shared');
+
+// Create a single shared session manager instance
+const sharedSessionManager = new ClaudeSessionManagerWithEvents(sharedEventBus, logger, 'shared');
 
 // Progress tracker events will be handled within the resolvers
 
@@ -65,11 +71,9 @@ const yoga = createYoga({
     // Create request-scoped event bus
     const eventBus = createRequestEventBus(correlationId);
 
-    // Create session manager with event support
-    const sessionManager = new ClaudeSessionManagerWithEvents(eventBus, requestLogger, correlationId);
-
+    // Use the shared session manager instance
     return {
-      sessionManager,
+      sessionManager: sharedSessionManager,
       runStorage,
       dataSources: createDataLoaders(runStorage, requestLogger),
       request,

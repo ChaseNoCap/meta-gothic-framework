@@ -12,7 +12,8 @@
     "test": "vitest",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "generate-types": "graphql-codegen"
+    "generate-types": "graphql-codegen",
+    "test-claude": "bash -c 'chmod +x /tmp/test-claude-session.sh && /tmp/test-claude-session.sh'"
   },
   "dependencies": {
     "@apollo/subgraph": "^2.10.2",

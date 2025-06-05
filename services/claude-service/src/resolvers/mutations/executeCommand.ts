@@ -9,10 +9,12 @@ export async function executeCommand(
   { input }: { input: ClaudeExecuteInput },
   context: Context
 ): Promise<ClaudeExecuteResult> {
-  const { sessionManager } = context;
+  const { sessionManager, logger } = context;
+  
+  logger.info('executeCommand called', { input });
   
   try {
-    const { sessionId } = await sessionManager.executeCommand(
+    const result = await sessionManager.executeCommand(
       input.prompt,
       {
         sessionId: input.sessionId || undefined,
@@ -22,21 +24,24 @@ export async function executeCommand(
       }
     );
     
-    // Return immediately with session info
-    // Client can subscribe to commandOutput for streaming
+    logger.info('executeCommand result', { result });
+    
+    // Return the complete response including the output
     return {
-      sessionId,
+      sessionId: result.sessionId,
       success: true,
       error: null,
-      initialResponse: null, // Will be streamed via subscription
+      initialResponse: result.output || '', // Return the actual output from Claude
       metadata: {
         startTime: new Date().toISOString(),
-        pid: undefined, // Will be set once process starts
+        pid: undefined,
         estimatedTime: estimateExecutionTime(input.prompt),
         flags: input.options?.customFlags || []
       }
     };
   } catch (error: any) {
+    logger.error('executeCommand error', { error: error.message });
+    
     return {
       sessionId: '',
       success: false,

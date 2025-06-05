@@ -44,7 +44,8 @@ export async function generateCommitMessages(
         repository: repo.name,
         diff: repo.diff,
         recentCommits: repo.recentCommits || [],
-        context: repo.context
+        context: repo.context,
+        path: repo.path
       });
       
       // Add run to batch for tracking

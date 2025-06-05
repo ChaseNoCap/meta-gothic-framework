@@ -25,7 +25,8 @@
     "logs:gateway": "tail -f /tmp/meta-gothic-gateway.log",
     "logs:ui": "tail -f /tmp/ui-components.log",
     "clean": "npm run stop && rm -f /tmp/*-yoga.log /tmp/*-gateway.log /tmp/ui-components.log",
-    "check-ports": "node scripts/check-ports.cjs"
+    "check-ports": "node scripts/check-ports.cjs",
+    "test-claude": "cd services/claude-service && npm run test-claude"
   },
   "dependencies": {},
   "devDependencies": {
