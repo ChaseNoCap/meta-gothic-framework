@@ -619,21 +619,32 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     // Use the repository path as working directory, or fallback to current directory
     const workingDir = input.path || process.cwd();
     
-    // Create a session in the repository directory
-    const session = await this.createSession(workingDir, `Commit message for ${input.repository}`);
+    // Create a NEW session for each commit message generation
+    // This ensures proper isolation and allows for future parallelization
+    const sessionName = `commit-${input.repository}-${Date.now()}`;
+    const session = await this.createSession(workingDir, sessionName);
     
     try {
-      // Execute the command in the repository directory so Claude can see the actual files
-      const result = await this.executeCommand(prompt, {
+      // Log session creation for debugging
+      this.logger?.info('Created commit message session', {
         sessionId: session.id,
-        workingDirectory: workingDir
+        repository: input.repository,
+        workingDirectory: workingDir,
+        sessionName
       });
       
+      // Execute the command in the repository directory so Claude can see the actual files
+      // The session is already created with the correct working directory
+      const result = await this.executeCommandInSession(session.id, prompt);
+      
       // Extract commit message from response
-      const message = result.output || 'chore: update code';
+      const message = result.content || 'chore: update code';
       
       // Simple confidence calculation based on response length
       const confidence = Math.min(100, Math.round((message.length / 100) * 100));
+      
+      // Mark session as completed (future: could keep for history)
+      await this.killSession(session.id);
       
       return {
         message: message.trim(),
@@ -641,7 +652,19 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
         runId
       };
     } catch (error) {
-      this.logger?.error('Failed to generate commit message', error as Error);
+      this.logger?.error('Failed to generate commit message', error as Error, {
+        repository: input.repository,
+        sessionId: session.id,
+        workingDirectory: workingDir
+      });
+      
+      // Clean up session on error
+      try {
+        await this.killSession(session.id);
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
+      
       throw error;
     }
   }
@@ -652,7 +675,14 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     recentCommits: string[];
     context?: string;
   }): string {
-    // Super simple prompt - just ask for a commit message
-    return `Create a commit message for the pending changes in ${input.repository}. Return only the commit message, nothing else.`;
+    // Simplified prompt to ensure it works
+    const prompt = `Generate a conventional commit message for the changes in this repository (${input.repository}).
+
+The changes include:
+${input.diff ? input.diff.substring(0, 1000) : 'No diff provided'}
+
+Return ONLY the commit message following conventional commits format (feat:, fix:, docs:, etc.), nothing else.`;
+    
+    return prompt;
   }
 }

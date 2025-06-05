@@ -18,7 +18,7 @@ const typeDefsString = readFileSync(join(__dirname, '../schema/schema-federated.
 const typeDefs = parse(typeDefsString);
 
 // Create the Git service
-const gitService = new GitServiceWithEvents();
+const gitService = new GitServiceWithEvents(process.env['WORKSPACE_ROOT'] || process.cwd());
 
 // Import resolvers
 import { gitStatus } from './resolvers/queries/gitStatus.js';
@@ -34,6 +34,8 @@ import { executeGitCommand } from './resolvers/mutations/executeGitCommand.js';
 import { commitChanges } from './resolvers/mutations/commitChanges.js';
 import { batchCommit } from './resolvers/mutations/batchCommit.js';
 import { pushChanges } from './resolvers/mutations/pushChanges.js';
+import { hierarchicalCommit } from './resolvers/mutations/hierarchicalCommit.js';
+import { hierarchicalCommitAndPush } from './resolvers/mutations/hierarchicalCommitAndPush.js';
 
 // Enhanced resolvers for federation
 const resolvers = {
@@ -98,7 +100,9 @@ const resolvers = {
     executeGitCommand,
     commitChanges,
     batchCommit,
-    pushChanges
+    pushChanges,
+    hierarchicalCommit,
+    hierarchicalCommitAndPush
   },
   // Entity resolver
   Repository: {

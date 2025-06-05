@@ -111,24 +111,34 @@ npm run dev
 ```
 
 ### Working with Packages
+
+#### ⚠️ IMPORTANT: Hierarchical Commit & Push
+The metaGOTHIC framework requires commits in the correct order to maintain clean git history:
+
+```bash
+# ✅ CORRECT WAY - Use hierarchical scripts
+npm run git:commit "feat: your commit message"  # Commits submodules first, then parent
+npm run git:push                               # Pushes in correct order
+npm run git:sync "feat: your message"          # Commit and push together
+
+# ❌ WRONG WAY - Don't commit parent first!
+git add .
+git commit -m "message"  # This creates dirty submodule references!
+```
+
+#### Manual Package Work
 ```bash
 # Update all submodules to latest
-npm run update-submodules
+git submodule update --recursive --remote
 
 # Work on a specific package
 cd packages/prompt-toolkit
 npm test
 npm run build
 
-# Commit changes in submodule
-git add .
-git commit -m "feat: add new template function"
-git push
-
-# Update submodule reference in meta repo
+# When done, use hierarchical commit from root:
 cd ../..
-git add packages/prompt-toolkit
-git commit -m "chore: update prompt-toolkit submodule"
+npm run git:commit "feat: add new template function"
 ```
 
 ## 🏗️ Architecture Patterns
