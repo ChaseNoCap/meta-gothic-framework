@@ -157,6 +157,19 @@ async function checkDependencies() {
   logSuccess('All dependencies checked');
 }
 
+// Check for GitHub token
+function checkGitHubToken() {
+  // Since we already loaded env vars, just check if they're set
+  if (!process.env.GITHUB_TOKEN && !process.env.VITE_GITHUB_TOKEN) {
+    log('\n⚠️  Warning: No GitHub token found!', 'yellow');
+    log('Repository Health features will not work without a GitHub token.', 'yellow');
+    log('Please create .env.gateway with:', 'yellow');
+    log('  GITHUB_TOKEN=your_github_token', 'dim');
+    log('Or set VITE_GITHUB_TOKEN in packages/ui-components/.env.local', 'dim');
+    log('Example: cp .env.gateway.example .env.gateway\n', 'dim');
+  }
+}
+
 // Start services with PM2
 function startServices() {
   return new Promise((resolve, reject) => {
@@ -236,32 +249,73 @@ function showStatus() {
   });
 }
 
+// Load environment variables from .env files
+function loadEnvironment() {
+  const rootDir = path.join(__dirname, '..');
+  
+  // Helper to load a single .env file
+  const loadEnvFile = (filePath, name) => {
+    if (fs.existsSync(filePath)) {
+      const envContent = fs.readFileSync(filePath, 'utf8');
+      let count = 0;
+      envContent.split('\n').forEach(line => {
+        if (line && !line.startsWith('#')) {
+          const [key, ...valueParts] = line.split('=');
+          if (key && valueParts.length > 0) {
+            const value = valueParts.join('=').trim();
+            process.env[key.trim()] = value;
+            count++;
+          }
+        }
+      });
+      if (count > 0) {
+        log(`  ✓ Loaded ${count} variables from ${name}`, 'green');
+      }
+    }
+  };
+  
+  logInfo('Loading environment variables...');
+  
+  // Load .env.gateway for GitHub token
+  loadEnvFile(path.join(rootDir, '.env.gateway'), '.env.gateway');
+  
+  // Load UI .env.local for Vite
+  loadEnvFile(path.join(rootDir, 'packages', 'ui-components', '.env.local'), 'ui-components/.env.local');
+  
+  // Set workspace root
+  process.env.WORKSPACE_ROOT = rootDir;
+  
+  // Show loaded environment status
+  log('\nEnvironment status:', 'cyan');
+  log(`  GITHUB_TOKEN: ${process.env.GITHUB_TOKEN ? '✓ Set' : '✗ Not set'}`, process.env.GITHUB_TOKEN ? 'green' : 'yellow');
+  log(`  VITE_GITHUB_TOKEN: ${process.env.VITE_GITHUB_TOKEN ? '✓ Set' : '✗ Not set'}`, process.env.VITE_GITHUB_TOKEN ? 'green' : 'yellow');
+  log(`  WORKSPACE_ROOT: ${process.env.WORKSPACE_ROOT}`, 'dim');
+}
+
 // Main function
 async function main() {
-  const args = process.argv.slice(2);
-  const cleanFlag = args.includes('--clean');
-  
   log('\n🚀 Meta-Gothic Framework Service Manager', 'bright');
   log('=====================================\n', 'dim');
   
   try {
+    // Load environment variables first
+    loadEnvironment();
+    
     // Check PM2 is installed
     await checkPM2();
     
-    // Clean everything if requested
-    if (cleanFlag) {
-      log('🧹 Clean start requested', 'yellow');
-      await cleanPM2();
-      await killZombies();
-      await cleanPorts();
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-    
-    // Always clean ports to be safe
+    // Always do a clean start
+    log('🧹 Performing clean startup...', 'yellow');
+    await cleanPM2();
+    await killZombies();
     await cleanPorts();
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Check dependencies
     await checkDependencies();
+    
+    // Check for GitHub token
+    checkGitHubToken();
     
     // Start services
     await startServices();

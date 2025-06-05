@@ -49,7 +49,7 @@ module.exports = {
         PORT: 3000,
         WORKSPACE_ROOT: WORKSPACE_ROOT
       },
-      env_file: './.env.gateway',
+      env_file: path.join(__dirname, '.env.gateway'),
       watch: false,
       max_memory_restart: '1G',
       error_file: './logs/gateway-error.log',
@@ -62,13 +62,14 @@ module.exports = {
     },
     {
       name: 'ui',
-      script: 'npm',
-      args: 'run dev',
-      cwd: './packages/ui-components',
+      script: 'bash',
+      args: '-c "cd ./packages/ui-components && npm run dev"',
+      cwd: './',
       env: {
         NODE_ENV: 'development',
         PORT: 3001,
-        WORKSPACE_ROOT: WORKSPACE_ROOT
+        WORKSPACE_ROOT: WORKSPACE_ROOT,
+        // Vite will load .env.local automatically from the package directory
       },
       watch: false,
       max_memory_restart: '2G',
