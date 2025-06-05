@@ -1,5 +1,6 @@
 # GraphQL Schema Stitching vs Federation: Analysis for Meta-Gothic Framework
 
+
 ## Overview
 
 This document analyzes the differences between GraphQL schema stitching and federation, focusing on how they handle schema composition and naming collisions in the meta-gothic-framework.

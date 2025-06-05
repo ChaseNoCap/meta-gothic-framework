@@ -34,7 +34,9 @@ interface SessionData {
 }
 
 export class ClaudeSessionManager extends EventEmitter {
-  private sessions: Map<string, SessionData> = new Map();
+  sessions: Map<string, SessionData> = new Map();
+  templates: Map<string, any> = new Map();
+  shares: Map<string, any> = new Map();
   private queue: PQueue;
   private runStorage: RunStorage;
   
@@ -261,6 +263,13 @@ export class ClaudeSessionManager extends EventEmitter {
       const claudePath = process.env.CLAUDE_PATH || 'claude';
       const args = ['--print', '--output-format', 'json'];
       
+      // Check if we have an existing session to resume
+      const existingSession = this.sessions.get(sessionId);
+      if (existingSession && existingSession.history.length > 0) {
+        // Resume existing session
+        args.push('--resume', sessionId);
+      }
+      
       // Add any custom flags
       if (options.commandOptions?.customFlags) {
         args.push(...options.commandOptions.customFlags);
@@ -309,24 +318,8 @@ export class ClaudeSessionManager extends EventEmitter {
         success: false
       });
 
-      // Build prompt with history for context
-      let fullPrompt = prompt;
-      
-      if (session.history.length > 0) {
-        // Include recent conversation history for context
-        const recentHistory = session.history.slice(-5); // Last 5 exchanges
-        const historyContext = recentHistory
-          .filter(h => h.response) // Only include completed exchanges
-          .map(h => `Human: ${h.prompt}\nAssistant: ${h.response}`)
-          .join('\n\n');
-        
-        if (historyContext) {
-          fullPrompt = `${historyContext}\n\nHuman: ${prompt}\nAssistant:`;
-        }
-      }
-      
-      // Send prompt with history
-      claude.stdin.write(fullPrompt);
+      // Send prompt - Claude CLI will handle session context internally
+      claude.stdin.write(prompt);
       claude.stdin.end();
 
       // Handle stdout

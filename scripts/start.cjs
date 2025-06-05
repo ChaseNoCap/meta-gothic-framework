@@ -346,6 +346,42 @@ function showStatus() {
   });
 }
 
+// Generate supergraph schema
+function generateSupergraph() {
+  return new Promise((resolve, reject) => {
+    logInfo('Generating supergraph schema...');
+    
+    const supergraphScript = path.join(__dirname, '..', 'services', 'meta-gothic-app', 'compose-supergraph.sh');
+    
+    // Check if the script exists
+    if (!fs.existsSync(supergraphScript)) {
+      log('Supergraph generation script not found, skipping...', 'yellow');
+      resolve();
+      return;
+    }
+    
+    // Make sure it's executable
+    fs.chmodSync(supergraphScript, '755');
+    
+    const generate = spawn('bash', [supergraphScript], {
+      stdio: 'inherit',
+      cwd: path.join(__dirname, '..', 'services', 'meta-gothic-app')
+    });
+    
+    generate.on('close', (code) => {
+      if (code === 0) {
+        logSuccess('Supergraph schema generated successfully');
+        resolve();
+      } else {
+        log('⚠️  Supergraph generation failed, but continuing...', 'yellow');
+        log('You may need to run it manually later', 'dim');
+        // Don't reject - allow services to continue
+        resolve();
+      }
+    });
+  });
+}
+
 // Load environment variables from .env files
 function loadEnvironment() {
   const rootDir = path.join(__dirname, '..');
@@ -422,6 +458,9 @@ async function main() {
     
     // Validate health
     await validateServices();
+    
+    // Generate supergraph schema
+    await generateSupergraph();
     
     // Show status
     await showStatus();
