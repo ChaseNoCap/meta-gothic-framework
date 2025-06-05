@@ -110,3 +110,89 @@ Implemented and operational. The dashboard successfully tracks:
 2. **Alerting**: Automated notifications for failures
 3. **Advanced Analytics**: ML-based anomaly detection
 4. **Cost Tracking**: CI/CD resource usage and costs
+
+## Performance Monitoring (Added 2025-06-04)
+
+### Context
+The metaGOTHIC services require comprehensive performance monitoring, especially for long-running Claude AI operations that can take 15+ minutes to complete. We need configurable metrics collection to avoid unnecessary overhead while capturing critical performance data.
+
+### Decision
+
+We will implement a configurable performance monitoring system using:
+
+1. **GraphQL Plugin for Automatic Monitoring**: All GraphQL operations are automatically tracked
+2. **Direct Monitor Usage for Sub-Operations**: Manual tracking for internal operations within resolvers
+3. **Environment-Based Configuration**: Control metric collection via PERFORMANCE_MODE
+
+### Implementation
+
+#### 1. Base Monitoring (GraphQL Plugin)
+```typescript
+// Automatically tracks all GraphQL operations
+plugins: [
+  createPerformancePlugin({
+    serviceName: 'claude-service',
+    slowThreshold: 30000,  // 30 seconds for "slow" operations
+    logger
+  })
+]
+```
+
+#### 2. Long-Running Operation Support
+```typescript
+// Configuration for Claude operations
+thresholds: {
+  slowOperationMs: 30000,       // 30 seconds for regular operations
+  claudeSlowOperationMs: 60000, // 1 minute for Claude operations  
+  maxOperationMs: 1800000,      // 30 minutes before considering "stale"
+  highMemoryMB: 500,
+  highCPUMs: 10000,
+}
+```
+
+#### 3. Manual Tracking for Sub-Operations
+```typescript
+// Only for tracking expensive sub-operations within a resolver
+const monitor = new PerformanceMonitor(context.eventBus, context.logger);
+monitor.startOperation(opId, 'claudeExecution', 'api-call');
+// ... long-running operation ...
+monitor.endOperation(opId, undefined, { tokenCount: result.tokenUsage });
+```
+
+### Configuration Strategy
+
+**Environment Modes:**
+- `PERFORMANCE_MODE=production`: 10% sampling, minimal metrics
+- `PERFORMANCE_MODE=development`: All metrics enabled, no sampling
+- `PERFORMANCE_MODE=debug`: Everything enabled for troubleshooting
+
+**Sampling for Long Operations:**
+```typescript
+sampling: {
+  enabled: true,
+  rate: 1.0,                    // Always sample Claude operations
+  alwaysSampleSlow: true,       // Always capture slow ops
+  includePatterns: ['claude.*', 'execute.*'] // Always sample Claude ops
+}
+```
+
+### Rationale
+
+1. **No Decorators on Functions**: TypeScript/JavaScript decorators only work on classes, not standalone functions. Our resolvers are functions, so we use a plugin approach instead.
+
+2. **Long Operation Support**: Claude operations require different thresholds and cleanup strategies than typical API calls.
+
+3. **Configurable Overhead**: Different environments need different levels of monitoring detail.
+
+### Consequences
+
+**Positive:**
+- Automatic monitoring without modifying every resolver
+- Configurable overhead based on environment
+- Support for 15+ minute Claude operations
+- Detailed metrics for AI operations (tokens, costs)
+
+**Negative:**
+- Cannot use decorator syntax on standalone functions
+- Manual tracking needed for sub-operations
+- Additional configuration complexity

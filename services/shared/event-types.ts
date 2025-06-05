@@ -208,6 +208,45 @@ export interface SlowOperationDetectedEvent extends BaseEvent {
   };
 }
 
+export interface PerformanceOperationStartedEvent extends BaseEvent {
+  type: 'performance.operation.started';
+  payload: {
+    operationId: string;
+    operationName: string;
+    operationType: string;
+    metadata?: Record<string, any>;
+    correlationId?: string;
+  };
+}
+
+export interface PerformanceOperationCompletedEvent extends BaseEvent {
+  type: 'performance.operation.completed';
+  payload: {
+    operationId: string;
+    operationName: string;
+    operationType: string;
+    duration: number;
+    isSlow: boolean;
+    success: boolean;
+    error?: string;
+    metadata?: Record<string, any>;
+    correlationId?: string;
+  };
+}
+
+export interface PerformanceSlowOperationEvent extends BaseEvent {
+  type: 'performance.slow.operation';
+  payload: {
+    operationId: string;
+    operationName: string;
+    operationType: string;
+    duration: number;
+    threshold: number;
+    metadata?: Record<string, any>;
+    correlationId?: string;
+  };
+}
+
 
 // Union type for all events
 export type MetaGothicEvent =

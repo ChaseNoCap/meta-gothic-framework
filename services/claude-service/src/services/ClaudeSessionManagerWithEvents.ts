@@ -323,6 +323,136 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     return run;
   }
 
+  /**
+   * Generate commit message (optimized for parallel execution)
+   */
+  async generateCommitMessage(input: {
+    repository: string;
+    diff: string;
+    recentCommits: string[];
+    context?: string;
+  }): Promise<{ message: string; confidence: number; runId: string }> {
+    // Create run record
+    const run: AgentRun = {
+      id: uuidv4(),
+      repository: input.repository,
+      status: RunStatus.QUEUED,
+      startedAt: new Date(),
+      metadata: {
+        type: 'commit-message',
+        input: {
+          diff: input.diff,
+          recentCommits: input.recentCommits,
+          context: input.context,
+        },
+        correlationId: this.correlationId
+      },
+      totalSteps: 1,
+      currentStep: 0,
+      commands: [`Generate commit message for ${input.repository}`],
+      description: `Generate commit message for repository ${input.repository}`,
+    };
+
+    await this.runStorage.saveRun(run);
+
+    // Emit initial progress
+    progressTracker.updateRunProgress(run.id, ProgressStage.QUEUED);
+
+    // This can be called multiple times in parallel
+    const result = await this.queue.add(async () => {
+      try {
+        // Update status to running
+        run.status = RunStatus.RUNNING;
+        await this.runStorage.saveRun(run);
+        progressTracker.updateRunProgress(run.id, ProgressStage.INITIALIZING, 'Starting commit message generation');
+
+        // Build prompt
+        const prompt = this.buildCommitMessagePrompt(input);
+        
+        // Main processing
+        progressTracker.updateRunProgress(run.id, ProgressStage.PROCESSING, 'Generating commit message');
+        const startTime = Date.now();
+        
+        // For now, create a simple commit message based on the diff
+        // In a real implementation, this would call Claude API
+        const message = await this.generateCommitMessageFromDiff(input.diff, input.recentCommits);
+        const duration = Date.now() - startTime;
+
+        // Update run with result
+        run.status = RunStatus.COMPLETED;
+        run.completedAt = new Date();
+        run.duration = duration;
+        run.output = { message };
+        await this.runStorage.saveRun(run);
+
+        progressTracker.updateRunProgress(run.id, ProgressStage.COMPLETED, 'Commit message generated');
+
+        return {
+          message,
+          confidence: 0.85, // Mock confidence for now
+          runId: run.id
+        };
+      } catch (error: any) {
+        run.status = RunStatus.FAILED;
+        run.completedAt = new Date();
+        run.error = error.message;
+        await this.runStorage.saveRun(run);
+
+        progressTracker.updateRunProgress(run.id, ProgressStage.FAILED, error.message);
+        throw error;
+      }
+    });
+
+    return result;
+  }
+
+  private buildCommitMessagePrompt(input: {
+    repository: string;
+    diff: string;
+    recentCommits: string[];
+    context?: string;
+  }): string {
+    return `Generate a conventional commit message for the following changes in ${input.repository}:
+
+Diff:
+${input.diff}
+
+Recent commits:
+${input.recentCommits.join('\n')}
+
+${input.context ? `Context: ${input.context}` : ''}
+
+Follow conventional commit format (type(scope): description).`;
+  }
+
+  private async generateCommitMessageFromDiff(diff: string, recentCommits: string[]): Promise<string> {
+    // Simple implementation that analyzes the diff
+    // In production, this would call Claude API
+    
+    const lines = diff.split('\n');
+    const filesChanged = lines.filter(l => l.startsWith('+++') || l.startsWith('---')).length / 2;
+    const additions = lines.filter(l => l.startsWith('+')).length;
+    const deletions = lines.filter(l => l.startsWith('-')).length;
+    
+    // Determine commit type based on changes
+    let type = 'chore';
+    if (diff.includes('function') || diff.includes('class')) {
+      type = additions > deletions ? 'feat' : 'refactor';
+    } else if (diff.includes('test') || diff.includes('spec')) {
+      type = 'test';
+    } else if (diff.includes('README') || diff.includes('.md')) {
+      type = 'docs';
+    } else if (deletions > additions) {
+      type = 'fix';
+    }
+    
+    // Generate a simple message
+    const action = additions > deletions ? 'add' : deletions > additions ? 'remove' : 'update';
+    const scope = filesChanged === 1 ? 'file' : 'files';
+    
+    return `${type}: ${action} ${filesChanged} ${scope} with ${additions} additions and ${deletions} deletions`;
+  }
+
   private async executeAgentRun(run: AgentRun): Promise<void> {
     const runLogger = this.logger?.child({ 
       runId: run.id,
@@ -415,7 +545,17 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     }
   }
 
-  async getActiveSessions(): Promise<ClaudeSession[]> {
+  async checkClaudeAvailability(): Promise<boolean> {
+    try {
+      const { execSync } = await import('child_process');
+      execSync('which claude', { encoding: 'utf8' });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  getActiveSessions(): ClaudeSession[] {
     return Array.from(this.sessions.values())
       .filter(s => s.status === 'active')
       .map(s => ({

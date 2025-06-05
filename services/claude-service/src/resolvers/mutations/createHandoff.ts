@@ -174,3 +174,4 @@ function extractModifiedFiles(history: any[]): string[] {
   
   return Array.from(files);
 }
+

@@ -29,6 +29,18 @@
     "./guards": {
       "types": "./dist/types/guards.d.ts",
       "import": "./dist/types/guards.js"
+    },
+    "./file-system": {
+      "types": "./dist/file-system/index.d.ts",
+      "import": "./dist/file-system/index.js"
+    },
+    "./cache": {
+      "types": "./dist/cache/index.d.ts",
+      "import": "./dist/cache/index.js"
+    },
+    "./event-types": {
+      "types": "./dist/event-types.d.ts",
+      "import": "./dist/event-types.js"
     }
   },
   "files": [
@@ -56,6 +68,8 @@
   },
   "dependencies": {
     "@chasenocap/logger": "file:../../packages/logger",
-    "@chasenocap/event-system": "file:../../packages/event-system"
+    "@chasenocap/event-system": "file:../../packages/event-system",
+    "@chasenocap/file-system": "file:../../packages/file-system",
+    "inversify": "^6.0.2"
   }
 }

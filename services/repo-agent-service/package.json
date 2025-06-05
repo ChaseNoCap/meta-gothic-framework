@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index-yoga.ts",
+    "dev": "tsx src/index-yoga.ts",
+    "dev:watch": "tsx watch src/index-yoga.ts",
     "build": "tsc",
     "start": "node dist/index-yoga.js",
     "test": "vitest",
@@ -17,6 +18,7 @@
     "@apollo/federation-subgraph-compatibility": "^2.2.1",
     "@apollo/subgraph": "^2.10.2",
     "@chasenocap/event-system": "file:../../packages/event-system",
+    "@chasenocap/file-system": "file:../../packages/file-system",
     "@chasenocap/logger": "file:../../packages/logger",
     "@meta-gothic/shared-types": "file:../shared",
     "@envelop/dataloader": "^7.1.3",

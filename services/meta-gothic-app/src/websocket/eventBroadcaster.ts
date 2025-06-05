@@ -2,14 +2,17 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { IEventBus, BaseEvent } from '@chasenocap/event-system';
 import { createLogger } from '@chasenocap/logger';
-import { join, dirname } from 'path';
+import { NodeFileSystem } from '@chasenocap/file-system';
 import { fileURLToPath } from 'url';
-import type { MetaGothicEvent } from '../../../shared/event-types';
+import type { MetaGothicEvent } from '@meta-gothic/shared-types/event-types';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+// Create file system instance
+const fileSystem = new NodeFileSystem();
+
+const __dirname = fileSystem.dirname(fileURLToPath(import.meta.url));
 
 const logger = createLogger('websocket-broadcaster', {}, {
-  logDir: join(__dirname, '../../../logs/websocket')
+  logDir: fileSystem.join(__dirname, '../../../logs/websocket')
 });
 
 export interface WebSocketClient {

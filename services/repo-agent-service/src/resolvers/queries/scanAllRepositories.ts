@@ -1,10 +1,10 @@
 import simpleGit from 'simple-git';
 import { Context } from '../context.js';
 import { RepositoryScan, RepositoryType } from '../../types/generated.js';
-import path from 'path';
-import fs from 'fs/promises';
+import { getFileSystem } from '@meta-gothic/shared-types/file-system';
+import type { IFileSystem } from '@meta-gothic/shared-types/file-system';
 
-async function getSubmodules(repoPath: string): Promise<string[]> {
+async function getSubmodules(repoPath: string, fileSystem: IFileSystem): Promise<string[]> {
   try {
     const git = simpleGit(repoPath);
     const submoduleStatus = await git.raw(['submodule', 'status']);
@@ -19,7 +19,7 @@ async function getSubmodules(repoPath: string): Promise<string[]> {
       // Format: " 160000 commit-hash 0 path/to/submodule"
       const match = line.match(/^\s*[\+\-\s]?[0-9a-f]+\s+(\S+)/);
       if (match) {
-        const submodulePath = path.join(repoPath, match[1]);
+        const submodulePath = fileSystem.join(repoPath, match[1]);
         submodules.push(submodulePath);
       }
     }
@@ -30,26 +30,33 @@ async function getSubmodules(repoPath: string): Promise<string[]> {
   }
 }
 
-async function findGitRepositories(dir: string, results: string[] = []): Promise<string[]> {
+async function findGitRepositories(dir: string, fileSystem: IFileSystem, results: string[] = []): Promise<string[]> {
   try {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const entries = await fileSystem.listDirectory(dir);
+    const entriesWithTypes = [];
+    
+    for (const entry of entries) {
+      const isDir = await fileSystem.isDirectory(entry);
+      const basename = fileSystem.basename(entry);
+      entriesWithTypes.push({ path: entry, name: basename, isDirectory: isDir });
+    }
     
     // Check if current directory is a git repository
-    const hasGit = entries.some(entry => entry.name === '.git' && entry.isDirectory());
+    const hasGit = entriesWithTypes.some(entry => entry.name === '.git' && entry.isDirectory);
     if (hasGit) {
       results.push(dir);
       
       // Also get submodules for this repository
-      const submodules = await getSubmodules(dir);
+      const submodules = await getSubmodules(dir, fileSystem);
       results.push(...submodules);
       
       return results;
     }
     
     // Recurse into subdirectories
-    for (const entry of entries) {
-      if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
-        await findGitRepositories(path.join(dir, entry.name), results);
+    for (const entry of entriesWithTypes) {
+      if (entry.isDirectory && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+        await findGitRepositories(entry.path, fileSystem, results);
       }
     }
     
@@ -60,7 +67,7 @@ async function findGitRepositories(dir: string, results: string[] = []): Promise
   }
 }
 
-async function getRepositoryType(repoPath: string): Promise<RepositoryType> {
+async function getRepositoryType(repoPath: string, fileSystem: IFileSystem): Promise<RepositoryType> {
   try {
     const git = simpleGit(repoPath);
     
@@ -77,9 +84,9 @@ async function getRepositoryType(repoPath: string): Promise<RepositoryType> {
     }
     
     // Check if it's a submodule by looking for .git file (not directory)
-    const gitPath = path.join(repoPath, '.git');
-    const stat = await fs.stat(gitPath);
-    if (stat.isFile()) {
+    const gitPath = fileSystem.join(repoPath, '.git');
+    const isFile = await fileSystem.isFile(gitPath);
+    if (isFile) {
       return 'SUBMODULE';
     }
     
@@ -95,8 +102,13 @@ export async function scanAllRepositories(
   context: Context
 ): Promise<RepositoryScan[]> {
   try {
+    const fileSystem = getFileSystem({ 
+      eventBus: context.eventBus, 
+      logger: context.logger, 
+      correlationId: context.correlationId 
+    });
     // Find all git repositories in the workspace
-    const repositories = await findGitRepositories(context.workspaceRoot);
+    const repositories = await findGitRepositories(context.workspaceRoot, fileSystem);
     
     // Get information for each repository
     const scans = await Promise.all(
@@ -105,10 +117,10 @@ export async function scanAllRepositories(
           const git = simpleGit(repoPath);
           const status = await git.status();
           const branchSummary = await git.branch();
-          const type = await getRepositoryType(repoPath);
+          const type = await getRepositoryType(repoPath, fileSystem);
           
           // Get repository name from path
-          const name = path.basename(repoPath);
+          const name = fileSystem.basename(repoPath);
           
           return {
             name,
@@ -121,7 +133,7 @@ export async function scanAllRepositories(
         } catch (error: any) {
           // If we can't get status for a repository, return minimal info
           return {
-            name: path.basename(repoPath),
+            name: fileSystem.basename(repoPath),
             path: repoPath,
             isDirty: false,
             branch: 'unknown',

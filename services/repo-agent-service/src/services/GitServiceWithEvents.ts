@@ -1,12 +1,16 @@
 import simpleGit, { SimpleGit, StatusResult } from 'simple-git';
-import { join } from 'path';
+import { getFileSystem } from '@meta-gothic/shared-types/file-system';
+import type { IFileSystem } from '@meta-gothic/shared-types/file-system';
 import { Emits, Traces, setEventBus, IEventBus } from '@chasenocap/event-system';
 import type { ILogger } from '@chasenocap/logger';
+import { Cacheable, CacheInvalidate } from '@meta-gothic/shared-types/cache';
 
 export class GitServiceWithEvents {
   private git: SimpleGit;
   private logger?: ILogger;
   private correlationId?: string;
+  private eventBus?: IEventBus;
+  private fileSystem: IFileSystem;
 
   constructor(
     private workspaceRoot: string,
@@ -17,6 +21,8 @@ export class GitServiceWithEvents {
     this.git = simpleGit(workspaceRoot);
     this.logger = logger;
     this.correlationId = correlationId;
+    this.eventBus = eventBus;
+    this.fileSystem = getFileSystem({ eventBus, logger, correlationId });
 
     // Set event bus for decorators
     if (eventBus) {
@@ -24,6 +30,11 @@ export class GitServiceWithEvents {
     }
   }
 
+  @Cacheable('git.status', { 
+    ttlSeconds: 30,  // Cache for 30 seconds
+    keyGenerator: (path: string) => path,
+    invalidateOn: ['repo.commit.created', 'repo.push.completed']
+  })
   @Emits('repo.status.queried', {
     payloadMapper: (path: string) => ({ path, timestamp: Date.now() })
   })
@@ -33,7 +44,7 @@ export class GitServiceWithEvents {
     statusLogger?.debug('Getting git status');
 
     try {
-      const fullPath = join(this.workspaceRoot, path);
+      const fullPath = this.fileSystem.join(this.workspaceRoot, path);
       const git = simpleGit(fullPath);
       const status = await git.status();
 
@@ -51,6 +62,7 @@ export class GitServiceWithEvents {
     }
   }
 
+  @CacheInvalidate('git.status', { pattern: '' })  // Invalidate all git status cache
   @Emits('repo.commit.created', {
     payloadMapper: (path: string, message: string, files?: string[]) => ({
       path,
@@ -76,7 +88,7 @@ export class GitServiceWithEvents {
     });
 
     try {
-      const fullPath = join(this.workspaceRoot, path);
+      const fullPath = this.fileSystem.join(this.workspaceRoot, path);
       const git = simpleGit(fullPath);
 
       // Stage files if specified
@@ -126,7 +138,7 @@ export class GitServiceWithEvents {
     pushLogger?.info('Pushing changes');
 
     try {
-      const fullPath = join(this.workspaceRoot, path);
+      const fullPath = this.fileSystem.join(this.workspaceRoot, path);
       const git = simpleGit(fullPath);
 
       if (branch) {
@@ -142,6 +154,10 @@ export class GitServiceWithEvents {
     }
   }
 
+  @Cacheable('git.repositories', { 
+    ttlSeconds: 300,  // Cache for 5 minutes
+    keyGenerator: (path: string) => path
+  })
   @Emits('repo.scan.completed', {
     payloadMapper: (path: string, repositoryCount: number) => ({
       path,
@@ -156,7 +172,7 @@ export class GitServiceWithEvents {
 
     try {
       const { glob } = await import('glob');
-      const fullPath = join(this.workspaceRoot, path);
+      const fullPath = this.fileSystem.join(this.workspaceRoot, path);
       
       // Find all .git directories
       const gitDirs = await glob('**/.git', {
@@ -201,7 +217,7 @@ export class GitServiceWithEvents {
     branchLogger?.info('Creating branch');
 
     try {
-      const fullPath = join(this.workspaceRoot, path);
+      const fullPath = this.fileSystem.join(this.workspaceRoot, path);
       const git = simpleGit(fullPath);
       
       await git.checkoutLocalBranch(branchName);
@@ -231,7 +247,7 @@ export class GitServiceWithEvents {
     cmdLogger?.info('Executing git command');
 
     try {
-      const fullPath = join(this.workspaceRoot, path);
+      const fullPath = this.fileSystem.join(this.workspaceRoot, path);
       const git = simpleGit(fullPath);
       
       const result = await git.raw(command);
@@ -253,7 +269,7 @@ export class GitServiceWithEvents {
     author: string;
     date: string;
   }> {
-    const fullPath = join(this.workspaceRoot, path);
+    const fullPath = this.fileSystem.join(this.workspaceRoot, path);
     const git = simpleGit(fullPath);
     
     const log = await git.log({ maxCount: 1 });
@@ -272,7 +288,7 @@ export class GitServiceWithEvents {
   }
 
   async getDiff(path: string, cached: boolean = false): Promise<string> {
-    const fullPath = join(this.workspaceRoot, path);
+    const fullPath = this.fileSystem.join(this.workspaceRoot, path);
     const git = simpleGit(fullPath);
     
     if (cached) {

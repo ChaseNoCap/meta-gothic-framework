@@ -6,6 +6,6 @@ import { performanceMetrics } from './performanceMetrics.js';
 export const resolvers = {
   sessions,
   session,
-  health,
+  claudeHealth: health,
   performanceMetrics
 };

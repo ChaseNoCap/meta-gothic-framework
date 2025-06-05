@@ -14,7 +14,9 @@
   "include": [
     "types/**/*.ts",
     "index.ts",
-    "event-types.ts"
+    "event-types.ts",
+    "file-system/**/*.ts",
+    "cache/**/*.ts"
   ],
   "exclude": [
     "node_modules",

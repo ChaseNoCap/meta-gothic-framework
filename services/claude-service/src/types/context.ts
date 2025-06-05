@@ -3,6 +3,7 @@ import type { PubSub } from 'mercurius';
 import type { RunStorage } from '../services/RunStorage';
 import type { DataLoaders } from '../dataloaders';
 import type { GraphQLContext } from '@meta-gothic/shared-types';
+import type { PerformanceMonitoringConfig } from '../../../shared/performance/config.js';
 
 export interface Context extends GraphQLContext {
   sessionManager: ClaudeSessionManagerWithEvents;
@@ -11,4 +12,16 @@ export interface Context extends GraphQLContext {
   loaders: DataLoaders;
   pubsub?: PubSub;
   dataSources?: DataLoaders;
+  // Performance monitoring support
+  performanceConfig?: PerformanceMonitoringConfig;
+  tokenUsage?: {
+    input: number;
+    output: number;
+    estimatedCost?: number;
+  };
+  cacheHit?: boolean;
+  graphqlInfo?: {
+    fieldCount: number;
+    complexity: number;
+  };
 }

@@ -2,6 +2,9 @@
 # This service handles all Git-related operations for the metaGOTHIC framework
 
 type Query {
+  """Check Repo Agent service health and Git availability"""
+  repoAgentHealth: RepoAgentHealth!
+  
   """Get the current git status of a repository"""
   gitStatus(path: String!): GitStatus!
   
@@ -39,6 +42,48 @@ type Mutation {
 }
 
 # Types
+
+type RepoAgentHealth {
+  """Service health status"""
+  status: String!
+  
+  """Current timestamp"""
+  timestamp: String!
+  
+  """Service version"""
+  version: String
+  
+  """Additional service information"""
+  details: RepoAgentHealthDetails!
+}
+
+type RepoAgentHealthDetails {
+  """Number of repositories being monitored"""
+  repositoryCount: Int!
+  
+  """Git version"""
+  gitVersion: String!
+  
+  """System information"""
+  system: RepoAgentSystemInfo!
+}
+
+type RepoAgentSystemInfo {
+  """Platform (linux, darwin, win32)"""
+  platform: String!
+  
+  """CPU architecture"""
+  arch: String!
+  
+  """Node.js version"""
+  nodeVersion: String!
+  
+  """Free memory in bytes"""
+  freeMemory: Float!
+  
+  """Total memory in bytes"""
+  totalMemory: Float!
+}
 
 type GitStatus {
   """Current branch name"""

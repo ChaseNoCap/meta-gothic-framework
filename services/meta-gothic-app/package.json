@@ -5,8 +5,9 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/gateway.ts",
-    "dev:nocache": "ENABLE_CACHE=false tsx watch src/gateway.ts",
+    "dev": "tsx src/gateway.ts",
+    "dev:watch": "tsx watch src/gateway.ts",
+    "dev:nocache": "ENABLE_CACHE=false tsx src/gateway.ts",
     "build": "tsc",
     "start": "node dist/gateway.js",
     "test": "vitest",
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "@chasenocap/event-system": "file:../../packages/event-system",
+    "@chasenocap/file-system": "file:../../packages/file-system",
     "@chasenocap/logger": "file:../../packages/logger",
     "@meta-gothic/shared-types": "file:../shared",
     "@fastify/cors": "^11.0.1",

@@ -96,7 +96,7 @@ export async function generateCommitMessages(
       
       const executionTime = Date.now() - startTime;
       
-      return {
+      const result = {
         totalRepositories: input.repositories.length,
         successCount,
         results,
@@ -107,6 +107,13 @@ export async function generateCommitMessages(
         },
         executionTime
       };
+      
+      // Attach token usage for @Monitor decorator
+      if (context.tokenUsage !== undefined) {
+        context.tokenUsage = result.totalTokenUsage;
+      }
+      
+      return result;
     },
     {
       repositoryCount: input.repositories.length,
@@ -133,3 +140,4 @@ function calculateEstimatedCost(outputTokens: number): number {
   const costPerMillionOutputTokens = 75; // USD
   return (outputTokens / 1_000_000) * costPerMillionOutputTokens;
 }
+

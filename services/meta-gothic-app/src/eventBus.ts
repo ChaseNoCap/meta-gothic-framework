@@ -1,14 +1,17 @@
 import { EventBus, IEventBus, BaseEvent } from '@chasenocap/event-system';
 import { createLogger, ILogger } from '@chasenocap/logger';
-import { join, dirname } from 'path';
+import { NodeFileSystem } from '@chasenocap/file-system';
 import { fileURLToPath } from 'url';
 import type { MetaGothicEvent } from '../../shared/event-types';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+// Create file system instance
+const fileSystem = new NodeFileSystem();
+
+const __dirname = fileSystem.dirname(fileURLToPath(import.meta.url));
 
 // Create a logger specifically for events
 const eventLogger = createLogger('gateway-events', {}, {
-  logDir: join(__dirname, '../../logs/events')
+  logDir: fileSystem.join(__dirname, '../../logs/events')
 });
 
 // Create event bus with logging middleware

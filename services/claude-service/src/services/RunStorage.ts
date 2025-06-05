@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import { getFileSystem } from '../../../shared/file-system/index.js';
+import type { IFileSystem } from '../../../shared/file-system/index.js';
+import type { IEventBus } from '@chasenocap/event-system';
+import type { ILogger } from '@chasenocap/logger';
 import { RunStatus as SharedRunStatus } from '@meta-gothic/shared-types';
 
 // Extend the shared RunStatus with Claude-specific statuses
@@ -87,15 +89,25 @@ export class RunStorage {
   private runs: Map<string, AgentRun> = new Map();
   private storageDir: string;
   private maxRetentionDays: number = 30;
+  private fileSystem: IFileSystem;
+  private eventBus?: IEventBus;
+  private logger?: ILogger;
 
-  constructor(storageDir: string = '/Users/josh/Documents/meta-gothic-framework/logs/claude-runs') {
+  constructor(
+    storageDir: string = '/Users/josh/Documents/meta-gothic-framework/logs/claude-runs',
+    eventBus?: IEventBus,
+    logger?: ILogger
+  ) {
     this.storageDir = storageDir;
+    this.eventBus = eventBus;
+    this.logger = logger;
+    this.fileSystem = getFileSystem({ eventBus, logger });
     this.initializeStorage();
   }
 
   private async initializeStorage(): Promise<void> {
     try {
-      await fs.mkdir(this.storageDir, { recursive: true });
+      await this.fileSystem.createDirectory(this.storageDir);
       await this.loadExistingRuns();
     } catch (error) {
       console.error('Failed to initialize run storage:', error);
@@ -104,12 +116,12 @@ export class RunStorage {
 
   private async loadExistingRuns(): Promise<void> {
     try {
-      const files = await fs.readdir(this.storageDir);
+      const files = await this.fileSystem.listDirectory(this.storageDir);
       const runFiles = files.filter(f => f.endsWith('.json'));
       
       for (const file of runFiles) {
         try {
-          const content = await fs.readFile(path.join(this.storageDir, file), 'utf-8');
+          const content = await this.fileSystem.readFile(file);
           const run = JSON.parse(content, this.reviveDates);
           this.runs.set(run.id, run);
         } catch (error) {
@@ -133,8 +145,8 @@ export class RunStorage {
     
     // Persist to file
     try {
-      const filePath = path.join(this.storageDir, `${run.id}.json`);
-      await fs.writeFile(filePath, JSON.stringify(run, null, 2));
+      const filePath = this.fileSystem.join(this.storageDir, `${run.id}.json`);
+      await this.fileSystem.writeFile(filePath, JSON.stringify(run, null, 2));
     } catch (error) {
       console.error(`Failed to persist run ${run.id}:`, error);
     }
@@ -247,8 +259,8 @@ export class RunStorage {
         this.runs.delete(id);
         
         try {
-          const filePath = path.join(this.storageDir, `${id}.json`);
-          await fs.unlink(filePath);
+          const filePath = this.fileSystem.join(this.storageDir, `${id}.json`);
+          await this.fileSystem.deleteFile(filePath);
           deletedCount++;
         } catch (error) {
           console.error(`Failed to delete run file ${id}:`, error);

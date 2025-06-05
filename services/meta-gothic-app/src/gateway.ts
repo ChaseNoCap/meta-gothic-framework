@@ -1,25 +1,25 @@
 import { createServer } from 'node:http';
 import { createYoga } from 'graphql-yoga';
 import { stitchSchemas } from '@graphql-tools/stitch';
-import { schemaFromExecutor } from '@graphql-tools/wrap';
-import { buildHTTPExecutor } from '@graphql-tools/executor-http';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { RenameTypes } from '@graphql-tools/wrap';
 import { createLogger } from '@chasenocap/logger';
 import { nanoid } from 'nanoid';
-import { join, dirname } from 'path';
+import { getFileSystem } from '../../shared/file-system/index.js';
 import { fileURLToPath } from 'url';
 import { createRequestEventBus, eventBus as globalEventBus } from './eventBus.js';
 // import type { GraphQLContext } from '@meta-gothic/shared-types'; // Not needed in this file
 import { createGitHubResolvers } from './githubResolvers.js';
 import { useEventTracking } from './plugins/eventTracking.js';
 import { EventBroadcaster } from './websocket/eventBroadcaster.js';
+import { createResilientExecutor, wrapExecutorWithRetry } from './resilientExecutor.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const fileSystem = getFileSystem();
+const __dirname = fileSystem.dirname(fileURLToPath(import.meta.url));
 
 // Initialize logger
 const logger = createLogger('meta-gothic-gateway', {}, {
-  logDir: join(__dirname, '../../logs/meta-gothic-gateway')
+  logDir: fileSystem.join(__dirname, '../../logs/meta-gothic-gateway')
 });
 
 const PORT = process.env['GATEWAY_PORT'] || 3000;
@@ -36,27 +36,23 @@ async function start() {
   }
 
   try {
-    // Create executors for each service
-    const claudeExecutor = buildHTTPExecutor({
-      endpoint: 'http://127.0.0.1:3002/graphql',
-      headers: (executorRequest) => {
-        const context = executorRequest?.context as any;
-        return context?.headers || {};
-      },
-    });
+    // Create resilient executors for each service
+    logger.info('Connecting to Claude Service...');
+    const { schema: claudeSchema, executor: claudeExecutor } = await createResilientExecutor(
+      'http://127.0.0.1:3002/graphql',
+      'Claude Service'
+    );
+    
+    logger.info('Connecting to Repo Agent Service...');
+    const { schema: repoAgentSchema, executor: repoAgentExecutor } = await createResilientExecutor(
+      'http://127.0.0.1:3004/graphql',
+      'Repo Agent Service'
+    );
 
-    const repoAgentExecutor = buildHTTPExecutor({
-      endpoint: 'http://127.0.0.1:3004/graphql',
-      headers: (executorRequest) => {
-        const context = executorRequest?.context as any;
-        return context?.headers || {};
-      },
-    });
-
-    // Build subschemas from executors
+    // Build subschemas with resilient executors
     const claudeSubschema = {
-      schema: await schemaFromExecutor(claudeExecutor),
-      executor: claudeExecutor,
+      schema: claudeSchema,
+      executor: wrapExecutorWithRetry(claudeExecutor, 'Claude'),
       transforms: [
         // Prefix Claude types to avoid conflicts
         new RenameTypes((name) => {
@@ -67,8 +63,8 @@ async function start() {
     };
 
     const repoAgentSubschema = {
-      schema: await schemaFromExecutor(repoAgentExecutor),
-      executor: repoAgentExecutor,
+      schema: repoAgentSchema,
+      executor: wrapExecutorWithRetry(repoAgentExecutor, 'RepoAgent'),
       transforms: [
         // Prefix Repo types to avoid conflicts
         new RenameTypes((name) => {
@@ -176,11 +172,12 @@ async function start() {
             ttl: 5000, // 5 seconds default
             ttlPerType: {
               // Claude types
-              Claude_Health: 5000,
-              Claude_Session: 60000,
+              Claude_ClaudeHealthStatus: 5000,
+              Claude_ClaudeSession: 60000,
               Claude_AgentRun: 30000,
               
               // Repo types
+              Repo_RepoAgentHealth: 5000,
               Repo_GitStatus: 30000,
               Repo_Repository: 60000,
               Repo_Commit: 300000,
@@ -238,8 +235,34 @@ async function start() {
       },
     });
 
-    // Create HTTP server
-    const server = createServer(yoga);
+    // Create HTTP server with health endpoint
+    const server = createServer((req, res) => {
+      // Add health check endpoint
+      if (req.url === '/health' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'healthy',
+          timestamp: new Date().toISOString(),
+          service: 'meta-gothic-gateway',
+          version: '1.0.0',
+          uptime: process.uptime(),
+          services: {
+            claude: 'http://localhost:3002/graphql',
+            repoAgent: 'http://localhost:3004/graphql',
+            github: 'Direct integration'
+          },
+          features: {
+            githubAuthenticated: !!GITHUB_TOKEN,
+            cacheEnabled: ENABLE_CACHE,
+            webSocketEvents: true
+          }
+        }));
+        return;
+      }
+      
+      // Handle GraphQL requests
+      return yoga(req, res);
+    });
 
     // Create WebSocket event broadcaster
     const eventBroadcaster = new EventBroadcaster(server);
@@ -256,6 +279,7 @@ async function start() {
       logger.info('Meta-GOTHIC GraphQL Gateway started', {
         port: PORT,
         graphqlEndpoint: `http://localhost:${PORT}/graphql`,
+        healthEndpoint: `http://localhost:${PORT}/health`,
         webSocketEndpoint: `ws://localhost:${PORT}/ws/events`,
         services: {
           claude: 'http://localhost:3002/graphql',

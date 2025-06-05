@@ -2,13 +2,14 @@ import { createServer } from 'node:http';
 import { createYoga } from 'graphql-yoga';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { getFileSystem } from '@meta-gothic/shared-types/file-system';
 import { fileURLToPath } from 'url';
 import { createLogger } from '@chasenocap/logger';
 import { nanoid } from 'nanoid';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const typeDefs = readFileSync(join(__dirname, '../schema/schema.graphql'), 'utf-8');
+const fileSystem = getFileSystem();
+const __dirname = fileSystem.dirname(fileURLToPath(import.meta.url));
+const typeDefs = readFileSync(fileSystem.join(__dirname, '../schema/schema.graphql'), 'utf-8');
 import { resolvers } from './resolvers/index.js';
 import { createRequestEventBus } from './services/eventBus.js';
 import { GitServiceWithEvents } from './services/GitServiceWithEvents.js';
@@ -16,7 +17,7 @@ import { useEventTracking } from './plugins/eventTracking.js';
 
 // Initialize logger
 const logger = createLogger('repo-agent-service', {}, {
-  logDir: join(__dirname, '../../logs/repo-agent-service')
+  logDir: fileSystem.join(__dirname, '../../logs/repo-agent-service')
 });
 
 const PORT = process.env['REPO_AGENT_PORT'] || 3004;

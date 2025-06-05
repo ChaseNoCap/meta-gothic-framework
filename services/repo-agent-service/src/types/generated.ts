@@ -299,6 +299,8 @@ export type Query = {
   isRepositoryClean: RepositoryCleanStatus;
   /** Get the latest commit hash for a repository */
   latestCommit: CommitInfo;
+  /** Check Repo Agent service health and Git availability */
+  repoAgentHealth: RepoAgentHealth;
   /** Get comprehensive information about a specific repository */
   repositoryDetails: RepositoryDetails;
   /** Perform a detailed scan with diffs and history */
@@ -337,6 +339,42 @@ export type Remote = {
   name: Scalars['String']['output'];
   /** Push URL */
   pushUrl: Scalars['String']['output'];
+};
+
+export type RepoAgentHealth = {
+  __typename?: 'RepoAgentHealth';
+  /** Additional service information */
+  details: RepoAgentHealthDetails;
+  /** Service health status */
+  status: Scalars['String']['output'];
+  /** Current timestamp */
+  timestamp: Scalars['String']['output'];
+  /** Service version */
+  version: Maybe<Scalars['String']['output']>;
+};
+
+export type RepoAgentHealthDetails = {
+  __typename?: 'RepoAgentHealthDetails';
+  /** Git version */
+  gitVersion: Scalars['String']['output'];
+  /** Number of repositories being monitored */
+  repositoryCount: Scalars['Int']['output'];
+  /** System information */
+  system: RepoAgentSystemInfo;
+};
+
+export type RepoAgentSystemInfo = {
+  __typename?: 'RepoAgentSystemInfo';
+  /** CPU architecture */
+  arch: Scalars['String']['output'];
+  /** Free memory in bytes */
+  freeMemory: Scalars['Float']['output'];
+  /** Node.js version */
+  nodeVersion: Scalars['String']['output'];
+  /** Platform (linux, darwin, win32) */
+  platform: Scalars['String']['output'];
+  /** Total memory in bytes */
+  totalMemory: Scalars['Float']['output'];
 };
 
 export type RepositoryCleanStatus = {
@@ -593,6 +631,7 @@ export type ResolversTypes = ResolversObject<{
   DetailedRepository: ResolverTypeWrapper<DetailedRepository>;
   DetailedScanReport: ResolverTypeWrapper<DetailedScanReport>;
   FileStatus: ResolverTypeWrapper<FileStatus>;
+  Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   GitCommandInput: GitCommandInput;
   GitCommandResult: ResolverTypeWrapper<GitCommandResult>;
   GitStatus: ResolverTypeWrapper<GitStatus>;
@@ -603,6 +642,9 @@ export type ResolversTypes = ResolversObject<{
   PushResult: ResolverTypeWrapper<PushResult>;
   Query: ResolverTypeWrapper<{}>;
   Remote: ResolverTypeWrapper<Remote>;
+  RepoAgentHealth: ResolverTypeWrapper<RepoAgentHealth>;
+  RepoAgentHealthDetails: ResolverTypeWrapper<RepoAgentHealthDetails>;
+  RepoAgentSystemInfo: ResolverTypeWrapper<RepoAgentSystemInfo>;
   RepositoryCleanStatus: ResolverTypeWrapper<RepositoryCleanStatus>;
   RepositoryConfig: ResolverTypeWrapper<RepositoryConfig>;
   RepositoryDetails: ResolverTypeWrapper<RepositoryDetails>;
@@ -633,6 +675,7 @@ export type ResolversParentTypes = ResolversObject<{
   DetailedRepository: DetailedRepository;
   DetailedScanReport: DetailedScanReport;
   FileStatus: FileStatus;
+  Float: Scalars['Float']['output'];
   GitCommandInput: GitCommandInput;
   GitCommandResult: GitCommandResult;
   GitStatus: GitStatus;
@@ -643,6 +686,9 @@ export type ResolversParentTypes = ResolversObject<{
   PushResult: PushResult;
   Query: {};
   Remote: Remote;
+  RepoAgentHealth: RepoAgentHealth;
+  RepoAgentHealthDetails: RepoAgentHealthDetails;
+  RepoAgentSystemInfo: RepoAgentSystemInfo;
   RepositoryCleanStatus: RepositoryCleanStatus;
   RepositoryConfig: RepositoryConfig;
   RepositoryDetails: RepositoryDetails;
@@ -791,6 +837,7 @@ export type QueryResolvers<ContextType = Context, ParentType extends ResolversPa
   gitStatus: Resolver<ResolversTypes['GitStatus'], ParentType, ContextType, RequireFields<QueryGitStatusArgs, 'path'>>;
   isRepositoryClean: Resolver<ResolversTypes['RepositoryCleanStatus'], ParentType, ContextType, RequireFields<QueryIsRepositoryCleanArgs, 'path'>>;
   latestCommit: Resolver<ResolversTypes['CommitInfo'], ParentType, ContextType, RequireFields<QueryLatestCommitArgs, 'path'>>;
+  repoAgentHealth: Resolver<ResolversTypes['RepoAgentHealth'], ParentType, ContextType>;
   repositoryDetails: Resolver<ResolversTypes['RepositoryDetails'], ParentType, ContextType, RequireFields<QueryRepositoryDetailsArgs, 'path'>>;
   scanAllDetailed: Resolver<ResolversTypes['DetailedScanReport'], ParentType, ContextType>;
   scanAllRepositories: Resolver<Array<ResolversTypes['RepositoryScan']>, ParentType, ContextType>;
@@ -801,6 +848,30 @@ export type RemoteResolvers<ContextType = Context, ParentType extends ResolversP
   fetchUrl: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   name: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   pushUrl: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
+export type RepoAgentHealthResolvers<ContextType = Context, ParentType extends ResolversParentTypes['RepoAgentHealth'] = ResolversParentTypes['RepoAgentHealth']> = ResolversObject<{
+  details: Resolver<ResolversTypes['RepoAgentHealthDetails'], ParentType, ContextType>;
+  status: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  timestamp: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  version: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
+export type RepoAgentHealthDetailsResolvers<ContextType = Context, ParentType extends ResolversParentTypes['RepoAgentHealthDetails'] = ResolversParentTypes['RepoAgentHealthDetails']> = ResolversObject<{
+  gitVersion: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  repositoryCount: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  system: Resolver<ResolversTypes['RepoAgentSystemInfo'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
+export type RepoAgentSystemInfoResolvers<ContextType = Context, ParentType extends ResolversParentTypes['RepoAgentSystemInfo'] = ResolversParentTypes['RepoAgentSystemInfo']> = ResolversObject<{
+  arch: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  freeMemory: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  nodeVersion: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  platform: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  totalMemory: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
@@ -920,6 +991,9 @@ export type Resolvers<ContextType = Context> = ResolversObject<{
   PushResult: PushResultResolvers<ContextType>;
   Query: QueryResolvers<ContextType>;
   Remote: RemoteResolvers<ContextType>;
+  RepoAgentHealth: RepoAgentHealthResolvers<ContextType>;
+  RepoAgentHealthDetails: RepoAgentHealthDetailsResolvers<ContextType>;
+  RepoAgentSystemInfo: RepoAgentSystemInfoResolvers<ContextType>;
   RepositoryCleanStatus: RepositoryCleanStatusResolvers<ContextType>;
   RepositoryConfig: RepositoryConfigResolvers<ContextType>;
   RepositoryDetails: RepositoryDetailsResolvers<ContextType>;

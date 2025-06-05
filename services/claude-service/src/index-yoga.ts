@@ -2,26 +2,27 @@ import { createServer } from 'node:http';
 import { createYoga } from 'graphql-yoga';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { getFileSystem } from '../../shared/file-system/index.js';
 import { fileURLToPath } from 'url';
 import { createLogger } from '@chasenocap/logger';
 import { nanoid } from 'nanoid';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const typeDefs = readFileSync(join(__dirname, '../schema/schema.graphql'), 'utf-8');
+const fileSystem = getFileSystem();
+const __dirname = fileSystem.dirname(fileURLToPath(import.meta.url));
+const typeDefs = readFileSync(fileSystem.join(__dirname, '../schema/schema.graphql'), 'utf-8');
 import { resolvers } from './resolvers/index.js';
-import { ClaudeSessionManager } from './services/ClaudeSessionManager.js';
+import { ClaudeSessionManagerWithEvents } from './services/ClaudeSessionManagerWithEvents.js';
 import { RunStorage } from './services/RunStorage.js';
 // import { progressTracker } from './services/ProgressTracker.js';
 // Progress tracking will be handled through the resolvers
 import { createDataLoaders } from './dataloaders/index.js';
-// import { createRequestEventBus } from './services/eventBus.js';
-// import { useEventTracking } from './plugins/eventTracking.js';
+import { createRequestEventBus } from './services/eventBus.js';
+import { useEventTracking } from './plugins/eventTracking.js';
+import { createPerformancePlugin } from '../../shared/performance/graphql-plugin.js';
 
-// Initialize logger
-const logger = createLogger({
-  service: 'claude-service',
-  logDirectory: join(__dirname, '../../logs/claude-service')
+// Initialize logger with standard pattern
+const logger = createLogger('claude-service', {}, {
+  logDir: fileSystem.join(__dirname, '../../logs/claude-service')
 });
 
 const PORT = process.env.CLAUDE_SERVICE_PORT || 3002;
@@ -41,10 +42,16 @@ const schema = makeExecutableSchema({
 const yoga = createYoga({
   schema,
   plugins: [
-    // useEventTracking({
-    //   serviceName: 'claude-service',
-    //   slowQueryThreshold: 500 // 500ms threshold
-    // })
+    useEventTracking({
+      serviceName: 'claude-service',
+      slowQueryThreshold: 500 // 500ms threshold
+    }),
+    createPerformancePlugin({
+      serviceName: 'claude-service',
+      slowThreshold: 30000, // 30 seconds for regular operations
+      claudeSlowThreshold: 60000, // 1 minute for Claude operations
+      logger
+    })
   ],
   context: ({ request }) => {
     // Generate correlation ID for request tracking
@@ -55,8 +62,11 @@ const yoga = createYoga({
       url: request.url,
     });
 
-    // Create session manager
-    const sessionManager = new ClaudeSessionManager();
+    // Create request-scoped event bus
+    const eventBus = createRequestEventBus(correlationId);
+
+    // Create session manager with event support
+    const sessionManager = new ClaudeSessionManagerWithEvents(eventBus, requestLogger, correlationId);
 
     return {
       sessionManager,
@@ -65,7 +75,11 @@ const yoga = createYoga({
       request,
       logger: requestLogger,
       correlationId,
-      // eventBus,
+      eventBus,
+      workspaceRoot: process.env.WORKSPACE_ROOT || process.cwd(),
+      environment: process.env.NODE_ENV || 'development',
+      requestId: nanoid(),
+      startTime: Date.now()
     };
   },
   maskedErrors: false,

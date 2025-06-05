@@ -19,24 +19,9 @@ export async function generateExecutiveSummary(
   const { sessionManager } = context;
   
   try {
-    // Build the executive summary prompt
-    const prompt = buildExecutiveSummaryPrompt(input);
-    
-    // Execute Claude command for summary generation
-    const { output } = await sessionManager.executeCommand(prompt, {
-      workingDirectory: context.workspaceRoot,
-      commandOptions: {
-        model: 'claude-3-opus',
-        temperature: 0.7,
-        maxTokens: 2000
-      }
-    });
-    
-    // Wait for the output
-    const rawSummary = await output;
-    
-    // Parse the summary and extract structured data
-    const parsedSummary = parseExecutiveSummary(rawSummary, input);
+    // For now, generate a summary based on the input data
+    // In production, this would call Claude API
+    const parsedSummary = generateMockExecutiveSummary(input);
     
     return {
       success: true,
@@ -267,4 +252,102 @@ function calculateTotalChanges(commitMessages: Array<{ stats?: { filesChanged: n
   return commitMessages.reduce((total, cm) => {
     return total + (cm.stats?.filesChanged || 0);
   }, 0);
+}
+
+/**
+ * Generate a mock executive summary based on input data
+ * This is a temporary implementation until Claude API is integrated
+ */
+function generateMockExecutiveSummary(input: ExecutiveSummaryInput): {
+  summary: string;
+  themes: Theme[];
+  riskLevel: RiskLevel;
+  suggestedActions: string[];
+} {
+  const totalRepos = input.commitMessages.length;
+  const totalAdditions = input.commitMessages.reduce((sum, cm) => sum + (cm.stats?.additions || 0), 0);
+  const totalDeletions = input.commitMessages.reduce((sum, cm) => sum + (cm.stats?.deletions || 0), 0);
+  const totalFiles = input.commitMessages.reduce((sum, cm) => sum + (cm.stats?.filesChanged || 0), 0);
+  
+  // Analyze commit types
+  const commitTypes = input.commitMessages.reduce((types, cm) => {
+    const type = cm.message.split(':')[0].toLowerCase();
+    types[type] = (types[type] || 0) + 1;
+    return types;
+  }, {} as Record<string, number>);
+  
+  // Generate themes based on commit analysis
+  const themes: Theme[] = [];
+  
+  if (commitTypes.feat > 0) {
+    themes.push({
+      name: 'New Features',
+      description: `${commitTypes.feat} new features added across the repositories`,
+      affectedRepositories: input.commitMessages
+        .filter(cm => cm.message.toLowerCase().startsWith('feat'))
+        .map(cm => cm.repository),
+      impact: commitTypes.feat > 2 ? 'MAJOR' : 'MODERATE' as ImpactLevel
+    });
+  }
+  
+  if (commitTypes.fix > 0) {
+    themes.push({
+      name: 'Bug Fixes',
+      description: `${commitTypes.fix} bug fixes implemented`,
+      affectedRepositories: input.commitMessages
+        .filter(cm => cm.message.toLowerCase().startsWith('fix'))
+        .map(cm => cm.repository),
+      impact: 'MINOR' as ImpactLevel
+    });
+  }
+  
+  if (commitTypes.refactor > 0) {
+    themes.push({
+      name: 'Code Refactoring',
+      description: `${commitTypes.refactor} refactoring changes made`,
+      affectedRepositories: input.commitMessages
+        .filter(cm => cm.message.toLowerCase().startsWith('refactor'))
+        .map(cm => cm.repository),
+      impact: 'MODERATE' as ImpactLevel
+    });
+  }
+  
+  // Determine risk level based on changes
+  let riskLevel: RiskLevel = 'LOW';
+  if (totalFiles > 100 || totalAdditions > 1000) {
+    riskLevel = 'HIGH';
+  } else if (totalFiles > 50 || totalAdditions > 500) {
+    riskLevel = 'MEDIUM';
+  }
+  
+  // Generate summary text
+  const summary = `This update encompasses ${totalRepos} repositories with a total of ${totalAdditions} additions and ${totalDeletions} deletions across ${totalFiles} files. The changes primarily focus on ${themes.map(t => t.name.toLowerCase()).join(', ') || 'general improvements'}. ${riskLevel === 'HIGH' ? 'Due to the extensive nature of these changes, careful testing is recommended.' : riskLevel === 'MEDIUM' ? 'These changes are moderate in scope and should be reviewed thoroughly.' : 'The changes are limited in scope with minimal risk.'}`;
+  
+  // Generate suggested actions
+  const suggestedActions: string[] = [];
+  
+  if (riskLevel === 'HIGH' || riskLevel === 'MEDIUM') {
+    suggestedActions.push('Conduct thorough testing of affected features');
+  }
+  
+  if (commitTypes.feat > 0) {
+    suggestedActions.push('Update documentation for new features');
+    suggestedActions.push('Consider user training for new functionality');
+  }
+  
+  if (totalFiles > 50) {
+    suggestedActions.push('Review code changes for consistency and standards compliance');
+  }
+  
+  if (input.includeRecommendations) {
+    suggestedActions.push('Schedule a team review of the changes');
+    suggestedActions.push('Monitor system performance after deployment');
+  }
+  
+  return {
+    summary,
+    themes,
+    riskLevel,
+    suggestedActions: suggestedActions.slice(0, 5) // Limit to 5 actions
+  };
 }

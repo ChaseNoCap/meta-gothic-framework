@@ -8,8 +8,8 @@ type Query {
   """Get details of a specific session"""
   session(id: ID!): ClaudeSession
   
-  """Check service health and Claude availability"""
-  health: HealthStatus!
+  """Check Claude service health and CLI availability"""
+  claudeHealth: ClaudeHealthStatus!
   
   """Get performance metrics for operations"""
   performanceMetrics(operation: String, lastMinutes: Int): PerformanceReport!
@@ -133,7 +133,7 @@ type CommandHistoryItem {
   success: Boolean!
 }
 
-type HealthStatus {
+type ClaudeHealthStatus {
   """Whether service is healthy"""
   healthy: Boolean!
   
@@ -150,10 +150,10 @@ type HealthStatus {
   activeSessions: Int!
   
   """System resource usage"""
-  resources: ResourceUsage!
+  resources: ClaudeResourceUsage!
 }
 
-type ResourceUsage {
+type ClaudeResourceUsage {
   """Memory usage in MB"""
   memoryUsage: Float!
   

@@ -1,8 +1,8 @@
 import simpleGit from 'simple-git';
 import { Context } from '../context.js';
 import { Submodule, SubmoduleStatus } from '../../types/generated.js';
-import path from 'path';
-import fs from 'fs/promises';
+import { getFileSystem } from '@meta-gothic/shared-types/file-system';
+import type { IFileSystem } from '@meta-gothic/shared-types/file-system';
 
 export async function submodules(
   _parent: unknown,
@@ -11,6 +11,11 @@ export async function submodules(
 ): Promise<Submodule[]> {
   try {
     const git = simpleGit(context.workspaceRoot);
+    const fileSystem = getFileSystem({ 
+      eventBus: context.eventBus, 
+      logger: context.logger, 
+      correlationId: context.correlationId 
+    });
     
     // Get submodule information (not used directly, just to check if submodules exist)
     await git.subModule(['status']);
@@ -21,9 +26,8 @@ export async function submodules(
     // Get .gitmodules file content for URL information
     let gitmodulesContent = '';
     try {
-      gitmodulesContent = await fs.readFile(
-        path.join(context.workspaceRoot, '.gitmodules'), 
-        'utf-8'
+      gitmodulesContent = await fileSystem.readFile(
+        fileSystem.join(context.workspaceRoot, '.gitmodules')
       );
     } catch {
       // No .gitmodules file, so no submodules
@@ -50,13 +54,11 @@ export async function submodules(
     
     // Get detailed status for each submodule
     for (const [name, url] of submoduleUrls) {
-      const submodulePath = path.join(context.workspaceRoot, name);
+      const submodulePath = fileSystem.join(context.workspaceRoot, name);
       
       try {
         // Check if submodule is initialized
-        const isInitialized = await fs.access(path.join(submodulePath, '.git'))
-          .then(() => true)
-          .catch(() => false);
+        const isInitialized = await fileSystem.exists(fileSystem.join(submodulePath, '.git'));
         
         if (!isInitialized) {
           submoduleList.push({
