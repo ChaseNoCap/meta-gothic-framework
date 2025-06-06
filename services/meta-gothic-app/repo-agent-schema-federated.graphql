@@ -86,6 +86,12 @@ type Mutation {
 
   """Push changes to remote repository"""
   pushChanges(input: PushInput!): PushResult!
+
+  """Commit all changes hierarchically (submodules first, then parent)"""
+  hierarchicalCommit(input: HierarchicalCommitInput!): HierarchicalCommitResult!
+
+  """Commit and push all changes hierarchically"""
+  hierarchicalCommitAndPush(input: HierarchicalCommitInput!): HierarchicalCommitAndPushResult!
 }
 
 """Repository is the main entity owned by this service"""
@@ -636,6 +642,60 @@ input PushInput {
 
   """Whether to push tags"""
   pushTags: Boolean
+}
+
+input HierarchicalCommitInput {
+  """Commit message to use for all repositories"""
+  message: String!
+
+  """Whether to stage all changes in each repository"""
+  stageAll: Boolean
+
+  """Author name (optional)"""
+  author: String
+
+  """Author email (optional)"""
+  authorEmail: String
+}
+
+type HierarchicalCommitResult {
+  """Whether all commits were successful"""
+  success: Boolean!
+
+  """Total repositories processed"""
+  totalRepositories: Int!
+
+  """Number of successful commits"""
+  successCount: Int!
+
+  """Commits made in submodules"""
+  submoduleCommits: [CommitResult!]!
+
+  """Commit made in parent repository"""
+  parentCommit: CommitResult
+
+  """Execution time in milliseconds"""
+  executionTime: Int!
+
+  """Overall error message if failed"""
+  error: String
+}
+
+type HierarchicalCommitAndPushResult {
+  """Whether all operations were successful"""
+  success: Boolean!
+
+  """Result of the hierarchical commit"""
+  commitResult: HierarchicalCommitResult!
+
+  """Push results for each repository"""
+  pushResults: [PushResult!]!
+
+  """Total execution time in milliseconds"""
+  executionTime: Int!
+
+  """Overall error message if failed"""
+  error: String
 }
 
 enum link__Purpose {
