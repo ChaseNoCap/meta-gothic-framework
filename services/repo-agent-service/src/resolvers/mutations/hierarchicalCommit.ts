@@ -195,7 +195,7 @@ export async function hierarchicalCommit(
       });
       
       submoduleCommits.push(result);
-      if (result.success && result.commitHash) {
+      if (result.success) {
         successCount++;
       }
     }
@@ -211,7 +211,7 @@ export async function hierarchicalCommit(
     
     console.log('[hierarchicalCommit] Parent commit result:', parentResult);
     
-    if (parentResult.success || parentResult.commitHash) {
+    if (parentResult.success) {
       parentCommit = parentResult;
       successCount++;
     } else {
