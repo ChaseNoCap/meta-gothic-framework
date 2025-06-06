@@ -12,11 +12,15 @@ export async function pushChanges(
   const { repository: repoPath, remote, branch, setUpstream = false, pushTags = false } = input;
   const remoteToUse = remote || 'origin';
   
+  console.log('[pushChanges] Called with:', { repoPath, remote: remoteToUse, branch, setUpstream });
+  
   try {
     // Resolve absolute path
     const absolutePath = path.isAbsolute(repoPath) 
       ? repoPath 
       : path.join(context.workspaceRoot, repoPath);
+    
+    console.log('[pushChanges] Absolute path:', absolutePath);
     
     // Check if directory exists and is a git repository
     try {
@@ -52,7 +56,16 @@ export async function pushChanges(
     // Check if there are commits to push
     try {
       const status = await git.status();
+      console.log('[pushChanges] Repository status:', { 
+        repo: repoPath,
+        ahead: status.ahead,
+        behind: status.behind,
+        current: status.current,
+        tracking: status.tracking
+      });
+      
       if (status.ahead === 0) {
+        console.log('[pushChanges] No commits to push, returning success');
         return {
           success: true,
           remote: remoteToUse,
@@ -61,7 +74,8 @@ export async function pushChanges(
           repository: repoPath
         };
       }
-    } catch {
+    } catch (error) {
+      console.log('[pushChanges] Could not get status, continuing:', error);
       // If we can't get status, continue with push anyway
     }
     
