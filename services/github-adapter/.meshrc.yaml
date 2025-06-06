@@ -1,0 +1,32 @@
+sources:
+  - name: GitHub
+    handler:
+      openapi:
+        source: ./github-openapi-patched.json
+        operationHeaders:
+          Authorization: Bearer {env.GITHUB_TOKEN}
+          Accept: application/vnd.github.v3+json
+        # Only select the queries we need, no mutations
+        selectQueryOrMutationField:
+          - fieldName: repos_get
+            type: Query
+          - fieldName: repos_listForAuthenticatedUser
+            type: Query
+          - fieldName: users_getAuthenticated
+            type: Query
+          - fieldName: repos_listForUser
+            type: Query
+
+transforms:
+  # Enable Federation
+  - federation:
+      version: v2.0
+
+serve:
+  port: 3005
+  cors:
+    origin: "*"
+  playground: true
+
+additionalTypeDefs: |
+  extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable"])

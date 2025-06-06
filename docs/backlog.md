@@ -18,25 +18,133 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
 3. **Refinement**: Work items should be refined before starting implementation
 4. **Updates**: Mark items complete and add new discoveries as work progresses
 
-## 🚨 Current Priority: TypeScript Type Alignment & Consistency
+## 🚨 Current Priority: Full Cosmo Stack Migration with SSE & gRPC
 
-> **CURRENT SPRINT**: Type System Standardization
-> **SPRINT GOAL**: Achieve perfect type alignment across all packages and submodules following industry best practices
+> **CURRENT SPRINT**: Migrate to WunderGraph Cosmo Stack
+> **SPRINT GOAL**: Replace Apollo Gateway with Cosmo Router, implement SSE for subscriptions, and use gRPC for GitHub integration
 > 
 > **SPRINT JUSTIFICATION**: 
-> - Found inconsistent TypeScript configurations across packages
-> - Duplicate type definitions causing maintenance overhead
-> - One package (context-aggregator) has strict mode disabled
-> - No centralized shared types package
-> - Type safety is critical for reliable AI-guided development
+> - Need WebSocket federation support for real-time features
+> - SSE provides better compatibility and simpler implementation
+> - gRPC offers superior performance for GitHub API integration
+> - Cosmo provides better monitoring and debugging tools
+> - Hot configuration updates without downtime
+>
+> **ARCHITECTURE TARGET**:
+> ```
+> gothic-gateway (Cosmo Router)
+> ├── claude-service (GraphQL + SSE)
+> ├── git-service (GraphQL + SSE)
+> └── github-adapter (gRPC)
+> ```
 >
 > **IMMEDIATE TASKS**:
-> - [ ] Create base TypeScript configuration with strict settings
-> - [ ] Establish shared types package structure
-> - [ ] Migrate duplicate types to shared package
-> - [ ] Standardize all tsconfig.json files
-> - [ ] Configure TypeScript project references
-> - [ ] Add type checking to CI/CD pipeline
+> - [ ] Install and configure Cosmo Router
+> - [ ] Update services for SSE subscription support
+> - [ ] Convert GitHub service to gRPC with Protocol Buffers
+> - [ ] Migrate clients to use SSE
+> - [ ] Set up Cosmo monitoring and observability
+> - [ ] Deploy with parallel running strategy
+
+## 📋 Service Naming Standardization
+
+### Immediate Actions (Before Cosmo Migration)
+
+**Task 0: Standardize Service Names** (Priority: CRITICAL)
+- [ ] Rename `github-mesh` → `github-adapter`
+- [ ] Rename `meta-gothic-app` → `gothic-gateway`
+- [ ] Rename `repo-agent-service` → `git-service`
+- [ ] Update all references in configuration files
+- [ ] Update documentation with new names
+- [ ] Test federation with new names
+
+**Rationale**: Clean, consistent naming before major migration reduces confusion and technical debt.
+
+## 📋 Cosmo Stack Migration Sprint Details
+
+### Phase 1: Infrastructure Setup (Week 1)
+
+**Task 1: Install Cosmo Stack** (Priority: CRITICAL)
+- [ ] Install Cosmo CLI and create workspace
+- [ ] Create federated graph configuration
+- [ ] Set up Cosmo Router with SSE support
+- [ ] Configure subscription protocols (SSE primary, WebSocket fallback)
+- [ ] Register all subgraphs with Cosmo
+- [ ] Test router with existing services
+
+**Task 2: Configure Monitoring** (Priority: HIGH)
+- [ ] Set up Prometheus metrics endpoint
+- [ ] Configure OpenTelemetry tracing
+- [ ] Create Grafana dashboards for Cosmo metrics
+- [ ] Set up slow query logging
+- [ ] Configure health checks for all subgraphs
+
+### Phase 2: Service Migration (Week 2)
+
+**Task 3: Update Claude Service for SSE** (Priority: CRITICAL)
+- [ ] Add @graphql-yoga/plugin-sse dependency
+- [ ] Configure SSE endpoint at /graphql/stream
+- [ ] Update subscription resolvers with heartbeat support
+- [ ] Add proper SSE headers and keep-alive
+- [ ] Test subscriptions through Cosmo Router
+- [ ] Implement graceful SSE disconnection handling
+
+**Task 4: Update Git Service for SSE** (Priority: HIGH)
+- [ ] Mirror Claude service SSE setup
+- [ ] Handle long-running git operations
+- [ ] Add chunking for large diffs
+- [ ] Test file watching subscriptions
+- [ ] Ensure non-blocking event loop
+
+**Task 5: Convert GitHub Service to gRPC** (Priority: HIGH)
+- [ ] Create protobuf definitions for GitHub API entities
+- [ ] Implement gRPC service in Go using HashiCorp's go-plugin
+- [ ] Integrate Octokit for GitHub API calls
+- [ ] Set up bidirectional streaming for large responses
+- [ ] Configure gRPC health checks and monitoring
+- [ ] Benchmark performance vs REST wrapper (target: 30% improvement)
+- [ ] Enable connection pooling and multiplexing
+
+### Phase 3: Client Migration (Week 3)
+
+**Task 6: Update Apollo Client for SSE** (Priority: CRITICAL)
+- [ ] Install graphql-sse client
+- [ ] Create SSE link for subscriptions
+- [ ] Update split link configuration
+- [ ] Handle heartbeat messages client-side
+- [ ] Implement automatic reconnection
+- [ ] Test all subscription components
+
+**Task 7: Native EventSource Option** (Priority: MEDIUM)
+- [ ] Create EventSource wrapper for simple subscriptions
+- [ ] Add authentication via query parameters
+- [ ] Implement error handling and retry
+- [ ] Document when to use vs graphql-sse client
+
+### Phase 4: Deployment Strategy (Week 4)
+
+**Task 8: Parallel Running Setup** (Priority: CRITICAL)
+- [ ] Configure both Apollo Gateway and Cosmo Router
+- [ ] Set up feature flags for router selection
+- [ ] Create routing rules for gradual migration
+- [ ] Monitor performance differences
+- [ ] Document rollback procedures
+
+**Task 9: Production Deployment** (Priority: HIGH)
+- [ ] Update PM2 configuration for Cosmo
+- [ ] Create deployment scripts
+- [ ] Set up blue-green deployment
+- [ ] Configure edge caching rules
+- [ ] Plan maintenance window
+
+### Phase 5: Optimization (Week 5)
+
+**Task 10: Performance Tuning** (Priority: MEDIUM)
+- [ ] Configure request batching
+- [ ] Optimize query planning cache
+- [ ] Set up field-level caching
+- [ ] Implement DataLoader patterns
+- [ ] Measure and document improvements
 
 ## 📋 Type Alignment Sprint Details
 

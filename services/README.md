@@ -6,9 +6,9 @@ This directory contains the GraphQL microservices that power the Meta GOTHIC fra
 
 The system consists of three main services:
 
-1. **repo-agent-service** (Port 3004) - Handles all Git repository operations
+1. **git-service** (Port 3004) - Handles all Git repository operations
 2. **claude-service** (Port 3002) - Manages Claude AI interactions and sessions
-3. **meta-gothic-app** (Port 3000) - Federation gateway that unifies all services
+3. **gothic-gateway** (Port 3000) - Federation gateway that unifies all services
 
 ## Quick Start
 
@@ -16,9 +16,9 @@ The system consists of three main services:
 
 ```bash
 # Install dependencies for all services
-cd services/repo-agent-service && npm install
+cd services/git-service && npm install
 cd ../claude-service && npm install
-cd ../meta-gothic-app && npm install
+cd ../gothic-gateway && npm install
 ```
 
 ### Start Services
@@ -26,8 +26,8 @@ cd ../meta-gothic-app && npm install
 Start each service in a separate terminal:
 
 ```bash
-# Terminal 1: Start repo-agent-service
-cd services/repo-agent-service
+# Terminal 1: Start git-service
+cd services/git-service
 npm run dev
 
 # Terminal 2: Start claude-service
@@ -35,19 +35,19 @@ cd services/claude-service
 npm run dev
 
 # Terminal 3: Start federation gateway
-cd services/meta-gothic-app
+cd services/gothic-gateway
 npm run dev
 ```
 
 ### Access GraphQL Playground
 
 - Federation Gateway: http://localhost:3000/graphql (recommended)
-- Repo Agent Service: http://localhost:3004/graphql
+- Git Service: http://localhost:3004/graphql
 - Claude Service: http://localhost:3002/graphql
 
 ## Service Details
 
-### repo-agent-service
+### git-service
 
 Provides Git operations through GraphQL:
 
@@ -83,7 +83,7 @@ Manages Claude AI interactions:
 **Subscriptions:**
 - `commandOutput(sessionId)` - Real-time command output
 
-### meta-gothic-app
+### gothic-gateway
 
 Federation gateway that:
 - Unifies all services into a single GraphQL endpoint
@@ -124,7 +124,7 @@ npm run build
 - `WORKSPACE_ROOT` - Root directory for Git operations
 
 ### Service-Specific
-- `REPO_AGENT_PORT` - Port for repo-agent-service (default: 3004)
+- `GIT_SERVICE_PORT` - Port for git-service (default: 3004)
 - `CLAUDE_SERVICE_PORT` - Port for claude-service (default: 3002)
 - `GATEWAY_PORT` - Port for federation gateway (default: 3000)
 

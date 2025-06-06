@@ -24,8 +24,8 @@
   "references": [
     { "path": "./packages/ui-components" },
     { "path": "./services/claude-service" },
-    { "path": "./services/repo-agent-service" },
-    { "path": "./services/meta-gothic-app" },
+    { "path": "./services/git-service" },
+    { "path": "./services/gothic-gateway" },
     { "path": "./services/shared" }
   ]
 }

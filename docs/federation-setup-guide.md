@@ -8,16 +8,15 @@ The Meta-Gothic Framework now uses a hybrid approach combining Apollo Federation
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Apollo Gateway (Port 3000)                │
-│                  (Federation v2 with Yoga)                   │
+│                  Gothic Gateway (Port 3000)                  │
+│           (Apollo Gateway → Cosmo Router)                    │
 └──────────────────────┬────────────────┬─────────────────────┘
                        │                │
          ┌─────────────┴───────┐ ┌─────┴──────────┐ ┌──────────────────┐
-         │  Claude Subgraph    │ │ Repo Agent     │ │  GitHub Mesh     │
-         │    (Port 3002)      │ │  Subgraph      │ │  (Port 3005)     │
-         │  @key: Session.id   │ │ (Port 3004)    │ │ REST → GraphQL   │
-         └─────────────────────┘ │@key: Repo.path │ └──────────────────┘
-                                 └────────────────┘
+         │  Claude Service     │ │  Git Service   │ │ GitHub Adapter   │
+         │    (Port 3002)      │ │  (Port 3004)   │ │  (Port 3005)     │
+         │  @key: Session.id   │ │@key: Repo.path │ │ REST → gRPC      │
+         └─────────────────────┘ └────────────────┘ └──────────────────┘
 
 ```
 
@@ -30,10 +29,10 @@ The Meta-Gothic Framework now uses a hybrid approach combining Apollo Federation
 npm run start
 
 # Services will be available at:
-# - Gateway: http://localhost:3000/graphql
+# - Gothic Gateway: http://localhost:3000/graphql
 # - Claude Service: http://localhost:3002/graphql
-# - Repo Agent Service: http://localhost:3004/graphql  
-# - GitHub Mesh: http://localhost:3005/graphql
+# - Git Service: http://localhost:3004/graphql  
+# - GitHub Adapter: http://localhost:3005 (gRPC)
 # - UI: http://localhost:3001
 ```
 
@@ -44,17 +43,17 @@ npm run start
 cd services/claude-service
 npm run dev:federation
 
-# Terminal 2 - Repo Agent Service (Federation)  
-cd services/repo-agent-service
+# Terminal 2 - Git Service (Federation)  
+cd services/git-service
 npm run dev:federation
 
-# Terminal 3 - GitHub Mesh Service
-cd services/github-mesh
-npm run serve:federation
+# Terminal 3 - GitHub Adapter Service
+cd services/github-adapter
+npm run serve:grpc  # After migration to gRPC
 
-# Terminal 4 - Gateway (Federation)
-cd services/meta-gothic-app
-npm run dev
+# Terminal 4 - Gothic Gateway (Federation)
+cd services/gothic-gateway
+npm run dev  # Or 'cosmo router' after migration
 ```
 
 ### 2. Verify Services

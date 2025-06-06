@@ -26,10 +26,10 @@ module.exports = {
       merge_logs: true
     },
     {
-      name: 'repo-agent-service',
+      name: 'git-service',
       script: 'npx',
       args: 'tsx src/index-federation.ts',
-      cwd: './services/repo-agent-service',
+      cwd: './services/git-service',
       interpreter: '/Users/josh/.nvm/versions/node/v18.20.8/bin/node',
       env: {
         NODE_ENV: 'development',
@@ -38,17 +38,17 @@ module.exports = {
       },
       watch: false,
       max_memory_restart: '1G',
-      error_file: './logs/repo-agent-error.log',
-      out_file: './logs/repo-agent-out.log',
-      log_file: './logs/repo-agent-combined.log',
+      error_file: './logs/git-service-error.log',
+      out_file: './logs/git-service-out.log',
+      log_file: './logs/git-service-combined.log',
       time: true,
       combine_logs: true,
       merge_logs: true
     },
     {
-      name: 'github-mesh',
+      name: 'github-adapter',
       script: './start-service.cjs',
-      cwd: './services/github-mesh',
+      cwd: './services/github-adapter',
       env: {
         NODE_ENV: 'development',
         PORT: 3005,
@@ -58,9 +58,9 @@ module.exports = {
       env_file: path.join(__dirname, '.env.gateway'),
       watch: false,
       max_memory_restart: '1G',
-      error_file: './logs/github-mesh-error.log',
-      out_file: './logs/github-mesh-out.log',
-      log_file: './logs/github-mesh-combined.log',
+      error_file: './logs/github-adapter-error.log',
+      out_file: './logs/github-adapter-out.log',
+      log_file: './logs/github-adapter-combined.log',
       time: true,
       // Ensure errors are properly captured
       combine_logs: true,
@@ -75,7 +75,7 @@ module.exports = {
       name: 'gateway',
       script: 'npx',
       args: 'tsx src/gateway-federation.ts',
-      cwd: './services/meta-gothic-app',
+      cwd: './services/gothic-gateway',
       interpreter: '/Users/josh/.nvm/versions/node/v18.20.8/bin/node',
       env: {
         NODE_ENV: 'development',

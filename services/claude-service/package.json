@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "tsx src/index-yoga.ts",
     "dev:federation": "tsx src/index-federation.ts",
+    "dev:sse": "tsx src/index-sse.ts",
     "dev:watch": "tsx watch src/index-yoga.ts",
     "build": "tsc",
     "start": "node dist/index-yoga.js",
@@ -32,6 +33,7 @@
     "eventemitter3": "^5.0.1",
     "fastify": "^4.26.0",
     "graphql": "^16.8.1",
+    "graphql-sse": "^2.5.4",
     "graphql-subscriptions": "^2.0.0",
     "graphql-tag": "^2.12.6",
     "graphql-ws": "^6.0.5",

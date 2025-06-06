@@ -1,0 +1,729 @@
+schema
+  @link(url: "https://specs.apollo.dev/link/v1.0")
+{
+  query: Query
+  mutation: Mutation
+}
+
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.10", import: ["@key", "@shareable", "@external", "@tag"])
+
+directive @link(url: String, as: String, for: link__Purpose, import: [link__Import]) repeatable on SCHEMA
+
+directive @key(fields: federation__FieldSet!, resolvable: Boolean = true) repeatable on OBJECT | INTERFACE
+
+directive @federation__requires(fields: federation__FieldSet!) on FIELD_DEFINITION
+
+directive @federation__provides(fields: federation__FieldSet!) on FIELD_DEFINITION
+
+directive @external(reason: String) on OBJECT | FIELD_DEFINITION
+
+directive @tag(name: String!) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION | SCHEMA
+
+directive @federation__extends on OBJECT | INTERFACE
+
+directive @shareable repeatable on OBJECT | FIELD_DEFINITION
+
+directive @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__override(from: String!, label: String) on FIELD_DEFINITION
+
+directive @federation__composeDirective(name: String) repeatable on SCHEMA
+
+directive @federation__interfaceObject on OBJECT
+
+directive @federation__authenticated on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM
+
+directive @federation__requiresScopes(scopes: [[federation__Scope!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM
+
+directive @federation__policy(policies: [[federation__Policy!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM
+
+directive @federation__context(name: String!) repeatable on INTERFACE | OBJECT | UNION
+
+directive @federation__fromContext(field: federation__ContextFieldValue) on ARGUMENT_DEFINITION
+
+directive @federation__cost(weight: Int!) on ARGUMENT_DEFINITION | ENUM | FIELD_DEFINITION | INPUT_FIELD_DEFINITION | OBJECT | SCALAR
+
+directive @federation__listSize(assumedSize: Int, slicingArguments: [String!], sizedFields: [String!], requireOneSlicingArgument: Boolean = true) on FIELD_DEFINITION
+
+type Query {
+  """Check Repo Agent service health and Git availability"""
+  repoAgentHealth: RepoAgentHealth!
+
+  """Get the current git status of a repository"""
+  gitStatus(path: String!): GitStatus!
+
+  """Scan workspace for all git repositories"""
+  scanAllRepositories: [Repository!]!
+
+  """Perform a detailed scan with diffs and history"""
+  scanAllDetailed: DetailedScanReport!
+
+  """List and get status of git submodules"""
+  submodules: [Submodule!]!
+
+  """Get comprehensive information about a specific repository"""
+  repositoryDetails(path: String!): Repository!
+
+  """Check if repository has uncommitted changes"""
+  isRepositoryClean(path: String!): RepositoryCleanStatus!
+
+  """Get the latest commit hash for a repository"""
+  latestCommit(path: String!): CommitInfo!
+  _entities(representations: [_Any!]!): [_Entity]!
+  _service: _Service!
+}
+
+type Mutation {
+  """Execute a git command (with safety restrictions)"""
+  executeGitCommand(input: GitCommandInput!): GitCommandResult!
+
+  """Stage and commit changes"""
+  commitChanges(input: CommitInput!): CommitResult!
+
+  """Commit changes across multiple repositories"""
+  batchCommit(input: BatchCommitInput!): BatchCommitResult!
+
+  """Push changes to remote repository"""
+  pushChanges(input: PushInput!): PushResult!
+
+  """Commit all changes hierarchically (submodules first, then parent)"""
+  hierarchicalCommit(input: HierarchicalCommitInput!): HierarchicalCommitResult!
+
+  """Commit and push all changes hierarchically"""
+  hierarchicalCommitAndPush(input: HierarchicalCommitInput!): HierarchicalCommitAndPushResult!
+}
+
+"""Repository is the main entity owned by this service"""
+type Repository
+  @key(fields: "path")
+{
+  """Absolute path to repository - unique identifier"""
+  path: String!
+
+  """Repository name derived from path"""
+  name: String!
+
+  """Current git status"""
+  status: GitStatus!
+
+  """Whether repository has uncommitted changes"""
+  isDirty: Boolean!
+
+  """Current branch"""
+  branch: String!
+
+  """Number of uncommitted files"""
+  uncommittedCount: Int!
+
+  """Repository type (regular, submodule, etc.)"""
+  type: RepositoryType!
+
+  """All branches"""
+  branches: [Branch!]!
+
+  """All tags"""
+  tags: [Tag!]!
+
+  """All remotes"""
+  remotes: [Remote!]!
+
+  """Repository size information"""
+  size: RepositorySize!
+
+  """Package information if applicable"""
+  packageInfo: PackageInfo
+
+  """Staged diff"""
+  stagedDiff: String
+
+  """Unstaged diff"""
+  unstagedDiff: String
+
+  """Recent commit history"""
+  recentCommits: [Commit!]!
+
+  """Repository configuration"""
+  config: RepositoryConfig!
+}
+
+extend type ClaudeSession
+  @key(fields: "id", resolvable: false)
+{
+  id: ID! @external
+}
+
+type RepoAgentHealth {
+  """Service health status"""
+  status: String!
+
+  """Current timestamp"""
+  timestamp: String!
+
+  """Service version"""
+  version: String
+
+  """Additional service information"""
+  details: RepoAgentHealthDetails!
+}
+
+type RepoAgentHealthDetails {
+  """Number of repositories being monitored"""
+  repositoryCount: Int!
+
+  """Git version"""
+  gitVersion: String!
+
+  """System information"""
+  system: RepoAgentSystemInfo!
+}
+
+type RepoAgentSystemInfo {
+  """Platform (linux, darwin, win32)"""
+  platform: String!
+
+  """CPU architecture"""
+  arch: String!
+
+  """Node.js version"""
+  nodeVersion: String!
+
+  """Free memory in bytes"""
+  freeMemory: Float!
+
+  """Total memory in bytes"""
+  totalMemory: Float!
+}
+
+type GitStatus {
+  """Current branch name"""
+  branch: String!
+
+  """Whether there are uncommitted changes"""
+  isDirty: Boolean!
+
+  """List of files with changes"""
+  files: [FileStatus!]!
+
+  """Number of commits ahead of remote"""
+  ahead: Int!
+
+  """Number of commits behind remote"""
+  behind: Int!
+
+  """Whether repository has a remote"""
+  hasRemote: Boolean!
+
+  """List of stashes"""
+  stashes: [Stash!]!
+}
+
+type FileStatus {
+  """File path relative to repository root"""
+  path: String!
+
+  """Git status code (M, A, D, R, U, etc.)"""
+  status: String!
+
+  """Human-readable status description"""
+  statusDescription: String!
+
+  """Whether file is staged"""
+  isStaged: Boolean!
+}
+
+type Stash {
+  """Stash index"""
+  index: Int!
+
+  """Stash message"""
+  message: String!
+
+  """When the stash was created"""
+  timestamp: String!
+}
+
+type DetailedScanReport {
+  """List of all repositories with detailed information"""
+  repositories: [Repository!]!
+
+  """Overall statistics"""
+  statistics: ScanStatistics!
+
+  """Scan metadata"""
+  metadata: ScanMetadata!
+}
+
+type Commit {
+  """Commit hash"""
+  hash: String!
+
+  """Commit message"""
+  message: String!
+
+  """Author name"""
+  author: String!
+
+  """Author email"""
+  authorEmail: String!
+
+  """Commit timestamp"""
+  timestamp: String!
+}
+
+type Remote {
+  """Remote name (e.g., origin)"""
+  name: String!
+
+  """Fetch URL"""
+  fetchUrl: String!
+
+  """Push URL"""
+  pushUrl: String!
+}
+
+type RepositoryConfig {
+  """Default branch name"""
+  defaultBranch: String!
+
+  """Whether repository is bare"""
+  isBare: Boolean!
+
+  """Whether repository is shallow"""
+  isShallow: Boolean!
+}
+
+type ScanStatistics {
+  """Total number of repositories"""
+  totalRepositories: Int!
+
+  """Number of dirty repositories"""
+  dirtyRepositories: Int!
+
+  """Total uncommitted files"""
+  totalUncommittedFiles: Int!
+
+  """Total lines added"""
+  totalAdditions: Int!
+
+  """Total lines deleted"""
+  totalDeletions: Int!
+
+  """Breakdown by file type"""
+  changesByType: ChangesByType!
+}
+
+type ChangesByType {
+  """Modified files"""
+  modified: Int!
+
+  """Added files"""
+  added: Int!
+
+  """Deleted files"""
+  deleted: Int!
+
+  """Renamed files"""
+  renamed: Int!
+
+  """Untracked files"""
+  untracked: Int!
+}
+
+type ScanMetadata {
+  """When the scan started"""
+  startTime: String!
+
+  """When the scan completed"""
+  endTime: String!
+
+  """Scan duration in milliseconds"""
+  duration: Int!
+
+  """Workspace root path"""
+  workspaceRoot: String!
+}
+
+type Submodule {
+  """Submodule name"""
+  name: String!
+
+  """Path relative to parent repository"""
+  path: String!
+
+  """Current commit hash"""
+  commit: String!
+
+  """Submodule URL"""
+  url: String!
+
+  """Whether submodule is initialized"""
+  isInitialized: Boolean!
+
+  """Whether submodule has uncommitted changes"""
+  isDirty: Boolean!
+
+  """Submodule status"""
+  status: SubmoduleStatus!
+}
+
+type SubmoduleStatus {
+  """Whether submodule is up to date"""
+  isUpToDate: Boolean!
+
+  """Number of commits ahead"""
+  ahead: Int!
+
+  """Number of commits behind"""
+  behind: Int!
+
+  """Whether submodule has merge conflicts"""
+  hasConflicts: Boolean!
+}
+
+type Branch {
+  """Branch name"""
+  name: String!
+
+  """Whether this is the current branch"""
+  isCurrent: Boolean!
+
+  """Whether branch tracks a remote"""
+  isTracking: Boolean!
+
+  """Remote tracking branch"""
+  trackingBranch: String
+
+  """Last commit on branch"""
+  lastCommit: Commit!
+}
+
+type Tag {
+  """Tag name"""
+  name: String!
+
+  """Tag type (lightweight or annotated)"""
+  type: TagType!
+
+  """Tagged commit"""
+  commit: String!
+
+  """Tag message (for annotated tags)"""
+  message: String
+
+  """Tagger information"""
+  tagger: String
+
+  """Tag date"""
+  date: String
+}
+
+type RepositoryCleanStatus {
+  """Whether the repository has uncommitted changes"""
+  isClean: Boolean!
+
+  """Number of uncommitted files"""
+  uncommittedFiles: Int!
+
+  """Latest commit hash"""
+  latestCommitHash: String!
+
+  """Repository path"""
+  repository: String!
+}
+
+type CommitInfo {
+  """Commit hash"""
+  hash: String!
+
+  """Short hash (7 characters)"""
+  shortHash: String!
+
+  """Commit message"""
+  message: String!
+
+  """Author name"""
+  author: String!
+
+  """Commit timestamp"""
+  timestamp: String!
+
+  """Repository path"""
+  repository: String!
+}
+
+type RepositorySize {
+  """Total size in bytes"""
+  totalSize: Int!
+
+  """Number of files"""
+  fileCount: Int!
+
+  """Number of commits"""
+  commitCount: Int!
+
+  """Size of .git directory"""
+  gitSize: Int!
+}
+
+type PackageInfo {
+  """Package name from package.json"""
+  name: String!
+
+  """Package version"""
+  version: String!
+
+  """Package description"""
+  description: String
+
+  """Main entry point"""
+  main: String
+
+  """Scripts available"""
+  scripts: [String!]!
+
+  """Dependencies count"""
+  dependencyCount: Int!
+
+  """Dev dependencies count"""
+  devDependencyCount: Int!
+}
+
+type GitCommandResult {
+  """Whether command executed successfully"""
+  success: Boolean!
+
+  """Command output"""
+  output: String
+
+  """Error message if failed"""
+  error: String
+
+  """Exit code"""
+  exitCode: Int!
+
+  """Command that was executed"""
+  command: String!
+}
+
+type CommitResult {
+  """Whether commit was successful"""
+  success: Boolean!
+
+  """Commit hash"""
+  commitHash: String
+
+  """Error message if failed"""
+  error: String
+
+  """Repository path"""
+  repository: String!
+
+  """Files that were committed"""
+  committedFiles: [String!]!
+
+  """Whether the working directory is clean after commit"""
+  isClean: Boolean
+
+  """Number of uncommitted files remaining"""
+  remainingFiles: Int
+}
+
+type BatchCommitResult {
+  """Total repositories processed"""
+  totalRepositories: Int!
+
+  """Number of successful commits"""
+  successCount: Int!
+
+  """Individual results per repository"""
+  results: [CommitResult!]!
+
+  """Execution time in milliseconds"""
+  executionTime: Int!
+}
+
+type PushResult {
+  """Whether push was successful"""
+  success: Boolean!
+
+  """Remote name"""
+  remote: String!
+
+  """Branch that was pushed"""
+  branch: String!
+
+  """Error message if failed"""
+  error: String
+
+  """Repository path"""
+  repository: String!
+}
+
+enum RepositoryType {
+  """Regular git repository"""
+  REGULAR
+
+  """Git submodule"""
+  SUBMODULE
+
+  """Bare repository"""
+  BARE
+
+  """Worktree"""
+  WORKTREE
+}
+
+enum TagType {
+  """Lightweight tag"""
+  LIGHTWEIGHT
+
+  """Annotated tag"""
+  ANNOTATED
+}
+
+input GitCommandInput {
+  """Repository path"""
+  repository: String!
+
+  """Git command to execute (without 'git' prefix)"""
+  command: String!
+
+  """Command arguments"""
+  args: [String!]!
+
+  """Working directory (defaults to repository path)"""
+  workingDirectory: String
+}
+
+input CommitInput {
+  """Repository path"""
+  repository: String!
+
+  """Commit message"""
+  message: String!
+
+  """Files to stage (empty means all)"""
+  files: [String!]
+
+  """Whether to stage all changes"""
+  stageAll: Boolean
+
+  """Author name (optional)"""
+  author: String
+
+  """Author email (optional)"""
+  authorEmail: String
+}
+
+input BatchCommitInput {
+  """List of commits to perform"""
+  commits: [CommitInput!]!
+
+  """Whether to continue on error"""
+  continueOnError: Boolean
+
+  """Maximum parallel operations"""
+  maxConcurrency: Int
+}
+
+input PushInput {
+  """Repository path"""
+  repository: String!
+
+  """Remote name (defaults to origin)"""
+  remote: String
+
+  """Branch to push (defaults to current)"""
+  branch: String
+
+  """Whether to set upstream"""
+  setUpstream: Boolean
+
+  """Whether to push tags"""
+  pushTags: Boolean
+}
+
+input HierarchicalCommitInput {
+  """Commit message to use for all repositories"""
+  message: String!
+
+  """Whether to stage all changes in each repository"""
+  stageAll: Boolean
+
+  """Author name (optional)"""
+  author: String
+
+  """Author email (optional)"""
+  authorEmail: String
+}
+
+type HierarchicalCommitResult {
+  """Whether all commits were successful"""
+  success: Boolean!
+
+  """Total repositories processed"""
+  totalRepositories: Int!
+
+  """Number of successful commits"""
+  successCount: Int!
+
+  """Commits made in submodules"""
+  submoduleCommits: [CommitResult!]!
+
+  """Commit made in parent repository"""
+  parentCommit: CommitResult
+
+  """Execution time in milliseconds"""
+  executionTime: Int!
+
+  """Overall error message if failed"""
+  error: String
+}
+
+type HierarchicalCommitAndPushResult {
+  """Whether all operations were successful"""
+  success: Boolean!
+
+  """Result of the hierarchical commit"""
+  commitResult: HierarchicalCommitResult!
+
+  """Push results for each repository"""
+  pushResults: [PushResult!]!
+
+  """Total execution time in milliseconds"""
+  executionTime: Int!
+
+  """Overall error message if failed"""
+  error: String
+}
+
+enum link__Purpose {
+  """
+  `SECURITY` features provide metadata necessary to securely resolve fields.
+  """
+  SECURITY
+
+  """
+  `EXECUTION` features provide metadata necessary for operation execution.
+  """
+  EXECUTION
+}
+
+scalar link__Import
+
+scalar federation__FieldSet
+
+scalar federation__Scope
+
+scalar federation__Policy
+
+scalar federation__ContextFieldValue
+
+scalar _Any
+
+type _Service {
+  sdl: String
+}
+
+union _Entity = ClaudeSession | Repository

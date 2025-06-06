@@ -18,16 +18,16 @@ const services = [
     ]
   },
   {
-    name: 'repo-agent-service',
-    path: './services/repo-agent-service',
+    name: 'git-service',
+    path: './services/git-service',
     checks: [
       { type: 'file', path: 'src/index-federation.ts', description: 'Federation entry point' },
       { type: 'port', port: 3004 }
     ]
   },
   {
-    name: 'github-mesh',
-    path: './services/github-mesh',
+    name: 'github-adapter',
+    path: './services/github-adapter',
     checks: [
       { type: 'file', path: '.meshrc.yaml', description: 'Mesh configuration' },
       { type: 'env', var: 'GITHUB_TOKEN', description: 'GitHub API token' },
@@ -38,7 +38,7 @@ const services = [
   },
   {
     name: 'gateway',
-    path: './services/meta-gothic-app',
+    path: './services/gothic-gateway',
     checks: [
       { type: 'file', path: 'src/gateway-federation.ts', description: 'Federation gateway' },
       { type: 'port', port: 3000 }

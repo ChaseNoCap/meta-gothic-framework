@@ -23,8 +23,8 @@ const services = [
   { name: 'ui', displayName: 'UI Components', port: 3001 },
   { name: 'gateway', displayName: 'GraphQL Gateway', port: 3000 },
   { name: 'claude-service', displayName: 'Claude Service', port: 3002 },
-  { name: 'repo-agent-service', displayName: 'Repo Agent Service', port: 3004 },
-  { name: 'github-mesh', displayName: 'GitHub Service', port: 3005 }
+  { name: 'git-service', displayName: 'Git Service', port: 3004 },
+  { name: 'github-adapter', displayName: 'GitHub Adapter', port: 3005 }
 ];
 
 // Terminal cursor control
@@ -538,7 +538,7 @@ async function main() {
       case '1': await pauseAndWait(() => restartService('gateway')); break;
       case '2': await pauseAndWait(() => restartService('ui')); break;
       case '3': await pauseAndWait(() => restartService('claude-service')); break;
-      case '4': await pauseAndWait(() => restartService('repo-agent-service')); break;
+      case '4': await pauseAndWait(() => restartService('git-service')); break;
       case 'w': await pauseAndWait(openWebUI); break;
       case 'a': await pauseAndWait(openAPIPlayground); break;
       

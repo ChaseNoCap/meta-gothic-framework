@@ -11,7 +11,7 @@ const serviceName = process.argv[2];
 
 if (!serviceName) {
   console.error('Usage: node debug-service.cjs <service-name>');
-  console.error('Available services: claude-service, repo-agent-service, github-mesh, gateway, ui');
+  console.error('Available services: claude-service, git-service, github-adapter, gateway, ui');
   process.exit(1);
 }
 

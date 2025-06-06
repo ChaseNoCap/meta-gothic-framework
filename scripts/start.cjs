@@ -10,8 +10,8 @@ const services = [
   { name: 'gateway', port: 3000 },
   { name: 'ui', port: 3001 },
   { name: 'claude-service', port: 3002 },
-  { name: 'repo-agent-service', port: 3004 },
-  { name: 'github-mesh', port: 3005 }
+  { name: 'git-service', port: 3004 },
+  { name: 'github-adapter', port: 3005 }
 ];
 
 // Ports that need to be available
@@ -77,7 +77,7 @@ function killZombies() {
     const processPatterns = [
       'node.*meta-gothic',
       'node.*claude-service',
-      'node.*repo-agent',
+      'node.*git-service',
       'node.*yoga',
       'node.*gateway',
       'pm2.*'
@@ -249,7 +249,7 @@ function waitForHealth(service, timeout = 30000) {
       // UI service just needs to respond
       url = `http://localhost:${port}/`;
     } else {
-      // GraphQL services (claude-service, repo-agent-service, github-mesh)
+      // GraphQL services (claude-service, git-service, github-adapter)
       url = `http://localhost:${port}/graphql`;
       isGraphQL = true;
     }
@@ -351,7 +351,7 @@ function generateSupergraph() {
   return new Promise((resolve, reject) => {
     logInfo('Generating supergraph schema...');
     
-    const supergraphScript = path.join(__dirname, '..', 'services', 'meta-gothic-app', 'compose-supergraph.sh');
+    const supergraphScript = path.join(__dirname, '..', 'services', 'gothic-gateway', 'compose-supergraph.sh');
     
     // Check if the script exists
     if (!fs.existsSync(supergraphScript)) {
@@ -365,7 +365,7 @@ function generateSupergraph() {
     
     const generate = spawn('bash', [supergraphScript], {
       stdio: 'inherit',
-      cwd: path.join(__dirname, '..', 'services', 'meta-gothic-app')
+      cwd: path.join(__dirname, '..', 'services', 'gothic-gateway')
     });
     
     generate.on('close', (code) => {
