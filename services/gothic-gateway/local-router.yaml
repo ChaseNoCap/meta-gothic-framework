@@ -1,0 +1,53 @@
+# Local Cosmo Router Configuration - No Cloud
+version: "1"
+
+# Development mode
+dev_mode: true
+
+# Listen address
+listen_addr: "localhost:4000"
+
+# Enable GraphQL playground
+playground_enabled: true
+
+# Enable introspection
+introspection_enabled: true
+
+# Disable telemetry (no cloud)
+telemetry:
+  service_name: ""
+
+# Engine configuration
+engine:
+  enable_single_flight: true
+  enable_request_tracing: false
+
+# CORS settings
+cors:
+  allow_origins:
+    - "*"
+  allow_methods:
+    - "GET"
+    - "POST"
+    - "OPTIONS"
+  allow_headers:
+    - "*"
+  allow_credentials: true
+
+# Subgraphs configuration with SSE support
+subgraphs:
+  - name: claude-service
+    routing_url: "http://localhost:3002/graphql"
+    subscription:
+      protocol: "sse"
+  - name: git-service
+    routing_url: "http://localhost:3004/graphql"
+    subscription:
+      protocol: "sse"
+  - name: github-adapter
+    routing_url: "http://localhost:3005/graphql"
+
+# Static execution config
+execution_config:
+  file:
+    path: "./router-config.json"

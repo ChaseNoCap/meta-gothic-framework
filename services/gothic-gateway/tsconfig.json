@@ -16,7 +16,6 @@
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
   "references": [
     { "path": "../shared" },
-    { "path": "../claude-service" },
-    { "path": "../repo-agent-service" }
+    { "path": "../claude-service" }
   ]
 }

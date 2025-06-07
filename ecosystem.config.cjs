@@ -7,14 +7,14 @@ module.exports = {
   apps: [
     {
       name: 'claude-service',
-      script: 'npx',
-      args: 'tsx src/index-federation.ts',
+      script: './start.sh',
       cwd: './services/claude-service',
-      interpreter: '/Users/josh/.nvm/versions/node/v18.20.8/bin/node',
+      interpreter: 'bash',
       env: {
         NODE_ENV: 'development',
         PORT: 3002,
-        WORKSPACE_ROOT: WORKSPACE_ROOT
+        WORKSPACE_ROOT: WORKSPACE_ROOT,
+        FEDERATION: 'cosmo'
       },
       watch: false,
       max_memory_restart: '1G',
@@ -27,14 +27,14 @@ module.exports = {
     },
     {
       name: 'git-service',
-      script: 'npx',
-      args: 'tsx src/index-federation.ts',
+      script: './start.sh',
       cwd: './services/git-service',
-      interpreter: '/Users/josh/.nvm/versions/node/v18.20.8/bin/node',
+      interpreter: 'bash',
       env: {
         NODE_ENV: 'development',
         PORT: 3004,
-        WORKSPACE_ROOT: WORKSPACE_ROOT
+        WORKSPACE_ROOT: WORKSPACE_ROOT,
+        FEDERATION: 'cosmo'
       },
       watch: false,
       max_memory_restart: '1G',
@@ -47,13 +47,14 @@ module.exports = {
     },
     {
       name: 'github-adapter',
-      script: './start-service.cjs',
+      script: './start.sh',
       cwd: './services/github-adapter',
+      interpreter: 'bash',
       env: {
         NODE_ENV: 'development',
         PORT: 3005,
         WORKSPACE_ROOT: WORKSPACE_ROOT,
-        DEBUG: '1' // Enable verbose logging
+        FEDERATION: 'cosmo'
       },
       env_file: path.join(__dirname, '.env.gateway'),
       watch: false,
@@ -62,25 +63,21 @@ module.exports = {
       out_file: './logs/github-adapter-out.log',
       log_file: './logs/github-adapter-combined.log',
       time: true,
-      // Ensure errors are properly captured
       combine_logs: true,
-      merge_logs: true,
-      log_type: 'json',
-      // Enable restart but limit it
-      autorestart: true,
-      max_restarts: 3,
-      min_uptime: '10s'
+      merge_logs: true
     },
     {
       name: 'gateway',
-      script: 'npx',
-      args: 'tsx src/gateway-federation.ts',
+      script: './start-router-pm2.sh',
       cwd: './services/gothic-gateway',
-      interpreter: '/Users/josh/.nvm/versions/node/v18.20.8/bin/node',
+      interpreter: 'bash',
       env: {
         NODE_ENV: 'development',
-        PORT: 3000,
-        WORKSPACE_ROOT: WORKSPACE_ROOT
+        PORT: 4000,
+        WORKSPACE_ROOT: WORKSPACE_ROOT,
+        CONFIG_PATH: './config.yaml',
+        EXECUTION_CONFIG_FILE_PATH: './config.json',
+        DEV_MODE: 'true'
       },
       env_file: path.join(__dirname, '.env.gateway'),
       watch: false,
@@ -91,27 +88,32 @@ module.exports = {
       time: true,
       combine_logs: true,
       merge_logs: true,
-      // Wait for other services before starting
-      wait_ready: true,
-      listen_timeout: 10000
+      kill_timeout: 10000,
+      listen_timeout: 60000,
+      shutdown_with_message: true
     },
     {
       name: 'ui',
-      script: 'bash',
-      args: '-c "cd ./packages/ui-components && npm run dev"',
-      cwd: './',
+      script: './start.sh',
+      cwd: './packages/ui-components',
+      interpreter: 'bash',
       env: {
         NODE_ENV: 'development',
         PORT: 3001,
-        WORKSPACE_ROOT: WORKSPACE_ROOT,
-        // Vite will load .env.local automatically from the package directory
+        VITE_PORT: 3001,
+        VITE_GATEWAY_URL: 'http://localhost:4000/graphql',
+        VITE_GATEWAY_WS_URL: 'ws://localhost:4000/graphql',
+        WORKSPACE_ROOT: WORKSPACE_ROOT
       },
+      env_file: path.join(__dirname, 'packages/ui-components/.env.local'),
       watch: false,
-      max_memory_restart: '2G',
+      max_memory_restart: '1G',
       error_file: './logs/ui-error.log',
       out_file: './logs/ui-out.log',
       log_file: './logs/ui-combined.log',
-      time: true
+      time: true,
+      combine_logs: true,
+      merge_logs: true
     }
   ]
 };

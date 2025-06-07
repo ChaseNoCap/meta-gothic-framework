@@ -1,0 +1,27 @@
+version: "1"
+
+dev_mode: true
+graph:
+  token: "dev-token"
+
+log_level: debug
+listen_addr: 0.0.0.0:4000
+
+engine:
+  enable_single_flight: true
+  enable_request_tracing: true
+
+playground:
+  enabled: true
+  path: /
+
+cors:
+  allow_origins:
+    - "*"
+  allow_methods:
+    - HEAD
+    - GET
+    - POST
+  allow_headers:
+    - "*"
+  allow_credentials: true

@@ -4,6 +4,26 @@ This is the metaGOTHIC framework - an AI-Guided Opinionated TypeScript Framework
 
 ⚠️ **IMPORTANT**: This is the metaGOTHIC framework context. When working here, focus exclusively on AI-guided development tooling. This framework is independent and has no connection to any visa analysis systems.
 
+## 🚨 CRITICAL: Federation v2 Migration - TOP PRIORITY
+
+**Goal**: A complete local federation setup with proper supergraph composition using Cosmo Router
+
+### Requirements:
+- ✅ Use **Cosmo Router** exclusively (no cloud services)
+- ✅ Implement **Federation v2** for all services
+- ✅ Use **Federated SSE** for Claude service subscriptions
+- ❌ **NO** Yoga, Apollo (except UI), Mesh, or legacy tooling
+- ❌ **NO** cloud dependencies or external schema registries
+
+### Migration Order:
+1. **Claude Service** - Convert to pure Federation v2 with SSE
+2. **Git Service** - Convert to pure Federation v2 with SSE
+3. **GitHub Adapter** - Convert to pure Federation v2
+4. **Gateway** - Implement proper supergraph composition
+
+### Current Issue:
+The Cosmo Router cannot start because it's missing the `supergraphSdl` field in the execution configuration. The `wgc router compose` command generates incomplete configurations that don't include the federated supergraph schema.
+
 ## 🎯 Repository Purpose
 
 The metaGOTHIC framework is a comprehensive AI-guided development platform that:

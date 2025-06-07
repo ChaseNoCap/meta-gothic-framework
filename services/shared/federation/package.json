@@ -1,0 +1,26 @@
+{
+  "name": "@meta-gothic/federation",
+  "version": "1.0.0",
+  "description": "Cosmo-compatible federation utilities",
+  "type": "module",
+  "main": "./cosmo-subgraph.js",
+  "types": "./cosmo-subgraph.d.ts",
+  "exports": {
+    ".": {
+      "import": "./cosmo-subgraph.js",
+      "types": "./cosmo-subgraph.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist *.js *.d.ts"
+  },
+  "dependencies": {
+    "@graphql-tools/schema": "^10.0.0",
+    "graphql": "^16.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "typescript": "^5.3.3"
+  }
+}

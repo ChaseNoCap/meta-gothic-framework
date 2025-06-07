@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/start.cjs",
+    "monitor": "node scripts/monitor.cjs",
     "build": "npm run build:ui && npm run build:packages",
     "build:ui": "cd packages/ui-components && npm run build",
     "build:packages": "for dir in packages/*/; do (cd \"$dir\" && npm run build); done",
@@ -32,6 +33,12 @@
   "author": "ChaseNoCap",
   "license": "MIT",
   "dependencies": {
-    "node-fetch": "^3.3.2"
+    "@types/recharts": "^1.8.29",
+    "jsonwebtoken": "^9.0.2",
+    "node-fetch": "^3.3.2",
+    "recharts": "^2.15.3"
+  },
+  "overrides": {
+    "graphql": "16.11.0"
   }
 }

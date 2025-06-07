@@ -2,7 +2,7 @@ import { Cacheable } from '../../../shared/cache/index.js';
 import type { IEventBus } from '@chasenocap/event-system';
 import type { ILogger } from '@chasenocap/logger';
 
-interface GitHubUser {
+export interface GitHubUser {
   login: string;
   name?: string;
   avatarUrl?: string;
@@ -12,7 +12,7 @@ interface GitHubUser {
   publicRepos?: number;
 }
 
-interface GitHubRepository {
+export interface GitHubRepository {
   id: string;
   name: string;
   fullName: string;
@@ -34,14 +34,14 @@ interface GitHubRepository {
   owner: GitHubUser;
 }
 
-interface GitHubWorkflow {
+export interface GitHubWorkflow {
   id: number;
   name: string;
   path: string;
   state: string;
 }
 
-interface GitHubWorkflowRun {
+export interface GitHubWorkflowRun {
   id: number;
   name?: string;
   headBranch?: string;
@@ -65,12 +65,12 @@ export class CachedGitHubService {
     logger?: ILogger,
     correlationId?: string
   ) {
-    this.eventBus = eventBus;
-    this.logger = logger;
-    this.correlationId = correlationId;
+    if (eventBus) this.eventBus = eventBus;
+    if (logger) this.logger = logger;
+    if (correlationId) this.correlationId = correlationId;
   }
 
-  private async githubFetch(url: string, options: RequestInit = {}) {
+  private async githubFetch<T = any>(url: string, options: RequestInit = {}): Promise<T> {
     if (!this.token) {
       throw new Error('GitHub token required');
     }
@@ -123,7 +123,7 @@ export class CachedGitHubService {
       throw new Error(`GitHub API error: ${response.statusText} - ${error}`);
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
   @Cacheable('github.user', { 
@@ -133,17 +133,28 @@ export class CachedGitHubService {
     if (!this.token) return null;
     
     this.logger?.debug('Fetching GitHub user');
-    const data = await this.githubFetch('https://api.github.com/user');
+    const data = await this.githubFetch<{
+      login: string;
+      name?: string;
+      avatar_url?: string;
+      bio?: string;
+      company?: string;
+      location?: string;
+      public_repos?: number;
+    }>('https://api.github.com/user');
     
-    return {
-      login: data.login,
-      name: data.name,
-      avatarUrl: data.avatar_url,
-      bio: data.bio,
-      company: data.company,
-      location: data.location,
-      publicRepos: data.public_repos
+    const result: GitHubUser = {
+      login: data.login
     };
+    
+    if (data.name) result.name = data.name;
+    if (data.avatar_url) result.avatarUrl = data.avatar_url;
+    if (data.bio) result.bio = data.bio;
+    if (data.company) result.company = data.company;
+    if (data.location) result.location = data.location;
+    if (data.public_repos) result.publicRepos = data.public_repos;
+    
+    return result;
   }
 
   @Cacheable('github.repositories', { 
@@ -153,7 +164,7 @@ export class CachedGitHubService {
   async getRepositories(perPage = 30, page = 1): Promise<GitHubRepository[]> {
     this.logger?.debug('Fetching GitHub repositories', { perPage, page });
     
-    const data = await this.githubFetch(
+    const data = await this.githubFetch<Array<any>>(
       `https://api.github.com/user/repos?per_page=${perPage}&page=${page}&sort=updated`
     );
 
@@ -191,7 +202,7 @@ export class CachedGitHubService {
     this.logger?.debug('Fetching GitHub repository', { owner, name });
     
     try {
-      const data = await this.githubFetch(
+      const data = await this.githubFetch<any>(
         `https://api.github.com/repos/${owner}/${name}`
       );
 
@@ -233,7 +244,7 @@ export class CachedGitHubService {
   async getWorkflows(owner: string, repo: string): Promise<GitHubWorkflow[]> {
     this.logger?.debug('Fetching GitHub workflows', { owner, repo });
     
-    const data = await this.githubFetch(
+    const data = await this.githubFetch<{ workflows: any[] }>(
       `https://api.github.com/repos/${owner}/${repo}/actions/workflows`
     );
 
@@ -252,7 +263,7 @@ export class CachedGitHubService {
   async getWorkflowRuns(owner: string, repo: string, perPage = 10): Promise<GitHubWorkflowRun[]> {
     this.logger?.debug('Fetching GitHub workflow runs', { owner, repo, perPage });
     
-    const data = await this.githubFetch(
+    const data = await this.githubFetch<{ workflow_runs: any[] }>(
       `https://api.github.com/repos/${owner}/${repo}/actions/runs?per_page=${perPage}`
     );
 

@@ -13,7 +13,7 @@ const services = [
     name: 'claude-service',
     path: './services/claude-service',
     checks: [
-      { type: 'file', path: 'src/index-federation.ts', description: 'Federation entry point' },
+      { type: 'file', path: 'src/index.ts', description: 'Cosmo entry point' },
       { type: 'port', port: 3002 }
     ]
   },
@@ -21,27 +21,36 @@ const services = [
     name: 'git-service',
     path: './services/git-service',
     checks: [
-      { type: 'file', path: 'src/index-federation.ts', description: 'Federation entry point' },
-      { type: 'port', port: 3004 }
+      { type: 'file', path: 'src/index.ts', description: 'Cosmo entry point' },
+      { type: 'port', port: 3003 }
     ]
   },
   {
     name: 'github-adapter',
     path: './services/github-adapter',
     checks: [
-      { type: 'file', path: '.meshrc.yaml', description: 'Mesh configuration' },
+      { type: 'file', path: 'index.js', description: 'Service entry point' },
       { type: 'env', var: 'GITHUB_TOKEN', description: 'GitHub API token' },
-      { type: 'port', port: 3005 },
-      { type: 'file', path: 'src/index.ts', description: 'TypeScript entry point' },
-      { type: 'package', name: 'tsx', description: 'TypeScript executor' }
+      { type: 'port', port: 3005 }
     ]
   },
   {
     name: 'gateway',
     path: './services/gothic-gateway',
     checks: [
-      { type: 'file', path: 'src/gateway-federation.ts', description: 'Federation gateway' },
-      { type: 'port', port: 3000 }
+      { type: 'file', path: 'router/router', description: 'Cosmo router binary' },
+      { type: 'file', path: 'router.yaml', description: 'Router configuration' },
+      { type: 'port', port: 4000 }
+    ]
+  },
+  {
+    name: 'ui',
+    path: './packages/ui-components',
+    checks: [
+      { type: 'file', path: 'package.json', description: 'UI package.json' },
+      { type: 'file', path: 'start.sh', description: 'UI start script' },
+      { type: 'dir', path: 'node_modules', description: 'UI dependencies installed' },
+      { type: 'port', port: 3001 }
     ]
   }
 ];
@@ -82,6 +91,15 @@ for (const service of services) {
             console.warn(`  ⚠️  Missing environment variable: ${check.var} (${check.description})`);
           } else {
             console.log(`  ✅ Environment configured for ${check.description}`);
+          }
+          break;
+          
+        case 'dir':
+          if (!fs.existsSync(check.path) || !fs.statSync(check.path).isDirectory()) {
+            console.error(`  ❌ Missing directory: ${check.path} (${check.description})`);
+            hasErrors = true;
+          } else {
+            console.log(`  ✅ Found ${check.description}`);
           }
           break;
           

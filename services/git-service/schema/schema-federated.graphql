@@ -103,10 +103,6 @@ type Repository @key(fields: "path") {
   config: RepositoryConfig!
 }
 
-# Extended from Claude service
-extend type ClaudeSession @key(fields: "id", resolvable: false) {
-  id: ID! @external
-}
 
 # Types
 

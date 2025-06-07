@@ -1,0 +1,96 @@
+import { createServer } from 'http';
+import { createYoga } from 'graphql-yoga';
+import { readFileSync } from 'fs';
+import { parse } from 'graphql';
+import { buildCosmoSubgraphSchema } from '../shared/federation/cosmo-subgraph.js';
+import { createLogger } from '../../packages/logger/dist/index.js';
+import { nanoid } from 'nanoid';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const resolvers = require('./resolvers.cjs');
+
+// Read schema
+const typeDefsString = readFileSync('./schema.graphql', 'utf-8');
+
+// Initialize logger
+const logger = createLogger('github-adapter-cosmo', {}, {
+  logDir: './logs'
+});
+
+const PORT = process.env.GITHUB_MESH_PORT || 3005;
+
+// Build Cosmo-compatible federated schema
+const schema = buildCosmoSubgraphSchema({
+  typeDefs: typeDefsString,
+  resolvers
+});
+
+// Create Yoga instance with Cosmo compatibility
+const yoga = createYoga({
+  schema,
+  logging: logger,
+  context: ({ request }) => {
+    const requestId = nanoid();
+    const correlationId = request.headers.get('x-correlation-id') || requestId;
+    
+    return {
+      correlationId,
+      logger: logger.child({ correlationId }),
+      githubToken: process.env.GITHUB_TOKEN
+    };
+  },
+  cors: {
+    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Correlation-ID'],
+  },
+  graphiql: {
+    title: 'GitHub Adapter (Cosmo Subgraph)',
+    defaultQuery: `query TestQuery {
+  _service {
+    sdl
+  }
+  viewer {
+    login
+    name
+  }
+}`,
+  },
+  plugins: [
+    {
+      onRequest({ request }) {
+        logger.info('GraphQL Request', {
+          method: request.method,
+          url: request.url
+        });
+      }
+    }
+  ]
+});
+
+// Create server
+const server = createServer(yoga);
+
+// Add health check endpoint
+server.on('request', (req, res) => {
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      status: 'healthy', 
+      service: 'github-adapter-cosmo',
+      federation: 'cosmo',
+      timestamp: new Date().toISOString() 
+    }));
+    return;
+  }
+  
+  // Let Yoga handle GraphQL requests
+  yoga(req, res);
+});
+
+server.listen(PORT, () => {
+  logger.info(`🚀 GitHub Adapter (Cosmo) ready at http://localhost:${PORT}/graphql`);
+  logger.info(`🩺 Health check at http://localhost:${PORT}/health`);
+  logger.info('📊 Federation: Cosmo-compatible subgraph');
+});

@@ -6,10 +6,12 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
 
 ## Current Status
 
-**As of January 6, 2025:**
-- Meta GOTHIC Framework: 8 packages created, UI dashboard operational
-- GraphQL infrastructure fully migrated to Yoga + Mesh
-- Ready for infrastructure package integration to enable full observability
+**As of January 7, 2025:**
+- ✅ Meta GOTHIC Framework: 8 packages created, UI dashboard running
+- ✅ Cosmo Router working - all services federated successfully
+- ✅ Services migrated to Federation v2 with PM2 management
+- ⚠️ **DEFECTS FOUND**: Review Changes and Health page functionality broken
+- 🚧 **Current Focus**: Fix migration defects before new features
 
 ## How to Use This Backlog
 
@@ -18,83 +20,184 @@ This document tracks future work items for the Meta GOTHIC Framework. When askin
 3. **Refinement**: Work items should be refined before starting implementation
 4. **Updates**: Mark items complete and add new discoveries as work progresses
 
-## 🚨 Current Priority: Full Cosmo Stack Migration with SSE & gRPC
+## ✅ COMPLETED: Federation v2 Migration with Cosmo Router
 
-> **CURRENT SPRINT**: Migrate to WunderGraph Cosmo Stack
-> **SPRINT GOAL**: Replace Apollo Gateway with Cosmo Router, implement SSE for subscriptions, and use gRPC for GitHub integration
+### Achievements (January 7, 2025)
+- ✅ **Cosmo Router** running successfully with full federation
+- ✅ **All services** migrated to Federation v2
+- ✅ **PM2 management** implemented for all processes
+- ✅ **UI Dashboard** fully operational
+- ✅ **Clean architecture** with minimal configuration
+
+### What Was Done
+1. **Fixed router startup** - Added missing `start-router-pm2.sh` script
+2. **Implemented PM2 ecosystem** - All services managed with proper health checks
+3. **Added --no-monitor flag** - Easier testing with `npm start -- --no-monitor`
+4. **Updated documentation** - Current state documented in federation-v2-status.md
+5. **Cleaned up legacy code** - Archived old implementations
+
+### Current Architecture
+```
+gothic-gateway (Cosmo Router - PORT 4000)
+├── claude-service (Federation v2 - PORT 3002)
+├── git-service (Federation v2 - PORT 3004)
+└── github-adapter (Federation v2 - PORT 3005)
+
+UI Dashboard (React/Vite - PORT 3001)
+└── Connects to gateway at localhost:4000/graphql
+```
+
+## 🚨 CRITICAL: Fix Migration Defects
+
+### Goal
+**Restore broken functionality after the Cosmo migration before adding new features**
+
+### Critical Issues Found
+1. **Review Changes page** - Not detecting any uncommitted changes
+2. **Health page** - Not showing repository data from GitHub
+
+### Why This Is Top Priority
+- Core functionality is broken affecting user experience
+- These features worked before migration and must be restored
+- Can't proceed with new features while basic functionality is broken
+
+### Immediate Tasks
+
+**Task 1: Fix Review Changes Functionality** (Priority: CRITICAL)
+- [ ] Debug why Git service is not detecting uncommitted changes
+- [ ] Check if scanAllRepositories query is working correctly
+- [ ] Verify Git service has proper file system access
+- [ ] Test change detection across all repositories
+- [ ] Ensure UI is properly querying for changes
+
+**Task 2: Fix Health Page Repository Data** (Priority: CRITICAL)
+- [ ] Debug why GitHub adapter is not returning repository data
+- [ ] Check if GitHub token is being passed correctly through federation
+- [ ] Verify GitHub API queries are working
+- [ ] Test repository health metrics display
+- [ ] Ensure all repository cards show proper data
+
+**Task 3: Comprehensive Testing** (Priority: HIGH)
+- [ ] Test all UI pages for functionality
+- [ ] Verify all GraphQL queries work through federation
+- [ ] Check for any console errors or warnings
+- [ ] Document any other broken features found
+- [ ] Create regression test checklist
+
+**Task 4: Fix Any Additional Issues Found** (Priority: HIGH)
+- [ ] Address any other broken functionality discovered during testing
+- [ ] Ensure all features that worked pre-migration are restored
+- [ ] Update documentation with any configuration changes needed
+
+## 🚀 NEXT PRIORITY: SSE Implementation for Real-time Subscriptions
+
+### Goal
+**Implement Server-Sent Events (SSE) support for real-time subscriptions in the Cosmo Router setup**
+
+### Why This Matters
+- Current federation works but lacks real-time subscription support
+- SSE provides better compatibility than WebSockets for our use case
+- Essential for Claude session output streaming and file watching
+
+### Tasks (To be done after defect fixes)
+
+**Task 1: Implement SSE in Claude Service**
+- [ ] Add SSE endpoint at `/graphql/stream`
+- [ ] Convert subscriptions to use SSE transport
+- [ ] Implement heartbeat mechanism
+- [ ] Test with command output streaming
+
+**Task 2: Implement SSE in Git Service**
+- [ ] Add SSE endpoint for file watching
+- [ ] Stream git status changes
+- [ ] Support command output streaming
+
+**Task 3: Configure Cosmo Router for SSE**
+- [ ] Update router configuration for SSE support
+- [ ] Set up subscription routing
+- [ ] Test federated subscriptions
+
+**Task 4: Update UI Client**
+- [ ] Add graphql-sse client
+- [ ] Update Apollo Client configuration
+- [ ] Test all subscription features
+
+### Old Priority Section (DEPRECATED - ARCHIVED FOR REFERENCE)
+
+> **CURRENT SPRINT**: Implement Custom Development Gateway with SSE Support
+> **SPRINT GOAL**: Create a lightweight federation gateway for development that supports SSE subscriptions
 > 
 > **SPRINT JUSTIFICATION**: 
-> - Need WebSocket federation support for real-time features
-> - SSE provides better compatibility and simpler implementation
-> - gRPC offers superior performance for GitHub API integration
-> - Cosmo provides better monitoring and debugging tools
-> - Hot configuration updates without downtime
+> - Cosmo Router requires cloud connectivity for proper federation
+> - Need local development solution without external dependencies
+> - SSE provides better compatibility than WebSockets
+> - Maintain flexibility for future Cosmo Cloud adoption
+> - Faster iteration and testing cycles
 >
-> **ARCHITECTURE TARGET**:
+> **ARCHITECTURE STATUS**:
 > ```
-> gothic-gateway (Cosmo Router)
-> ├── claude-service (GraphQL + SSE)
-> ├── git-service (GraphQL + SSE)
-> └── github-adapter (gRPC)
+> gothic-gateway (Apollo Gateway - Current)
+> ├── claude-service (GraphQL + SSE ready) ✅
+> ├── git-service (GraphQL + SSE ready) ✅
+> └── github-adapter (GraphQL via Mesh) ✅
 > ```
 >
 > **IMMEDIATE TASKS**:
-> - [ ] Install and configure Cosmo Router
-> - [ ] Update services for SSE subscription support
-> - [ ] Convert GitHub service to gRPC with Protocol Buffers
-> - [ ] Migrate clients to use SSE
-> - [ ] Set up Cosmo monitoring and observability
-> - [ ] Deploy with parallel running strategy
+> - [ ] Create custom federation gateway with SSE support
+> - [ ] Implement SSE transport layer for subscriptions
+> - [ ] Update Apollo Client for SSE subscriptions
+> - [ ] Test all subscription features
+> - [ ] Document local development setup
+> - [ ] Plan production Cosmo Cloud migration
 
-## 📋 Service Naming Standardization
+## 📋 Service Naming Standardization ✅ COMPLETED
 
-### Immediate Actions (Before Cosmo Migration)
+### Completed Actions (June 6, 2025)
 
-**Task 0: Standardize Service Names** (Priority: CRITICAL)
-- [ ] Rename `github-mesh` → `github-adapter`
-- [ ] Rename `meta-gothic-app` → `gothic-gateway`
-- [ ] Rename `repo-agent-service` → `git-service`
-- [ ] Update all references in configuration files
-- [ ] Update documentation with new names
-- [ ] Test federation with new names
+**Task 0: Standardize Service Names** (Status: COMPLETED)
+- [x] Rename `github-mesh` → `github-adapter`
+- [x] Rename `meta-gothic-app` → `gothic-gateway`
+- [x] Rename `repo-agent-service` → `git-service`
+- [x] Update all references in configuration files
+- [x] Update documentation with new names
+- [x] Test federation with new names
 
 **Rationale**: Clean, consistent naming before major migration reduces confusion and technical debt.
 
-## 📋 Cosmo Stack Migration Sprint Details
+## 📋 Custom SSE Gateway Implementation Details
 
-### Phase 1: Infrastructure Setup (Week 1)
+### Phase 1: Development Gateway (Current Priority)
 
-**Task 1: Install Cosmo Stack** (Priority: CRITICAL)
-- [ ] Install Cosmo CLI and create workspace
-- [ ] Create federated graph configuration
-- [ ] Set up Cosmo Router with SSE support
-- [ ] Configure subscription protocols (SSE primary, WebSocket fallback)
-- [ ] Register all subgraphs with Cosmo
-- [ ] Test router with existing services
+**Task 1: Create Custom Federation Gateway** (Priority: CRITICAL)
+- [ ] Implement gateway using GraphQL Yoga
+- [ ] Add federation support with @graphql-tools/stitch
+- [ ] Create SSE transport for subscriptions
+- [ ] Support both HTTP and SSE endpoints
+- [ ] Maintain Apollo federation compatibility
 
-**Task 2: Configure Monitoring** (Priority: HIGH)
-- [ ] Set up Prometheus metrics endpoint
-- [ ] Configure OpenTelemetry tracing
-- [ ] Create Grafana dashboards for Cosmo metrics
-- [ ] Set up slow query logging
-- [ ] Configure health checks for all subgraphs
+**Task 2: SSE Transport Layer** (Priority: HIGH)
+- [ ] Implement SSE subscription handler
+- [ ] Add heartbeat mechanism (30s intervals)
+- [ ] Handle reconnection logic
+- [ ] Support streaming large responses
+- [ ] Add request/response correlation
 
-### Phase 2: Service Migration (Week 2)
+### Phase 2: Service Integration (Week 1)
 
-**Task 3: Update Claude Service for SSE** (Priority: CRITICAL)
-- [ ] Add @graphql-yoga/plugin-sse dependency
-- [ ] Configure SSE endpoint at /graphql/stream
-- [ ] Update subscription resolvers with heartbeat support
-- [ ] Add proper SSE headers and keep-alive
-- [ ] Test subscriptions through Cosmo Router
-- [ ] Implement graceful SSE disconnection handling
+**Task 3: SSE Services Status** (Priority: COMPLETED)
+- [x] Add @graphql-yoga/plugin-sse dependency
+- [x] Configure SSE endpoint at /graphql/stream
+- [x] Update subscription resolvers with heartbeat support
+- [x] Add proper SSE headers and keep-alive
+- [x] Test subscriptions standalone
+- [x] Implement graceful SSE disconnection handling
 
-**Task 4: Update Git Service for SSE** (Priority: HIGH)
-- [ ] Mirror Claude service SSE setup
-- [ ] Handle long-running git operations
-- [ ] Add chunking for large diffs
-- [ ] Test file watching subscriptions
-- [ ] Ensure non-blocking event loop
+**Task 4: Client Migration** (Priority: HIGH)
+- [ ] Update Apollo Client configuration
+- [ ] Add graphql-sse client library
+- [ ] Create SSE link for subscriptions
+- [ ] Update all subscription components
+- [ ] Test reconnection scenarios
 
 **Task 5: Convert GitHub Service to gRPC** (Priority: HIGH)
 - [ ] Create protobuf definitions for GitHub API entities

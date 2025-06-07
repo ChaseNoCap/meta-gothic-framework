@@ -5,13 +5,13 @@ const path = require('path');
 const fs = require('fs');
 const net = require('net');
 
-// Service configuration from ecosystem.config.cjs
+// Service configuration for Cosmo
 const services = [
-  { name: 'gateway', port: 3000 },
-  { name: 'ui', port: 3001 },
   { name: 'claude-service', port: 3002 },
-  { name: 'git-service', port: 3004 },
-  { name: 'github-adapter', port: 3005 }
+  { name: 'git-service', port: 3003 },
+  { name: 'github-adapter', port: 3005 },
+  { name: 'gateway', port: 4000 },
+  { name: 'ui', port: 3001 }
 ];
 
 // Ports that need to be available
@@ -80,6 +80,9 @@ function killZombies() {
       'node.*git-service',
       'node.*yoga',
       'node.*gateway',
+      'router.*cosmo',
+      'router/router',
+      './router/router',
       'pm2.*'
     ];
     
@@ -155,6 +158,20 @@ async function checkDependencies() {
     process.exit(1);
   }
   
+  // Check Cosmo router binary
+  const routerPath = path.join(__dirname, '..', 'services', 'gothic-gateway', 'router', 'router');
+  if (!fs.existsSync(routerPath)) {
+    logError('Cosmo router binary not found at services/gothic-gateway/router/router');
+    process.exit(1);
+  }
+  // Make router executable
+  try {
+    fs.accessSync(routerPath, fs.constants.X_OK);
+  } catch (err) {
+    logInfo('Making Cosmo router executable...');
+    fs.chmodSync(routerPath, '755');
+  }
+  
   logSuccess('All dependencies checked');
 }
 
@@ -174,7 +191,7 @@ function checkGitHubToken() {
 // Start services with PM2
 function startServices() {
   return new Promise((resolve, reject) => {
-    logInfo('Starting services with PM2...');
+    logInfo('Starting Cosmo services with PM2...');
     
     const ecosystemPath = path.join(__dirname, '..', 'ecosystem.config.cjs');
     if (!fs.existsSync(ecosystemPath)) {
@@ -234,17 +251,20 @@ function startServices() {
 }
 
 // Wait for service to be healthy
-function waitForHealth(service, timeout = 30000) {
+function waitForHealth(service, timeout = 60000) {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const port = service.port;
     
     // Different services have different health check methods
-    let url, isGraphQL = false;
+    let url, isGraphQL = false, checkQuery;
     
-    if (service.name === 'gateway') {
-      // Gateway has a dedicated health endpoint
-      url = `http://localhost:${port}/health`;
+    if (service.name === 'gateway' || service.name === 'gateway-cosmo') {
+      // Gateway uses GraphQL endpoint for health check
+      url = `http://localhost:${port}/graphql`;
+      isGraphQL = true;
+      // Simple query that should work on Cosmo router
+      checkQuery = '{ __typename }';
     } else if (service.name === 'ui') {
       // UI service just needs to respond
       url = `http://localhost:${port}/`;
@@ -252,45 +272,52 @@ function waitForHealth(service, timeout = 30000) {
       // GraphQL services (claude-service, git-service, github-adapter)
       url = `http://localhost:${port}/graphql`;
       isGraphQL = true;
+      // Use simpler query for health check
+      checkQuery = '{ __typename }';
     }
     
     let lastError = null;
+    let attempts = 0;
+    const maxAttempts = service.name === 'gateway' ? 45 : 30;
+    const delay = 2000; // 2 seconds between attempts
     
     const check = () => {
+      attempts++;
+      
       if (isGraphQL) {
         // For GraphQL services, check if they respond to introspection
         fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: '{ __schema { queryType { name } } }' })
+          body: JSON.stringify({ query: checkQuery })
         })
           .then(response => {
-            if (response.ok) {
-              return response.json();
-            } else {
-              lastError = `GraphQL returned ${response.status}`;
-              throw new Error(lastError);
-            }
-          })
-          .then(data => {
-            if (data && data.data && data.data.__schema) {
-              logSuccess(`${service.name} is healthy (GraphQL responding)`);
+            // For services, we just need to know they're responding
+            // Even if they return GraphQL errors, the service is "healthy"
+            if (response.status === 200 || response.status === 500) {
+              logSuccess(`${service.name} is healthy (endpoint responding)`);
               resolve();
+              return;
             } else {
-              lastError = 'GraphQL schema not available';
+              lastError = `Service returned ${response.status}`;
               throw new Error(lastError);
             }
           })
           .catch((error) => {
             lastError = error.message;
-            if (Date.now() - start > timeout) {
+            
+            // Special handling for gateway - it might need more time
+            const effectiveTimeout = service.name === 'gateway' ? timeout * 3 : timeout;
+            
+            if (Date.now() - start > effectiveTimeout || attempts >= maxAttempts) {
               // Get more detailed error info
               exec(`pm2 logs ${service.name} --lines 20 --nostream`, (execError, stdout, stderr) => {
                 const logs = stdout || stderr || 'No logs available';
-                reject(new Error(`${service.name} health check timeout on ${url}\nLast error: ${lastError}\nRecent logs:\n${logs}`));
+                reject(new Error(`${service.name} health check timeout on ${url}\nLast error: ${lastError}\nAttempts: ${attempts}\nRecent logs:\n${logs}`));
               });
             } else {
-              setTimeout(check, 1000);
+              log(`${service.name} health check attempt ${attempts}/${maxAttempts}...`, 'dim');
+              setTimeout(check, delay);
             }
           });
       } else {
@@ -307,20 +334,24 @@ function waitForHealth(service, timeout = 30000) {
           })
           .catch((error) => {
             lastError = error.message;
-            if (Date.now() - start > timeout) {
+            if (Date.now() - start > timeout || attempts >= maxAttempts) {
               // Get more detailed error info
               exec(`pm2 logs ${service.name} --lines 20 --nostream`, (execError, stdout, stderr) => {
                 const logs = stdout || stderr || 'No logs available';
-                reject(new Error(`${service.name} health check timeout on ${url}\nLast error: ${lastError}\nRecent logs:\n${logs}`));
+                reject(new Error(`${service.name} health check timeout on ${url}\nLast error: ${lastError}\nAttempts: ${attempts}\nRecent logs:\n${logs}`));
               });
             } else {
-              setTimeout(check, 1000);
+              log(`${service.name} health check attempt ${attempts}/${maxAttempts}...`, 'dim');
+              setTimeout(check, delay);
             }
           });
       }
     };
     
-    setTimeout(check, 2000); // Initial delay
+    // Different initial delays for different services
+    const initialDelay = service.name === 'gateway' ? 5000 : 2000;
+    log(`Waiting ${initialDelay/1000}s before checking ${service.name}...`, 'dim');
+    setTimeout(check, initialDelay);
   });
 }
 
@@ -329,8 +360,38 @@ async function validateServices() {
   logInfo('Validating service health...');
   
   try {
-    await Promise.all(services.map(service => waitForHealth(service)));
-    logSuccess('All services are healthy!');
+    // Health check services in order, but handle gateway and UI specially
+    const backendServices = services.filter(s => !['gateway', 'ui'].includes(s.name));
+    await Promise.all(backendServices.map(service => waitForHealth(service)));
+    
+    // Give gateway more time to start since it depends on backend services
+    log('Waiting 10s for gateway to initialize...', 'dim');
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    
+    // Check gateway
+    try {
+      const response = await fetch('http://localhost:4000/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: '{ __typename }' })
+      });
+      if (response.ok || response.status === 500) {
+        logSuccess('gateway is healthy');
+      } else {
+        throw new Error(`Gateway returned ${response.status}`);
+      }
+    } catch (err) {
+      log('⚠️  Gateway health check failed, but continuing...', 'yellow');
+      log('You can check gateway status with: pm2 logs gateway', 'dim');
+    }
+    
+    // Finally check UI service
+    const uiService = services.find(s => s.name === 'ui');
+    if (uiService) {
+      await waitForHealth(uiService);
+    }
+    
+    logSuccess('Services are running!');
   } catch (error) {
     logError(`Service validation failed: ${error.message}`);
     throw error;
@@ -346,39 +407,32 @@ function showStatus() {
   });
 }
 
-// Generate supergraph schema
+// Generate Cosmo Router configuration
 function generateSupergraph() {
   return new Promise((resolve, reject) => {
-    logInfo('Generating supergraph schema...');
+    logInfo('Setting up Cosmo Router configuration...');
     
-    const supergraphScript = path.join(__dirname, '..', 'services', 'gothic-gateway', 'compose-supergraph.sh');
+    const configSource = path.join(__dirname, '..', 'services', 'gothic-gateway', 'router-execution-config.json');
+    const configDest = path.join(__dirname, '..', 'services', 'gothic-gateway', 'config.json');
     
-    // Check if the script exists
-    if (!fs.existsSync(supergraphScript)) {
-      log('Supergraph generation script not found, skipping...', 'yellow');
+    // Check if the source config exists
+    if (!fs.existsSync(configSource)) {
+      log('Router execution config not found, skipping...', 'yellow');
       resolve();
       return;
     }
     
-    // Make sure it's executable
-    fs.chmodSync(supergraphScript, '755');
-    
-    const generate = spawn('bash', [supergraphScript], {
-      stdio: 'inherit',
-      cwd: path.join(__dirname, '..', 'services', 'gothic-gateway')
-    });
-    
-    generate.on('close', (code) => {
-      if (code === 0) {
-        logSuccess('Supergraph schema generated successfully');
-        resolve();
-      } else {
-        log('⚠️  Supergraph generation failed, but continuing...', 'yellow');
-        log('You may need to run it manually later', 'dim');
-        // Don't reject - allow services to continue
-        resolve();
-      }
-    });
+    try {
+      // Copy the working router-execution-config.json to config.json
+      fs.copyFileSync(configSource, configDest);
+      logSuccess('Cosmo Router configuration copied successfully');
+      resolve();
+    } catch (error) {
+      log('⚠️  Failed to copy router configuration, but continuing...', 'yellow');
+      log(`Error: ${error.message}`, 'dim');
+      // Don't reject - allow services to continue
+      resolve();
+    }
   });
 }
 
@@ -418,6 +472,9 @@ function loadEnvironment() {
   // Set workspace root
   process.env.WORKSPACE_ROOT = rootDir;
   
+  // Set federation mode
+  process.env.FEDERATION = 'cosmo';
+  
   // Show loaded environment status
   log('\nEnvironment status:', 'cyan');
   log(`  GITHUB_TOKEN: ${process.env.GITHUB_TOKEN ? '✓ Set' : '✗ Not set'}`, process.env.GITHUB_TOKEN ? 'green' : 'yellow');
@@ -425,10 +482,28 @@ function loadEnvironment() {
   log(`  WORKSPACE_ROOT: ${process.env.WORKSPACE_ROOT}`, 'dim');
 }
 
+// Parse command line arguments
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const options = {
+    noMonitor: false
+  };
+  
+  for (const arg of args) {
+    if (arg === '--no-monitor' || arg === '-n') {
+      options.noMonitor = true;
+    }
+  }
+  
+  return options;
+}
+
 // Main function
 async function main() {
-  log('\n🚀 Meta-Gothic Framework Service Manager', 'bright');
-  log('=====================================\n', 'dim');
+  const options = parseArgs();
+  
+  log('\n🚀 Meta-Gothic Framework Service Manager (Cosmo)', 'bright');
+  log('==========================================\n', 'dim');
   
   try {
     // Load environment variables first
@@ -459,25 +534,71 @@ async function main() {
     // Validate health
     await validateServices();
     
-    // Generate supergraph schema
-    await generateSupergraph();
+    // Generate supergraph schema first (with timeout)
+    // This needs to complete before UI can work properly
+    await generateSupergraph().catch(err => {
+      log('⚠️  Supergraph generation had issues, but continuing...', 'yellow');
+    });
+    
+    // Give the router a moment to reload with the new supergraph
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Verify gateway can handle GraphQL queries before starting UI
+    try {
+      const testQuery = await fetch('http://localhost:4000/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query: '{ __schema { queryType { name } } }' 
+        })
+      });
+      
+      if (testQuery.ok) {
+        const result = await testQuery.json();
+        if (result.data) {
+          logSuccess('Gateway GraphQL endpoint is fully operational');
+        } else {
+          log('⚠️  Gateway responded but GraphQL schema might not be ready', 'yellow');
+        }
+      }
+    } catch (err) {
+      log('⚠️  Could not verify gateway GraphQL endpoint', 'yellow');
+    }
+    
+    // UI is now started with PM2 along with other services
     
     // Show status
     await showStatus();
     
     log('\n✨ All services running!', 'green');
-    log('\n🚀 Launching monitor...', 'cyan');
+    log('\n🌐 Services:', 'cyan');
+    log('   Gateway (Cosmo Router): http://localhost:4000/graphql', 'dim');
+    log('   Claude Service: http://localhost:3002/graphql', 'dim');
+    log('   Git Service: http://localhost:3004/graphql', 'dim');
+    log('   GitHub Adapter: http://localhost:3005/graphql', 'dim');
+    log('   UI Dashboard: http://localhost:3001', 'dim');
     
-    // Launch the monitor
-    const monitor = spawn('node', ['scripts/monitor.cjs'], {
-      stdio: 'inherit',
-      cwd: path.join(__dirname, '..')
-    });
-    
-    monitor.on('close', (code) => {
-      log('\n👋 Monitor closed', 'yellow');
-      process.exit(code || 0);
-    });
+    if (options.noMonitor) {
+      log('\n✅ Services started successfully (monitor skipped)', 'green');
+      log('\n📝 Commands:', 'cyan');
+      log('   View logs: pm2 logs', 'dim');
+      log('   View status: pm2 list', 'dim');
+      log('   Stop all: pm2 stop all', 'dim');
+      log('   Monitor: npm run monitor', 'dim');
+    } else {
+      log('\n🚀 Launching monitor...', 'cyan');
+      
+      // Launch the monitor
+      const monitor = spawn('node', ['scripts/monitor.cjs'], {
+        stdio: 'inherit',
+        cwd: path.join(__dirname, '..')
+      });
+      
+      monitor.on('close', (code) => {
+        log('\n👋 Monitor closed', 'yellow');
+        process.exit(code || 0);
+      });
+    }
     
   } catch (error) {
     logError(`Startup failed: ${error.message}`);

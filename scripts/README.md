@@ -80,13 +80,53 @@ When working with Git submodules:
 - The script will create remote branches automatically
 - Ensure your git remote is configured correctly
 
-## Other Scripts
+## Service Management Scripts
 
 ### `start.cjs` - Service Manager
-Starts all Meta-Gothic services using PM2.
+Starts all Meta-Gothic services using PM2 with Cosmo federation.
 
-### `cleanup-ports.cjs` - Port Cleanup
-Kills processes on ports used by Meta-Gothic services.
+#### Usage
+```bash
+# Start services with monitor
+npm start
+
+# Start services without monitor (useful for testing)
+npm start -- --no-monitor
+# or
+npm start -- -n
+```
+
+Features:
+- Automatic cleanup of zombie processes and ports
+- Environment variable loading from .env files
+- Health checks for all services
+- Pre-flight dependency checks
+- Automatic launch of service monitor (unless --no-monitor flag is used)
+- Cosmo router configuration
+- PM2 process management for all services
+
+Options:
+- `--no-monitor` or `-n` - Start services and exit without launching the monitor
 
 ### `monitor.cjs` - Service Monitor
-Real-time monitoring of all Meta-Gothic services.
+Real-time monitoring of all Meta-Gothic services with interactive controls.
+
+#### Usage
+```bash
+# Monitor services
+npm run monitor
+```
+
+Interactive Commands:
+- `l` - Toggle log view
+- `r` - Restart all services
+- `s` - Stop all services
+- `1-4` - Restart individual service
+- `m` - Open PM2 monit
+- `q` - Quit monitor
+
+### `debug-service.cjs` - Service Debugger
+Debug individual services with detailed logging.
+
+### `preflight-check.cjs` - Pre-flight Checks
+Validates environment and dependencies before starting services.
