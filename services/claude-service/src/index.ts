@@ -2,8 +2,9 @@ import { createServer } from 'http';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parse, execute, subscribe, GraphQLSchema } from 'graphql';
-import { buildSubgraphSchema } from '@apollo/subgraph';
+import { buildCosmoSubgraphSchema } from '../../shared/federation/cosmo-subgraph.js';
+// Import GraphQL from the shared federation to avoid version conflicts
+import { parse, execute } from '../../shared/federation/node_modules/graphql/index.js';
 import gql from 'graphql-tag';
 import { resolvers } from './resolvers/index.js';
 import { ClaudeSessionManager } from './services/ClaudeSessionManager.js';
@@ -24,8 +25,8 @@ const runStorage = new RunStorage(logger);
 const schemaPath = join(__dirname, '../schema/schema-federated.graphql');
 const typeDefs = gql(readFileSync(schemaPath, 'utf-8'));
 
-// Build federation-aware schema
-const schema = buildSubgraphSchema({
+// Create the federated schema using Cosmo
+const schema = buildCosmoSubgraphSchema({
   typeDefs,
   resolvers: resolvers as any
 });
@@ -71,6 +72,7 @@ const server = createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       } catch (error: any) {
+        console.error('GraphQL execution error:', error);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ errors: [{ message: error.message }] }));
       }
@@ -101,17 +103,33 @@ const server = createServer(async (req, res) => {
   // Health check
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', service: 'claude-service' }));
+    res.end(JSON.stringify({ 
+      status: 'ok', 
+      service: 'claude-service',
+      federation: 'cosmo',
+      timestamp: new Date().toISOString()
+    }));
     return;
   }
 
   // 404 for other routes
-  res.writeHead(404);
-  res.end();
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not Found');
 });
 
 server.listen(PORT, () => {
+  console.log('Starting Claude Service...');
   console.log(`🚀 Claude Service running at http://localhost:${PORT}/graphql`);
   console.log(`📡 SSE endpoint at http://localhost:${PORT}/graphql/stream`);
   console.log(`🏥 Health check at http://localhost:${PORT}/health`);
+  console.log(`📊 Federation: Cosmo-compatible subgraph`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });

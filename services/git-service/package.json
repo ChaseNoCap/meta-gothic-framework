@@ -15,7 +15,6 @@
     "generate-types": "graphql-codegen"
   },
   "dependencies": {
-    "@apollo/subgraph": "^2.11.0",
     "@chasenocap/event-system": "file:../../packages/event-system",
     "@chasenocap/file-system": "file:../../packages/file-system",
     "@chasenocap/logger": "file:../../packages/logger",

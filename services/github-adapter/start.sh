@@ -12,4 +12,4 @@ export PORT=${PORT:-3005}
 export GITHUB_MESH_PORT=${PORT:-3005}
 
 # Start the service
-exec node index.js
+exec npx tsx src/index.ts

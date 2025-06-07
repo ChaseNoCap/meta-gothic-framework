@@ -1,12 +1,30 @@
-import { createServer } from 'http';
+import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { buildCosmoSubgraphSchema } from '../shared/federation/cosmo-subgraph.js';
+import { buildCosmoSubgraphSchema } from '../../shared/federation/cosmo-subgraph.js';
 // Import GraphQL from the shared federation to avoid version conflicts
-import { parse, execute } from '../shared/federation/node_modules/graphql/index.js';
+import { parse, execute, DocumentNode } from '../../shared/federation/node_modules/graphql/index.js';
 import gql from 'graphql-tag';
 import { createRequire } from 'module';
+
+interface Event {
+  type: string;
+  payload: any;
+  timestamp?: string;
+}
+
+interface EventBus {
+  emit: (event: Event) => void;
+}
+
+interface Context {
+  eventBus: EventBus;
+  logger: Console;
+  correlationId: string;
+  githubToken: string | undefined;
+}
+
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,24 +36,24 @@ const PORT = process.env.PORT || 3005;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.VITE_GITHUB_TOKEN;
 
 // Read schema
-const schemaPath = join(__dirname, 'schema.graphql');
+const schemaPath = join(__dirname, '../schema.graphql');
 const typeDefs = gql(readFileSync(schemaPath, 'utf-8'));
 
 // Create a simple event bus stub
-const eventBus = {
-  emit: (event) => {
+const eventBus: EventBus = {
+  emit: (event: Event) => {
     console.log('[Event]', event.type, event.payload);
   }
 };
 
 // Load resolvers
-const resolvers = require('./resolvers.cjs');
+const resolvers = require('../resolvers.cjs');
 
 // Create the federated schema using Cosmo
 const schema = buildCosmoSubgraphSchema({ typeDefs, resolvers });
 
 // Create context function
-const createContext = () => ({
+const createContext = (): Context => ({
   eventBus,
   logger: console,
   correlationId: Math.random().toString(36).substring(7),
@@ -43,7 +61,7 @@ const createContext = () => ({
 });
 
 // Create HTTP server
-const server = createServer(async (req, res) => {
+const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -64,7 +82,7 @@ const server = createServer(async (req, res) => {
         const { query, variables, operationName } = JSON.parse(body);
         
         // Parse and execute the query
-        const document = parse(query);
+        const document: DocumentNode = parse(query);
         const contextValue = createContext();
         
         const result = await execute({
@@ -77,7 +95,7 @@ const server = createServer(async (req, res) => {
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
-      } catch (error) {
+      } catch (error: any) {
         console.error('GraphQL execution error:', error);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ errors: [{ message: error.message }] }));
@@ -93,14 +111,15 @@ const server = createServer(async (req, res) => {
       status: 'ok', 
       service: 'github-adapter',
       federation: 'cosmo',
+      hasToken: !!GITHUB_TOKEN,
       timestamp: new Date().toISOString()
     }));
     return;
   }
 
   // 404 for other routes
-  res.writeHead(404, { 'Content-Type': 'text/plain' });
-  res.end('Not Found');
+  res.writeHead(404);
+  res.end();
 });
 
 server.listen(PORT, () => {

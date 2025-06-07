@@ -1,9 +1,69 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 
 import { readFileSync, writeFileSync } from 'fs';
 
+interface FieldConfiguration {
+  typeName: string;
+  fieldName: string;
+  disableDefaultMapping: boolean;
+}
+
+interface RootNode {
+  typeName: string;
+  fieldNames: string[];
+}
+
+interface ChildNode {
+  typeName: string;
+}
+
+interface CustomGraphQLConfig {
+  fetch: {
+    url: {
+      staticVariableContent: string;
+    };
+    method: string;
+  };
+  subscription?: {
+    enabled: boolean;
+    protocol: string;
+    url: {
+      staticVariableContent: string;
+    };
+  };
+  federation: {
+    enabled: boolean;
+    serviceSdl: string;
+  };
+}
+
+interface DatasourceConfiguration {
+  id: string;
+  kind: string;
+  name: string;
+  rootNodes: RootNode[];
+  childNodes: ChildNode[];
+  customGraphql: CustomGraphQLConfig;
+}
+
+interface Subgraph {
+  id: string;
+  name: string;
+  routingUrl: string;
+}
+
+interface RouterConfig {
+  version: string;
+  engineConfig: {
+    defaultFlushInterval: number;
+    datasourceConfigurations: DatasourceConfiguration[];
+    fieldConfigurations: FieldConfiguration[];
+  };
+  subgraphs: Subgraph[];
+}
+
 // Generate a proper Cosmo router execution config for local federation
-const routerConfig = {
+const routerConfig: RouterConfig = {
   "version": "1", 
   "engineConfig": {
     "defaultFlushInterval": 500000000,
@@ -105,7 +165,7 @@ const routerConfig = {
         "customGraphql": {
           "fetch": {
             "url": {
-              "staticVariableContent": "http://localhost:3004/graphql"
+              "staticVariableContent": "http://localhost:3003/graphql"
             },
             "method": "POST"
           },
@@ -113,7 +173,7 @@ const routerConfig = {
             "enabled": true,
             "protocol": "SSE",
             "url": {
-              "staticVariableContent": "http://localhost:3004/graphql"
+              "staticVariableContent": "http://localhost:3003/graphql"
             }
           },
           "federation": {
@@ -174,7 +234,7 @@ const routerConfig = {
     {
       "id": "1", 
       "name": "git-service",
-      "routingUrl": "http://localhost:3004/graphql"
+      "routingUrl": "http://localhost:3003/graphql"
     },
     {
       "id": "2",

@@ -2,8 +2,9 @@ import { createServer } from 'http';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parse, execute, GraphQLSchema } from 'graphql';
-import { buildSubgraphSchema } from '@apollo/subgraph';
+import { buildCosmoSubgraphSchema } from '../../shared/federation/cosmo-subgraph.js';
+// Import GraphQL from the shared federation to avoid version conflicts
+import { parse, execute } from '../../shared/federation/node_modules/graphql/index.js';
 import gql from 'graphql-tag';
 import { resolvers } from './resolvers/index.js';
 import { GitServiceWithEvents } from './services/GitServiceWithEvents.js';
@@ -30,8 +31,8 @@ const gitService = new GitServiceWithEvents(logger, sharedEventBus);
 const schemaPath = join(__dirname, '../schema/schema-federated.graphql');
 const typeDefs = gql(readFileSync(schemaPath, 'utf-8'));
 
-// Build federation-aware schema with proper resolvers
-const schema = buildSubgraphSchema({
+// Build federation-aware schema with proper resolvers using Cosmo
+const schema = buildCosmoSubgraphSchema({
   typeDefs,
   resolvers: {
     ...resolvers,
