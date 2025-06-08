@@ -1,0 +1,14 @@
+version: '1'
+subgraphs:
+  - name: claude-service
+    routing_url: http://localhost:3002/graphql
+    schema:
+      file: ../claude-service/schema/schema-federated.graphql
+  - name: git-service
+    routing_url: http://localhost:3004/graphql
+    schema:
+      file: ../git-service/schema/schema-federated.graphql
+  - name: github-adapter
+    routing_url: http://localhost:3005/graphql
+    schema:
+      file: ../github-adapter/schema.graphql

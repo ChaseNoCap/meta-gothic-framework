@@ -1,0 +1,17 @@
+# Cosmo Router Federation Composition
+version: 1
+subgraphs:
+  - name: claude
+    routing_url: http://localhost:3002/graphql
+    schema:
+      file: ../claude-service/schema/schema-federated.graphql
+  
+  - name: git
+    routing_url: http://localhost:3003/graphql
+    schema:
+      file: ../git-service/schema/schema-federated.graphql
+  
+  - name: github
+    routing_url: http://localhost:3005/graphql
+    schema:
+      file: ../github-adapter/schema.graphql

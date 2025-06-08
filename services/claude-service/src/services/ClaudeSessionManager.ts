@@ -3,6 +3,9 @@ import { EventEmitter } from 'eventemitter3';
 import { nanoid } from 'nanoid';
 import PQueue from 'p-queue';
 import { v4 as uuidv4 } from 'uuid';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { RunStorage, RunStatus, AgentRun } from './RunStorage.js';
 import { initializeCleanupJob } from './RunCleanupJob.js';
 import { progressTracker, ProgressStage } from './ProgressTracker.js';
@@ -30,7 +33,21 @@ interface SessionData {
       estimatedCost: number;
     };
     flags: string[];
+    claudeSessionId?: string;
   };
+}
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load Claude configuration
+const configPath = join(__dirname, '../../claude-config.json');
+let claudeConfig: any = {};
+try {
+  claudeConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
+} catch (error) {
+  console.warn('[ClaudeSessionManager] Could not load claude-config.json, using defaults');
 }
 
 export class ClaudeSessionManager extends EventEmitter {
@@ -39,9 +56,11 @@ export class ClaudeSessionManager extends EventEmitter {
   shares: Map<string, any> = new Map();
   private queue: PQueue;
   private runStorage: RunStorage;
+  private config: any;
   
   constructor() {
     super();
+    this.config = claudeConfig;
     
     // Initialize run storage
     this.runStorage = new RunStorage('/Users/josh/Documents/meta-gothic-framework/logs/claude-runs');
@@ -75,7 +94,7 @@ export class ClaudeSessionManager extends EventEmitter {
   getActiveSessions(): ClaudeSession[] {
     return Array.from(this.sessions.values())
       .filter(s => s.status !== 'TERMINATED')
-      .map(this.mapToClaudeSession);
+      .map(session => this.mapToClaudeSession(session));
   }
 
   /**
@@ -164,7 +183,9 @@ export class ClaudeSessionManager extends EventEmitter {
         // Main processing
         progressTracker.updateRunProgress(run.id, ProgressStage.PROCESSING, 'Generating commit message');
         const startTime = Date.now();
-        const output = await this.callClaudeDirectly(run.input.prompt);
+        // Pass the repository path as working directory
+        const repoPath = `/Users/josh/Documents/${input.repository}`;
+        const output = await this.callClaudeDirectly(run.input.prompt, repoPath);
         const duration = Date.now() - startTime;
 
         // Parsing response
@@ -273,7 +294,15 @@ export class ClaudeSessionManager extends EventEmitter {
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       const claudePath = process.env.CLAUDE_PATH || 'claude';
-      const args = ['--print', '--output-format', 'json'];
+      const args = [];
+      
+      // Check if we should use dangerous mode from config
+      if (this.config.dangerousMode === true) {
+        args.push('--dangerously-skip-permissions');
+        console.log('[ClaudeSessionManager] Using dangerous mode for command execution');
+      }
+      
+      args.push('--print', '--output-format', 'json');
       
       // Check if we have an existing session to resume
       const existingSession = this.sessions.get(sessionId);
@@ -281,8 +310,9 @@ export class ClaudeSessionManager extends EventEmitter {
         // Only use --resume if this session has been used with Claude CLI before
         // Check if the last history entry has a response (indicating Claude has seen it)
         const hasClaudeHistory = existingSession.history.some(h => h.response);
-        if (hasClaudeHistory) {
-          args.push('--resume', sessionId);
+        if (hasClaudeHistory && existingSession.metadata.claudeSessionId) {
+          // Use Claude's session ID for resume
+          args.push('--resume', existingSession.metadata.claudeSessionId);
         } else {
           // For forked sessions or sessions with only copied history,
           // we need to build context into the prompt
@@ -295,6 +325,9 @@ export class ClaudeSessionManager extends EventEmitter {
       if (options.commandOptions?.customFlags) {
         args.push(...options.commandOptions.customFlags);
       }
+      
+      // Add the prompt with -p flag
+      args.unshift('-p', prompt);
 
       const claude = spawn(claudePath, args, {
         cwd: options.workingDirectory || process.cwd()
@@ -341,8 +374,7 @@ export class ClaudeSessionManager extends EventEmitter {
         success: false
       });
 
-      // Send prompt - Claude CLI will handle session context internally
-      claude.stdin.write(prompt);
+      // Close stdin immediately since we're using -p flag
       claude.stdin.end();
 
       // Handle stdout
@@ -389,8 +421,26 @@ export class ClaudeSessionManager extends EventEmitter {
         }
         
         if (code !== 0) {
+          console.error('[ClaudeSessionManager] Claude execution failed:', {
+            code,
+            errorOutput,
+            args,
+            sessionId,
+            prompt: prompt.substring(0, 100) + '...'
+          });
           reject(new Error(`Claude exited with code ${code}: ${errorOutput}`));
           return;
+        }
+
+        // Try to parse Claude's session ID from the output
+        try {
+          const jsonData = JSON.parse(output);
+          if (jsonData.session_id && !session.metadata.claudeSessionId) {
+            session.metadata.claudeSessionId = jsonData.session_id;
+            console.log(`[ClaudeSessionManager] Stored Claude session ID: ${jsonData.session_id}`);
+          }
+        } catch (e) {
+          // Output might not be JSON, that's okay
         }
 
         // Emit final output
@@ -415,15 +465,28 @@ export class ClaudeSessionManager extends EventEmitter {
   /**
    * Direct Claude call without session management (for simple operations)
    */
-  private async callClaudeDirectly(prompt: string): Promise<string> {
+  private async callClaudeDirectly(prompt: string, workingDirectory?: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const claudePath = process.env.CLAUDE_PATH || 'claude';
-      const claude = spawn(claudePath, ['--print']);
+      
+      // Build args with dangerous mode if enabled
+      const args = [];
+      if (this.config.dangerousMode === true) {
+        args.push('--dangerously-skip-permissions');
+        console.log('[ClaudeSessionManager] Using dangerous mode - all permissions granted');
+      }
+      args.push('--print', '--output-format', 'json');
+      // Add prompt as argument with -p flag
+      args.push('-p', prompt);
+      
+      const claude = spawn(claudePath, args, {
+        cwd: workingDirectory || process.cwd()
+      });
       
       let output = '';
       let errorOutput = '';
 
-      claude.stdin.write(prompt);
+      // Close stdin immediately since we're using -p flag
       claude.stdin.end();
 
       claude.stdout.on('data', (data) => {
@@ -436,6 +499,12 @@ export class ClaudeSessionManager extends EventEmitter {
 
       claude.on('close', (code) => {
         if (code !== 0) {
+          console.error('[ClaudeSessionManager] Claude command failed:', {
+            code,
+            errorOutput,
+            args,
+            prompt: prompt.substring(0, 100) + '...'
+          });
           reject(new Error(`Claude exited with code ${code}: ${errorOutput}`));
           return;
         }
@@ -455,13 +524,51 @@ export class ClaudeSessionManager extends EventEmitter {
     recentCommits: string[];
     context?: string;
   }): string {
+    // When in dangerous mode, we can let Claude analyze the repository directly
+    if (this.config.dangerousMode === true) {
+      return `You are in the repository "${input.repository}". 
+
+Use git commands to:
+1. Run 'git status' to see what files have changed
+2. Run 'git diff' to analyze the changes
+3. Look at recent commits with 'git log --oneline -5' for style reference
+
+Then generate a conventional commit message that:
+- Follows the pattern: type(scope): description
+- Includes a body if needed for complex changes
+- Matches the style of recent commits
+- Is concise but descriptive
+
+${input.context ? `Additional context: ${input.context}` : ''}
+
+Respond with ONLY the commit message, no explanations.`;
+    }
+    
+    // Fallback to limited diff approach for non-dangerous mode
+    const MAX_DIFF_LENGTH = 30000;
+    let truncatedDiff = input.diff;
+    let diffTruncated = false;
+    
+    if (input.diff.length > MAX_DIFF_LENGTH) {
+      truncatedDiff = input.diff.substring(0, MAX_DIFF_LENGTH);
+      diffTruncated = true;
+      const lastNewline = truncatedDiff.lastIndexOf('\n');
+      if (lastNewline > MAX_DIFF_LENGTH * 0.8) {
+        truncatedDiff = truncatedDiff.substring(0, lastNewline);
+      }
+    }
+    
     return `Generate a commit message for the repository "${input.repository}".
 
 Recent commits for style reference:
-${input.recentCommits.slice(0, 5).join('\n')}
+${input.recentCommits.slice(0, 3).map(commit => {
+  // Truncate long commits
+  const lines = commit.split('\n');
+  return lines[0].substring(0, 100) + (lines[0].length > 100 ? '...' : '');
+}).join('\n')}
 
-Git diff:
-${input.diff}
+Git diff${diffTruncated ? ' (truncated due to size)' : ''}:
+${truncatedDiff}
 
 ${input.context ? `Additional context: ${input.context}` : ''}
 
@@ -478,26 +585,29 @@ Respond with ONLY the commit message, no explanations.`;
    * Extract commit message from Claude output
    */
   private extractCommitMessage(output: string): string {
-    // Remove any JSON wrapper if present
     try {
+      // Parse the JSON output from Claude
       const parsed = JSON.parse(output);
-      if (parsed.message) return parsed.message;
-    } catch {
-      // Not JSON, continue with string processing
+      
+      // Claude returns the result in the 'result' field
+      if (parsed.result) {
+        // The result might contain the commit message directly
+        return parsed.result.trim();
+      }
+      
+      // Sometimes it might be in 'message' field
+      if (parsed.message) {
+        return parsed.message.trim();
+      }
+      
+      // If we can't find it in expected fields, log for debugging
+      console.warn('[ClaudeSessionManager] Unexpected JSON structure:', parsed);
+      return output;
+    } catch (e) {
+      // If not JSON, return as-is (shouldn't happen with --output-format json)
+      console.warn('[ClaudeSessionManager] Failed to parse Claude output as JSON:', e);
+      return output.trim();
     }
-
-    // Extract just the commit message
-    const lines = output.trim().split('\n');
-    const messageLines = lines.filter(line => {
-      const trimmed = line.trim();
-      return trimmed && 
-        !trimmed.startsWith('Based on') &&
-        !trimmed.startsWith('Looking at') &&
-        !trimmed.startsWith('I see') &&
-        !trimmed.includes('commit message:');
-    });
-
-    return messageLines.join('\n').trim();
   }
 
   /**

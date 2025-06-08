@@ -1,0 +1,31 @@
+# Cosmo Router Configuration for Local Development
+version: "1"
+
+# Development settings
+dev_mode: true
+
+# Server settings
+listen_addr: "localhost:4000"
+log_level: "debug"
+
+# GraphQL Playground
+playground:
+  enabled: true
+  path: /
+
+# Engine settings
+engine:
+  enable_single_flight: true
+  enable_request_tracing: true
+
+# CORS configuration
+cors:
+  allow_origins: ["*"]
+  allow_methods: ["HEAD", "GET", "POST", "OPTIONS"]
+  allow_headers: ["*"]
+  allow_credentials: true
+
+# Execution config from wgc
+execution_config:
+  file:
+    path: "./config.json"

@@ -1,0 +1,255 @@
+{
+  "version": "1",
+  "engineConfig": {
+    "defaultFlushInterval": 500000000,
+    "datasourceConfigurations": [
+      {
+        "id": "0",
+        "kind": "GRAPHQL",
+        "name": "claude-service",
+        "rootNodes": [
+          {
+            "typeName": "Query",
+            "fieldNames": [
+              "sessions",
+              "session",
+              "sessionAnalytics",
+              "performanceMetrics",
+              "claudeHealth",
+              "agentRuns"
+            ]
+          },
+          {
+            "typeName": "Mutation",
+            "fieldNames": [
+              "executeCommand",
+              "generateCommitMessages",
+              "createHandoff",
+              "continueSession",
+              "killSession",
+              "createAgentRun",
+              "updateAgentRun",
+              "cleanupOldRuns"
+            ]
+          },
+          {
+            "typeName": "Subscription",
+            "fieldNames": [
+              "commandOutput",
+              "agentRunProgress"
+            ]
+          }
+        ],
+        "childNodes": [
+          {
+            "typeName": "ClaudeSession"
+          },
+          {
+            "typeName": "SessionAnalytics"
+          },
+          {
+            "typeName": "PerformanceMetrics"
+          },
+          {
+            "typeName": "ClaudeHealth"
+          },
+          {
+            "typeName": "CommandResult"
+          },
+          {
+            "typeName": "CommitMessageResult"
+          },
+          {
+            "typeName": "HandoffResult"
+          },
+          {
+            "typeName": "ContinueSessionResult"
+          },
+          {
+            "typeName": "KillSessionResult"
+          },
+          {
+            "typeName": "AgentRun"
+          },
+          {
+            "typeName": "CommandEvent"
+          },
+          {
+            "typeName": "AgentRunUpdate"
+          },
+          {
+            "typeName": "CleanupResult"
+          }
+        ],
+        "customGraphql": {
+          "fetch": {
+            "url": {
+              "staticVariableContent": "http://localhost:3002/graphql"
+            },
+            "method": "POST"
+          },
+          "subscription": {
+            "enabled": true,
+            "protocol": "SSE",
+            "url": {
+              "staticVariableContent": "http://localhost:3002/graphql"
+            }
+          },
+          "federation": {
+            "enabled": true,
+            "serviceSdl": "schema\n  @link(url: \"https://specs.apollo.dev/link/v1.0\")\n{\n  query: Query\n  mutation: Mutation\n  subscription: Subscription\n}\n\nextend schema\n  @link(url: \"https://specs.apollo.dev/federation/v2.10\", import: [\"@key\", \"@shareable\", \"@tag\", \"@override\", \"@external\", \"@provides\", \"@requires\", \"@composeDirective\", \"@interfaceObject\"])\n\ndirective @link(url: String, as: String, for: link__Purpose, import: [link__Import]) repeatable on SCHEMA\n\ndirective @key(fields: federation__FieldSet!, resolvable: Boolean = true) repeatable on OBJECT | INTERFACE\n\ndirective @requires(fields: federation__FieldSet!) on FIELD_DEFINITION\n\ndirective @provides(fields: federation__FieldSet!) on FIELD_DEFINITION\n\ndirective @external(reason: String) on OBJECT | FIELD_DEFINITION\n\ndirective @tag(name: String!) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION | SCHEMA\n\ndirective @federation__extends on OBJECT | INTERFACE\n\ndirective @shareable repeatable on OBJECT | FIELD_DEFINITION\n\ndirective @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION\n\ndirective @override(from: String!, label: String) on FIELD_DEFINITION\n\ndirective @composeDirective(name: String) repeatable on SCHEMA\n\ndirective @interfaceObject on OBJECT\n\ndirective @federation__authenticated on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM\n\ndirective @federation__requiresScopes(scopes: [[federation__Scope!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM\n\ndirective @federation__policy(policies: [[federation__Policy!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM\n\ndirective @federation__context(name: String!) repeatable on INTERFACE | OBJECT | UNION\n\ndirective @federation__fromContext(field: federation__ContextFieldValue) on ARGUMENT_DEFINITION\n\ndirective @federation__cost(weight: Int!) on ARGUMENT_DEFINITION | ENUM | FIELD_DEFINITION | INPUT_FIELD_DEFINITION | OBJECT | SCALAR\n\ndirective @federation__listSize(assumedSize: Int, slicingArguments: [String!], sizedFields: [String!], requireOneSlicingArgument: Boolean = true) on FIELD_DEFINITION\n\ntype Query {\n  \"\"\"List all active Claude sessions\"\"\"\n  sessions: [ClaudeSession!]! @shareable\n\n  \"\"\"Get details of a specific session\"\"\"\n  session(id: ID!): ClaudeSession @shareable\n\n  \"\"\"Check Claude service health and CLI availability\"\"\"\n  claudeHealth: ClaudeHealthStatus! @shareable\n\n  \"\"\"Get performance metrics for operations\"\"\"\n  performanceMetrics(operation: String, lastMinutes: Int): PerformanceReport! @shareable\n\n  \"\"\"Get analytics for a specific session\"\"\"\n  sessionAnalytics(sessionId: ID!): SessionAnalytics! @shareable\n\n  \"\"\"Get analytics for multiple sessions\"\"\"\n  batchSessionAnalytics(sessionIds: [ID!]!): [SessionAnalytics!]! @shareable\n\n  \"\"\"Get session templates\"\"\"\n  sessionTemplates(tags: [String!], limit: Int = 20): [SessionTemplate!]! @shareable\n\n  \"\"\"Get a specific template\"\"\"\n  sessionTemplate(id: ID!): SessionTemplate @shareable\n\n  \"\"\"Get resumption data for a session\"\"\"\n  sessionResumption(sessionId: ID!): SessionResumptionData! @shareable\n\n  \"\"\"Get resumable sessions with intelligent suggestions\"\"\"\n  resumableSessions(limit: Int = 5): [ResumableSession!]! @shareable\n  _entities(representations: [_Any!]!): [_Entity]!\n  _service: _Service!\n}\n\ntype Mutation {\n  \"\"\"Execute a Claude command in a new or existing session\"\"\"\n  executeCommand(input: ClaudeExecuteInput!): ClaudeExecuteResult!\n\n  \"\"\"Continue an existing Claude session with a new prompt\"\"\"\n  continueSession(input: ContinueSessionInput!): ClaudeExecuteResult!\n\n  \"\"\"Kill an active Claude session\"\"\"\n  killSession(id: ID!): Boolean!\n\n  \"\"\"Create a handoff document for session transfer\"\"\"\n  createHandoff(input: HandoffInput!): HandoffResult!\n\n  \"\"\"Generate commit messages for multiple repositories\"\"\"\n  generateCommitMessages(input: BatchCommitMessageInput!): BatchCommitMessageResult!\n\n  \"\"\"Fork a session to create a new branch from a specific point\"\"\"\n  forkSession(input: ForkSessionInput!): ForkSessionResult!\n\n  \"\"\"Create a session template from an existing session\"\"\"\n  createSessionTemplate(input: CreateSessionTemplateInput!): SessionTemplate!\n\n  \"\"\"Create a new session from a template\"\"\"\n  createSessionFromTemplate(templateId: ID!, name: String): ClaudeSession!\n\n  \"\"\"Batch operations on multiple sessions\"\"\"\n  batchSessionOperation(input: BatchSessionOperationInput!): BatchSessionOperationResult!\n\n  \"\"\"Archive a session for long-term storage\"\"\"\n  archiveSession(sessionId: ID!): ArchiveResult!\n\n  \"\"\"Share a session with collaborators\"\"\"\n  shareSession(input: ShareSessionInput!): ShareResult!\n}\n\ntype Subscription {\n  \"\"\"Subscribe to real-time command output from a Claude session\"\"\"\n  commandOutput(sessionId: ID!): CommandOutput!\n\n  \"\"\"Subscribe to progress updates for agent runs\"\"\"\n  agentRunProgress(runId: ID!): AgentRunProgress!\n\n  \"\"\"Subscribe to aggregate progress for multiple runs\"\"\"\n  batchProgress(batchId: ID!): BatchProgress!\n}\n\ntype ClaudeSession\n  @key(fields: \"id\")\n{\n  \"\"\"Unique session identifier\"\"\"\n  id: ID!\n\n  \"\"\"Session creation timestamp\"\"\"\n  createdAt: String!\n\n  \"\"\"Last activity timestamp\"\"\"\n  lastActivity: String!\n\n  \"\"\"Current session status\"\"\"\n  status: SessionStatus!\n\n  \"\"\"Process ID if active\"\"\"\n  pid: Int\n\n  \"\"\"Current working directory\"\"\"\n  workingDirectory: String!\n\n  \"\"\"Session metadata\"\"\"\n  metadata: SessionMetadata!\n\n  \"\"\"Command history\"\"\"\n  history: [CommandHistoryItem!]!\n}\n\nenum SessionStatus {\n  \"\"\"Session is active and ready\"\"\"\n  ACTIVE\n\n  \"\"\"Session is processing a command\"\"\"\n  PROCESSING\n\n  \"\"\"Session is idle\"\"\"\n  IDLE\n\n  \"\"\"Session has been terminated\"\"\"\n  TERMINATED\n\n  \"\"\"Session encountered an error\"\"\"\n  ERROR\n}\n\ntype SessionMetadata {\n  \"\"\"Session name\"\"\"\n  name: String\n\n  \"\"\"Project context if loaded\"\"\"\n  projectContext: String\n\n  \"\"\"Model being used\"\"\"\n  model: String!\n\n  \"\"\"Token usage statistics\"\"\"\n  tokenUsage: TokenUsage!\n\n  \"\"\"Custom flags or options\"\"\"\n  flags: [String!]!\n}\n\ntype TokenUsage {\n  \"\"\"Total input tokens used\"\"\"\n  inputTokens: Int!\n\n  \"\"\"Total output tokens used\"\"\"\n  outputTokens: Int!\n\n  \"\"\"Estimated cost in USD\"\"\"\n  estimatedCost: Float!\n}\n\ntype CommandHistoryItem {\n  \"\"\"Command timestamp\"\"\"\n  timestamp: String!\n\n  \"\"\"The prompt or command sent\"\"\"\n  prompt: String!\n\n  \"\"\"Response received\"\"\"\n  response: String\n\n  \"\"\"Execution time in milliseconds\"\"\"\n  executionTime: Int!\n\n  \"\"\"Whether command succeeded\"\"\"\n  success: Boolean!\n}\n\ntype ClaudeHealthStatus {\n  \"\"\"Whether service is healthy\"\"\"\n  healthy: Boolean!\n\n  \"\"\"Service version\"\"\"\n  version: String!\n\n  \"\"\"Claude CLI availability\"\"\"\n  claudeAvailable: Boolean!\n\n  \"\"\"Claude CLI version if available\"\"\"\n  claudeVersion: String\n\n  \"\"\"Number of active sessions\"\"\"\n  activeSessions: Int!\n\n  \"\"\"System resource usage\"\"\"\n  resources: ClaudeResourceUsage!\n}\n\ntype ClaudeResourceUsage {\n  \"\"\"Memory usage in MB\"\"\"\n  memoryUsage: Float!\n\n  \"\"\"CPU usage percentage\"\"\"\n  cpuUsage: Float!\n\n  \"\"\"Number of active processes\"\"\"\n  activeProcesses: Int!\n}\n\ntype ClaudeExecuteResult {\n  \"\"\"Session ID for this execution\"\"\"\n  sessionId: ID!\n\n  \"\"\"Whether execution started successfully\"\"\"\n  success: Boolean!\n\n  \"\"\"Error message if failed to start\"\"\"\n  error: String\n\n  \"\"\"Initial response if available immediately\"\"\"\n  initialResponse: String\n\n  \"\"\"Execution metadata\"\"\"\n  metadata: ExecutionMetadata!\n}\n\ntype ExecutionMetadata {\n  \"\"\"When execution started\"\"\"\n  startTime: String!\n\n  \"\"\"Process ID\"\"\"\n  pid: Int\n\n  \"\"\"Estimated completion time\"\"\"\n  estimatedTime: Int\n\n  \"\"\"Command flags used\"\"\"\n  flags: [String!]!\n}\n\ntype CommandOutput {\n  \"\"\"Session ID this output belongs to\"\"\"\n  sessionId: ID!\n\n  \"\"\"Output type\"\"\"\n  type: OutputType!\n\n  \"\"\"The actual output content\"\"\"\n  content: String!\n\n  \"\"\"Timestamp of this output\"\"\"\n  timestamp: String!\n\n  \"\"\"Whether this is the final output\"\"\"\n  isFinal: Boolean!\n\n  \"\"\"Token count for this output chunk\"\"\"\n  tokens: Int\n}\n\nenum OutputType {\n  \"\"\"Standard output\"\"\"\n  STDOUT\n\n  \"\"\"Error output\"\"\"\n  STDERR\n\n  \"\"\"System message\"\"\"\n  SYSTEM\n\n  \"\"\"Progress update\"\"\"\n  PROGRESS\n\n  \"\"\"Final response\"\"\"\n  FINAL\n}\n\ntype HandoffResult {\n  \"\"\"Whether handoff document was created successfully\"\"\"\n  success: Boolean!\n\n  \"\"\"Path to handoff document\"\"\"\n  documentPath: String\n\n  \"\"\"Handoff document content\"\"\"\n  content: String\n\n  \"\"\"Error message if failed\"\"\"\n  error: String\n\n  \"\"\"Session state summary\"\"\"\n  sessionSummary: SessionSummary!\n}\n\ntype SessionSummary {\n  \"\"\"Number of interactions in session\"\"\"\n  interactionCount: Int!\n\n  \"\"\"Total tokens used\"\"\"\n  totalTokens: Int!\n\n  \"\"\"Key topics discussed\"\"\"\n  topics: [String!]!\n\n  \"\"\"Files modified during session\"\"\"\n  filesModified: [String!]!\n}\n\ntype BatchCommitMessageResult {\n  \"\"\"Total repositories processed\"\"\"\n  totalRepositories: Int!\n\n  \"\"\"Number of successful generations\"\"\"\n  successCount: Int!\n\n  \"\"\"Individual results per repository\"\"\"\n  results: [CommitMessageResult!]!\n\n  \"\"\"Total token usage\"\"\"\n  totalTokenUsage: TokenUsage!\n\n  \"\"\"Execution time in milliseconds\"\"\"\n  executionTime: Int!\n}\n\ntype CommitMessageResult {\n  \"\"\"Repository path\"\"\"\n  repositoryPath: String!\n\n  \"\"\"Repository name\"\"\"\n  repositoryName: String!\n\n  \"\"\"Whether generation succeeded\"\"\"\n  success: Boolean!\n\n  \"\"\"Generated commit message\"\"\"\n  message: String\n\n  \"\"\"Error if generation failed\"\"\"\n  error: String\n\n  \"\"\"Confidence score (0-1)\"\"\"\n  confidence: Float\n\n  \"\"\"Suggested commit type (feat, fix, chore, etc.)\"\"\"\n  commitType: String\n}\n\ninput ClaudeExecuteInput {\n  \"\"\"The prompt or command to execute\"\"\"\n  prompt: String!\n\n  \"\"\"Optional session ID to reuse\"\"\"\n  sessionId: ID\n\n  \"\"\"Working directory for the command\"\"\"\n  workingDirectory: String\n\n  \"\"\"Additional context to provide\"\"\"\n  context: ContextInput\n\n  \"\"\"Command options\"\"\"\n  options: CommandOptions\n}\n\ninput ContextInput {\n  \"\"\"Files to include in context\"\"\"\n  files: [String!]\n\n  \"\"\"Project-specific context\"\"\"\n  projectContext: String\n\n  \"\"\"Additional instructions\"\"\"\n  instructions: String\n\n  \"\"\"Maximum context size in tokens\"\"\"\n  maxTokens: Int\n}\n\ninput CommandOptions {\n  \"\"\"Model to use (if different from default)\"\"\"\n  model: String\n\n  \"\"\"Temperature setting\"\"\"\n  temperature: Float\n\n  \"\"\"Maximum response tokens\"\"\"\n  maxTokens: Int\n\n  \"\"\"Custom flags to pass to Claude CLI\"\"\"\n  customFlags: [String!]\n\n  \"\"\"Whether to stream output\"\"\"\n  stream: Boolean\n}\n\ninput ContinueSessionInput {\n  \"\"\"Session ID to continue\"\"\"\n  sessionId: ID!\n\n  \"\"\"New prompt to send\"\"\"\n  prompt: String!\n\n  \"\"\"Optional additional context\"\"\"\n  additionalContext: ContextInput\n}\n\ninput HandoffInput {\n  \"\"\"Session ID to create handoff for\"\"\"\n  sessionId: ID!\n\n  \"\"\"Target for handoff (user, team, etc.)\"\"\"\n  target: String\n\n  \"\"\"Additional notes for handoff\"\"\"\n  notes: String\n\n  \"\"\"Whether to include full history\"\"\"\n  includeFullHistory: Boolean\n}\n\ninput BatchCommitMessageInput {\n  \"\"\"Repository information for commit message generation\"\"\"\n  repositories: [RepositoryCommitInfo!]!\n\n  \"\"\"Style guide for commit messages\"\"\"\n  styleGuide: CommitStyleGuide\n\n  \"\"\"Additional context for all commits\"\"\"\n  globalContext: String\n\n  \"\"\"Whether to analyze relationships between changes\"\"\"\n  analyzeRelationships: Boolean\n}\n\ninput RepositoryCommitInfo {\n  \"\"\"Repository path\"\"\"\n  path: String!\n\n  \"\"\"Repository name\"\"\"\n  name: String!\n\n  \"\"\"Git diff of changes\"\"\"\n  diff: String!\n\n  \"\"\"Files changed\"\"\"\n  filesChanged: [String!]!\n\n  \"\"\"Recent commit history for style matching\"\"\"\n  recentCommits: [String!]\n\n  \"\"\"Additional repository context\"\"\"\n  context: String\n}\n\ninput CommitStyleGuide {\n  \"\"\"Preferred format (conventional, descriptive, etc.)\"\"\"\n  format: String\n\n  \"\"\"Maximum message length\"\"\"\n  maxLength: Int\n\n  \"\"\"Whether to include scope\"\"\"\n  includeScope: Boolean\n\n  \"\"\"Whether to include body\"\"\"\n  includeBody: Boolean\n\n  \"\"\"Custom examples\"\"\"\n  examples: [String!]\n}\n\ninput ForkSessionInput {\n  \"\"\"Session ID to fork from\"\"\"\n  sessionId: ID!\n\n  \"\"\"Message index to fork from (defaults to latest)\"\"\"\n  messageIndex: Int\n\n  \"\"\"Name for the forked session\"\"\"\n  name: String!\n\n  \"\"\"Whether to include message history up to fork point\"\"\"\n  includeHistory: Boolean = true\n}\n\ntype ForkSessionResult {\n  \"\"\"The newly forked session\"\"\"\n  session: ClaudeSession!\n\n  \"\"\"The parent session\"\"\"\n  parentSession: ClaudeSession!\n\n  \"\"\"Fork metadata\"\"\"\n  forkMetadata: ForkMetadata!\n}\n\ntype ForkMetadata {\n  \"\"\"When the fork was created\"\"\"\n  forkedAt: String!\n\n  \"\"\"Message index where fork occurred\"\"\"\n  forkPoint: Int!\n\n  \"\"\"Shared message count with parent\"\"\"\n  sharedMessages: Int!\n}\n\ninput CreateSessionTemplateInput {\n  \"\"\"Session to create template from\"\"\"\n  sessionId: ID!\n\n  \"\"\"Template name\"\"\"\n  name: String!\n\n  \"\"\"Template description\"\"\"\n  description: String\n\n  \"\"\"Tags for categorization\"\"\"\n  tags: [String!]\n\n  \"\"\"Whether to include full message history\"\"\"\n  includeHistory: Boolean = false\n\n  \"\"\"Custom variables to parameterize\"\"\"\n  variables: [TemplateVariableInput!]\n}\n\ninput TemplateVariableInput {\n  \"\"\"Variable name\"\"\"\n  name: String!\n\n  \"\"\"Variable description\"\"\"\n  description: String\n\n  \"\"\"Default value\"\"\"\n  defaultValue: String\n\n  \"\"\"Whether this variable is required\"\"\"\n  required: Boolean = true\n}\n\ntype TemplateVariable {\n  \"\"\"Variable name\"\"\"\n  name: String!\n\n  \"\"\"Variable description\"\"\"\n  description: String\n\n  \"\"\"Default value\"\"\"\n  defaultValue: String\n\n  \"\"\"Whether this variable is required\"\"\"\n  required: Boolean!\n}\n\ntype SessionTemplate {\n  \"\"\"Template ID\"\"\"\n  id: ID!\n\n  \"\"\"Template name\"\"\"\n  name: String!\n\n  \"\"\"Template description\"\"\"\n  description: String\n\n  \"\"\"Creation timestamp\"\"\"\n  createdAt: String!\n\n  \"\"\"Last used timestamp\"\"\"\n  lastUsedAt: String\n\n  \"\"\"Usage count\"\"\"\n  usageCount: Int!\n\n  \"\"\"Tags for categorization\"\"\"\n  tags: [String!]!\n\n  \"\"\"Template variables\"\"\"\n  variables: [TemplateVariable!]!\n\n  \"\"\"Initial context/prompt\"\"\"\n  initialContext: String!\n\n  \"\"\"Settings to apply\"\"\"\n  settings: SessionSettings!\n}\n\ntype SessionSettings {\n  \"\"\"Model to use\"\"\"\n  model: String!\n\n  \"\"\"Temperature setting\"\"\"\n  temperature: Float!\n\n  \"\"\"Maximum tokens\"\"\"\n  maxTokens: Int\n\n  \"\"\"Custom flags\"\"\"\n  customFlags: [String!]!\n}\n\ninput BatchSessionOperationInput {\n  \"\"\"Session IDs to operate on\"\"\"\n  sessionIds: [ID!]!\n\n  \"\"\"Operation to perform\"\"\"\n  operation: SessionOperation!\n\n  \"\"\"Operation-specific parameters\"\"\"\n  parameters: String\n}\n\nenum SessionOperation {\n  \"\"\"Archive sessions\"\"\"\n  ARCHIVE\n\n  \"\"\"Delete sessions\"\"\"\n  DELETE\n\n  \"\"\"Export sessions\"\"\"\n  EXPORT\n\n  \"\"\"Tag sessions\"\"\"\n  TAG\n\n  \"\"\"Analyze sessions\"\"\"\n  ANALYZE\n}\n\ntype BatchSessionOperationResult {\n  \"\"\"Total sessions processed\"\"\"\n  totalProcessed: Int!\n\n  \"\"\"Successful operations\"\"\"\n  successCount: Int!\n\n  \"\"\"Failed operations\"\"\"\n  failedCount: Int!\n\n  \"\"\"Individual results\"\"\"\n  results: [SessionOperationResult!]!\n}\n\ntype SessionOperationResult {\n  \"\"\"Session ID\"\"\"\n  sessionId: ID!\n\n  \"\"\"Operation success\"\"\"\n  success: Boolean!\n\n  \"\"\"Error if failed\"\"\"\n  error: String\n\n  \"\"\"Operation-specific result data\"\"\"\n  resultData: String\n}\n\ninput ShareSessionInput {\n  \"\"\"Session to share\"\"\"\n  sessionId: ID!\n\n  \"\"\"Share recipients (emails or user IDs)\"\"\"\n  recipients: [String!]!\n\n  \"\"\"Permission level\"\"\"\n  permission: SharePermission!\n\n  \"\"\"Optional message\"\"\"\n  message: String\n\n  \"\"\"Expiration time for share link\"\"\"\n  expiresAt: String\n}\n\nenum SharePermission {\n  \"\"\"View only\"\"\"\n  VIEW\n\n  \"\"\"Can continue conversation\"\"\"\n  INTERACT\n\n  \"\"\"Full control including fork/delete\"\"\"\n  ADMIN\n}\n\ntype ShareResult {\n  \"\"\"Share ID\"\"\"\n  shareId: ID!\n\n  \"\"\"Share URL\"\"\"\n  shareUrl: String!\n\n  \"\"\"Share code for direct access\"\"\"\n  shareCode: String!\n\n  \"\"\"When share expires\"\"\"\n  expiresAt: String\n}\n\ntype ArchiveResult {\n  \"\"\"Archive ID\"\"\"\n  archiveId: ID!\n\n  \"\"\"Archive location/path\"\"\"\n  archivePath: String!\n\n  \"\"\"Archive size in bytes\"\"\"\n  sizeBytes: Int!\n\n  \"\"\"Compression ratio\"\"\"\n  compressionRatio: Float!\n}\n\ntype SessionAnalytics {\n  \"\"\"Session ID\"\"\"\n  sessionId: ID!\n\n  \"\"\"Total messages\"\"\"\n  messageCount: Int!\n\n  \"\"\"Token usage breakdown\"\"\"\n  tokenUsage: TokenUsageAnalytics!\n\n  \"\"\"Time analytics\"\"\"\n  timeAnalytics: TimeAnalytics!\n\n  \"\"\"Content analytics\"\"\"\n  contentAnalytics: ContentAnalytics!\n\n  \"\"\"Cost breakdown\"\"\"\n  costBreakdown: CostBreakdown!\n}\n\ntype TokenUsageAnalytics {\n  \"\"\"Total input tokens\"\"\"\n  totalInputTokens: Int!\n\n  \"\"\"Total output tokens\"\"\"\n  totalOutputTokens: Int!\n\n  \"\"\"Average tokens per message\"\"\"\n  averageTokensPerMessage: Float!\n\n  \"\"\"Token usage over time\"\"\"\n  usageOverTime: [TokenUsagePoint!]!\n}\n\ntype TokenUsagePoint {\n  \"\"\"Timestamp\"\"\"\n  timestamp: String!\n\n  \"\"\"Cumulative input tokens\"\"\"\n  inputTokens: Int!\n\n  \"\"\"Cumulative output tokens\"\"\"\n  outputTokens: Int!\n}\n\ntype TimeAnalytics {\n  \"\"\"Total session duration\"\"\"\n  totalDuration: Int!\n\n  \"\"\"Average response time\"\"\"\n  averageResponseTime: Float!\n\n  \"\"\"Longest pause between messages\"\"\"\n  longestPause: Int!\n\n  \"\"\"Activity heatmap\"\"\"\n  activityByHour: [HourActivity!]!\n}\n\ntype HourActivity {\n  \"\"\"Hour of day (0-23)\"\"\"\n  hour: Int!\n\n  \"\"\"Number of messages\"\"\"\n  messageCount: Int!\n}\n\ntype ContentAnalytics {\n  \"\"\"Most discussed topics\"\"\"\n  topTopics: [Topic!]!\n\n  \"\"\"Code languages used\"\"\"\n  codeLanguages: [CodeLanguage!]!\n\n  \"\"\"File types modified\"\"\"\n  fileTypes: [FileType!]!\n\n  \"\"\"Complexity score\"\"\"\n  complexityScore: Float!\n}\n\ntype Topic {\n  \"\"\"Topic name\"\"\"\n  name: String!\n\n  \"\"\"Frequency count\"\"\"\n  count: Int!\n\n  \"\"\"Relevance score\"\"\"\n  relevance: Float!\n}\n\ntype CodeLanguage {\n  \"\"\"Language name\"\"\"\n  language: String!\n\n  \"\"\"Lines of code\"\"\"\n  linesOfCode: Int!\n\n  \"\"\"Number of snippets\"\"\"\n  snippetCount: Int!\n}\n\ntype FileType {\n  \"\"\"File extension\"\"\"\n  extension: String!\n\n  \"\"\"Number of files\"\"\"\n  fileCount: Int!\n\n  \"\"\"Total modifications\"\"\"\n  modificationCount: Int!\n}\n\ntype CostBreakdown {\n  \"\"\"Total cost in USD\"\"\"\n  totalCost: Float!\n\n  \"\"\"Cost by model\"\"\"\n  costByModel: [ModelCost!]!\n\n  \"\"\"Projected monthly cost at current rate\"\"\"\n  projectedMonthlyCost: Float!\n\n  \"\"\"Cost optimization suggestions\"\"\"\n  optimizationSuggestions: [String!]!\n}\n\ntype ModelCost {\n  \"\"\"Model name\"\"\"\n  model: String!\n\n  \"\"\"Total cost for this model\"\"\"\n  cost: Float!\n\n  \"\"\"Token count for this model\"\"\"\n  tokenCount: Int!\n}\n\ntype SessionResumptionData {\n  \"\"\"Session ID\"\"\"\n  sessionId: ID!\n\n  \"\"\"Last activity timestamp\"\"\"\n  lastActivity: String!\n\n  \"\"\"Resumption summary\"\"\"\n  summary: String!\n\n  \"\"\"Priority level\"\"\"\n  priority: ResumptionPriority!\n\n  \"\"\"Suggested prompt to continue\"\"\"\n  suggestedPrompt: String\n\n  \"\"\"Open tasks from the session\"\"\"\n  openTasks: [String!]!\n\n  \"\"\"Number of unresolved errors\"\"\"\n  unresolvedErrors: Int!\n\n  \"\"\"Files being worked on\"\"\"\n  currentFiles: [String!]!\n\n  \"\"\"Context optimization details\"\"\"\n  contextOptimization: ContextOptimization\n}\n\nenum ResumptionPriority {\n  HIGH\n  MEDIUM\n  LOW\n}\n\ntype ContextOptimization {\n  \"\"\"Total messages in context\"\"\"\n  totalMessages: Int!\n\n  \"\"\"Token usage\"\"\"\n  tokenUsage: Int!\n\n  \"\"\"Maximum tokens allowed\"\"\"\n  maxTokens: Int!\n\n  \"\"\"Utilization percentage\"\"\"\n  utilizationPercent: Float!\n}\n\ntype ResumableSession {\n  \"\"\"The session details\"\"\"\n  session: ClaudeSession!\n\n  \"\"\"Resumption analysis data\"\"\"\n  resumptionData: SessionResumptionData!\n}\n\ntype PerformanceReport {\n  \"\"\"Aggregated metrics by operation\"\"\"\n  operations: [OperationMetrics!]!\n\n  \"\"\"Comparison of parallel vs sequential execution\"\"\"\n  parallelComparison: ParallelComparison\n\n  \"\"\"Time range of the report\"\"\"\n  timeRange: TimeRange!\n\n  \"\"\"Total operations tracked\"\"\"\n  totalOperations: Int!\n}\n\ntype OperationMetrics {\n  \"\"\"Operation name\"\"\"\n  operation: String!\n\n  \"\"\"Number of executions\"\"\"\n  count: Int!\n\n  \"\"\"Total duration in milliseconds\"\"\"\n  totalDuration: Float!\n\n  \"\"\"Average duration in milliseconds\"\"\"\n  averageDuration: Float!\n\n  \"\"\"Minimum duration in milliseconds\"\"\"\n  minDuration: Float!\n\n  \"\"\"Maximum duration in milliseconds\"\"\"\n  maxDuration: Float!\n\n  \"\"\"95th percentile duration\"\"\"\n  p95Duration: Float!\n\n  \"\"\"99th percentile duration\"\"\"\n  p99Duration: Float!\n\n  \"\"\"Success rate percentage\"\"\"\n  successRate: Float!\n}\n\ntype ParallelComparison {\n  \"\"\"Metrics for parallel execution\"\"\"\n  parallel: OperationMetrics\n\n  \"\"\"Metrics for sequential execution\"\"\"\n  sequential: OperationMetrics\n\n  \"\"\"Speed improvement factor (sequential/parallel)\"\"\"\n  speedup: Float!\n\n  \"\"\"Efficiency percentage\"\"\"\n  efficiency: Float!\n}\n\ntype TimeRange {\n  \"\"\"Start time of the range\"\"\"\n  start: String!\n\n  \"\"\"End time of the range\"\"\"\n  end: String!\n\n  \"\"\"Duration in minutes\"\"\"\n  durationMinutes: Int!\n}\n\ntype AgentRunProgress {\n  \"\"\"Run ID this progress update is for\"\"\"\n  runId: ID!\n\n  \"\"\"Repository being processed\"\"\"\n  repository: String!\n\n  \"\"\"Current stage of processing\"\"\"\n  stage: ProgressStage!\n\n  \"\"\"Progress percentage (0-100)\"\"\"\n  percentage: Float!\n\n  \"\"\"Estimated time remaining in seconds\"\"\"\n  estimatedTimeRemaining: Int\n\n  \"\"\"Current operation description\"\"\"\n  currentOperation: String\n\n  \"\"\"Timestamp of this update\"\"\"\n  timestamp: String!\n\n  \"\"\"Whether this run is complete\"\"\"\n  isComplete: Boolean!\n\n  \"\"\"Error if any occurred\"\"\"\n  error: String\n}\n\ntype BatchProgress {\n  \"\"\"Batch ID for this group of operations\"\"\"\n  batchId: ID!\n\n  \"\"\"Total number of operations in batch\"\"\"\n  totalOperations: Int!\n\n  \"\"\"Number of completed operations\"\"\"\n  completedOperations: Int!\n\n  \"\"\"Number of failed operations\"\"\"\n  failedOperations: Int!\n\n  \"\"\"Overall progress percentage\"\"\"\n  overallPercentage: Float!\n\n  \"\"\"Individual run progress\"\"\"\n  runProgress: [AgentRunProgress!]!\n\n  \"\"\"Estimated total time remaining\"\"\"\n  estimatedTimeRemaining: Int\n\n  \"\"\"Batch start time\"\"\"\n  startTime: String!\n\n  \"\"\"Whether batch is complete\"\"\"\n  isComplete: Boolean!\n}\n\nenum ProgressStage {\n  \"\"\"Queued for processing\"\"\"\n  QUEUED\n\n  \"\"\"Initializing Claude session\"\"\"\n  INITIALIZING\n\n  \"\"\"Loading context and files\"\"\"\n  LOADING_CONTEXT\n\n  \"\"\"Processing with Claude\"\"\"\n  PROCESSING\n\n  \"\"\"Parsing response\"\"\"\n  PARSING_RESPONSE\n\n  \"\"\"Saving results\"\"\"\n  SAVING_RESULTS\n\n  \"\"\"Completed successfully\"\"\"\n  COMPLETED\n\n  \"\"\"Failed with error\"\"\"\n  FAILED\n\n  \"\"\"Cancelled by user\"\"\"\n  CANCELLED\n}\n\nenum link__Purpose {\n  \"\"\"\n  `SECURITY` features provide metadata necessary to securely resolve fields.\n  \"\"\"\n  SECURITY\n\n  \"\"\"\n  `EXECUTION` features provide metadata necessary for operation execution.\n  \"\"\"\n  EXECUTION\n}\n\nscalar link__Import\n\nscalar federation__FieldSet\n\nscalar federation__Scope\n\nscalar federation__Policy\n\nscalar federation__ContextFieldValue\n\nscalar _Any\n\ntype _Service {\n  sdl: String\n}\n\nunion _Entity = ClaudeSession\n"
+          }
+        }
+      },
+      {
+        "id": "1",
+        "kind": "GRAPHQL",
+        "name": "git-service",
+        "rootNodes": [
+          {
+            "typeName": "Query",
+            "fieldNames": [
+              "gitStatus",
+              "gitHealth",
+              "latestCommit",
+              "repositoryDetails",
+              "scanAllRepositories",
+              "scanAllDetailed",
+              "submodules",
+              "isRepositoryClean"
+            ]
+          },
+          {
+            "typeName": "Mutation",
+            "fieldNames": [
+              "commitChanges",
+              "pushChanges",
+              "executeGitCommand",
+              "batchCommit",
+              "hierarchicalCommit",
+              "hierarchicalCommitAndPush"
+            ]
+          }
+        ],
+        "childNodes": [
+          {
+            "typeName": "GitStatus"
+          },
+          {
+            "typeName": "GitHealth"
+          },
+          {
+            "typeName": "GitCommit"
+          },
+          {
+            "typeName": "RepositoryDetails"
+          },
+          {
+            "typeName": "RepositoryScanResult"
+          },
+          {
+            "typeName": "DetailedRepositoryScan"
+          },
+          {
+            "typeName": "SubmoduleInfo"
+          },
+          {
+            "typeName": "PushResult"
+          },
+          {
+            "typeName": "ExecuteGitCommandResult"
+          },
+          {
+            "typeName": "BatchCommitResult"
+          },
+          {
+            "typeName": "HierarchicalCommitResult"
+          }
+        ],
+        "customGraphql": {
+          "fetch": {
+            "url": {
+              "staticVariableContent": "http://localhost:3004/graphql"
+            },
+            "method": "POST"
+          },
+          "subscription": {
+            "enabled": true,
+            "protocol": "SSE",
+            "url": {
+              "staticVariableContent": "http://localhost:3004/graphql"
+            }
+          },
+          "federation": {
+            "enabled": true,
+            "serviceSdl": "schema\n  @link(url: \"https://specs.apollo.dev/link/v1.0\")\n{\n  query: Query\n  mutation: Mutation\n}\n\nextend schema\n  @link(url: \"https://specs.apollo.dev/federation/v2.10\", import: [\"@key\", \"@shareable\", \"@external\", \"@tag\"])\n\ndirective @link(url: String, as: String, for: link__Purpose, import: [link__Import]) repeatable on SCHEMA\n\ndirective @key(fields: federation__FieldSet!, resolvable: Boolean = true) repeatable on OBJECT | INTERFACE\n\ndirective @federation__requires(fields: federation__FieldSet!) on FIELD_DEFINITION\n\ndirective @federation__provides(fields: federation__FieldSet!) on FIELD_DEFINITION\n\ndirective @external(reason: String) on OBJECT | FIELD_DEFINITION\n\ndirective @tag(name: String!) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION | SCHEMA\n\ndirective @federation__extends on OBJECT | INTERFACE\n\ndirective @shareable repeatable on OBJECT | FIELD_DEFINITION\n\ndirective @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION\n\ndirective @federation__override(from: String!, label: String) on FIELD_DEFINITION\n\ndirective @federation__composeDirective(name: String) repeatable on SCHEMA\n\ndirective @federation__interfaceObject on OBJECT\n\ndirective @federation__authenticated on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM\n\ndirective @federation__requiresScopes(scopes: [[federation__Scope!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM\n\ndirective @federation__policy(policies: [[federation__Policy!]!]!) on FIELD_DEFINITION | OBJECT | INTERFACE | SCALAR | ENUM\n\ndirective @federation__context(name: String!) repeatable on INTERFACE | OBJECT | UNION\n\ndirective @federation__fromContext(field: federation__ContextFieldValue) on ARGUMENT_DEFINITION\n\ndirective @federation__cost(weight: Int!) on ARGUMENT_DEFINITION | ENUM | FIELD_DEFINITION | INPUT_FIELD_DEFINITION | OBJECT | SCALAR\n\ndirective @federation__listSize(assumedSize: Int, slicingArguments: [String!], sizedFields: [String!], requireOneSlicingArgument: Boolean = true) on FIELD_DEFINITION\n\ntype Query {\n  \"\"\"Check Repo Agent service health and Git availability\"\"\"\n  repoAgentHealth: RepoAgentHealth!\n\n  \"\"\"Get the current git status of a repository\"\"\"\n  gitStatus(path: String!): GitStatus!\n\n  \"\"\"Scan workspace for all git repositories\"\"\"\n  scanAllRepositories: [Repository!]!\n\n  \"\"\"Perform a detailed scan with diffs and history\"\"\"\n  scanAllDetailed: DetailedScanReport!\n\n  \"\"\"List and get status of git submodules\"\"\"\n  submodules: [Submodule!]!\n\n  \"\"\"Get comprehensive information about a specific repository\"\"\"\n  repositoryDetails(path: String!): Repository!\n\n  \"\"\"Check if repository has uncommitted changes\"\"\"\n  isRepositoryClean(path: String!): RepositoryCleanStatus!\n\n  \"\"\"Get the latest commit hash for a repository\"\"\"\n  latestCommit(path: String!): CommitInfo!\n  _entities(representations: [_Any!]!): [_Entity]!\n  _service: _Service!\n}\n\ntype Mutation {\n  \"\"\"Execute a git command (with safety restrictions)\"\"\"\n  executeGitCommand(input: GitCommandInput!): GitCommandResult!\n\n  \"\"\"Stage and commit changes\"\"\"\n  commitChanges(input: CommitInput!): CommitResult!\n\n  \"\"\"Commit changes across multiple repositories\"\"\"\n  batchCommit(input: BatchCommitInput!): BatchCommitResult!\n\n  \"\"\"Push changes to remote repository\"\"\"\n  pushChanges(input: PushInput!): PushResult!\n\n  \"\"\"Commit all changes hierarchically (submodules first, then parent)\"\"\"\n  hierarchicalCommit(input: HierarchicalCommitInput!): HierarchicalCommitResult!\n\n  \"\"\"Commit and push all changes hierarchically\"\"\"\n  hierarchicalCommitAndPush(input: HierarchicalCommitInput!): HierarchicalCommitAndPushResult!\n}\n\n\"\"\"Repository is the main entity owned by this service\"\"\"\ntype Repository\n  @key(fields: \"path\")\n{\n  \"\"\"Absolute path to repository - unique identifier\"\"\"\n  path: String!\n\n  \"\"\"Repository name derived from path\"\"\"\n  name: String!\n\n  \"\"\"Current git status\"\"\"\n  status: GitStatus!\n\n  \"\"\"Whether repository has uncommitted changes\"\"\"\n  isDirty: Boolean!\n\n  \"\"\"Current branch\"\"\"\n  branch: String!\n\n  \"\"\"Number of uncommitted files\"\"\"\n  uncommittedCount: Int!\n\n  \"\"\"Repository type (regular, submodule, etc.)\"\"\"\n  type: RepositoryType!\n\n  \"\"\"All branches\"\"\"\n  branches: [Branch!]!\n\n  \"\"\"All tags\"\"\"\n  tags: [Tag!]!\n\n  \"\"\"All remotes\"\"\"\n  remotes: [Remote!]!\n\n  \"\"\"Repository size information\"\"\"\n  size: RepositorySize!\n\n  \"\"\"Package information if applicable\"\"\"\n  packageInfo: PackageInfo\n\n  \"\"\"Staged diff\"\"\"\n  stagedDiff: String\n\n  \"\"\"Unstaged diff\"\"\"\n  unstagedDiff: String\n\n  \"\"\"Recent commit history\"\"\"\n  recentCommits: [Commit!]!\n\n  \"\"\"Repository configuration\"\"\"\n  config: RepositoryConfig!\n}\n\nextend type ClaudeSession\n  @key(fields: \"id\", resolvable: false)\n{\n  id: ID! @external\n}\n\ntype RepoAgentHealth {\n  \"\"\"Service health status\"\"\"\n  status: String!\n\n  \"\"\"Current timestamp\"\"\"\n  timestamp: String!\n\n  \"\"\"Service version\"\"\"\n  version: String\n\n  \"\"\"Additional service information\"\"\"\n  details: RepoAgentHealthDetails!\n}\n\ntype RepoAgentHealthDetails {\n  \"\"\"Number of repositories being monitored\"\"\"\n  repositoryCount: Int!\n\n  \"\"\"Git version\"\"\"\n  gitVersion: String!\n\n  \"\"\"System information\"\"\"\n  system: RepoAgentSystemInfo!\n}\n\ntype RepoAgentSystemInfo {\n  \"\"\"Platform (linux, darwin, win32)\"\"\"\n  platform: String!\n\n  \"\"\"CPU architecture\"\"\"\n  arch: String!\n\n  \"\"\"Node.js version\"\"\"\n  nodeVersion: String!\n\n  \"\"\"Free memory in bytes\"\"\"\n  freeMemory: Float!\n\n  \"\"\"Total memory in bytes\"\"\"\n  totalMemory: Float!\n}\n\ntype GitStatus {\n  \"\"\"Current branch name\"\"\"\n  branch: String!\n\n  \"\"\"Whether there are uncommitted changes\"\"\"\n  isDirty: Boolean!\n\n  \"\"\"List of files with changes\"\"\"\n  files: [FileStatus!]!\n\n  \"\"\"Number of commits ahead of remote\"\"\"\n  ahead: Int!\n\n  \"\"\"Number of commits behind remote\"\"\"\n  behind: Int!\n\n  \"\"\"Whether repository has a remote\"\"\"\n  hasRemote: Boolean!\n\n  \"\"\"List of stashes\"\"\"\n  stashes: [Stash!]!\n}\n\ntype FileStatus {\n  \"\"\"File path relative to repository root\"\"\"\n  path: String!\n\n  \"\"\"Git status code (M, A, D, R, U, etc.)\"\"\"\n  status: String!\n\n  \"\"\"Human-readable status description\"\"\"\n  statusDescription: String!\n\n  \"\"\"Whether file is staged\"\"\"\n  isStaged: Boolean!\n}\n\ntype Stash {\n  \"\"\"Stash index\"\"\"\n  index: Int!\n\n  \"\"\"Stash message\"\"\"\n  message: String!\n\n  \"\"\"When the stash was created\"\"\"\n  timestamp: String!\n}\n\ntype DetailedScanReport {\n  \"\"\"List of all repositories with detailed information\"\"\"\n  repositories: [Repository!]!\n\n  \"\"\"Overall statistics\"\"\"\n  statistics: ScanStatistics!\n\n  \"\"\"Scan metadata\"\"\"\n  metadata: ScanMetadata!\n}\n\ntype Commit {\n  \"\"\"Commit hash\"\"\"\n  hash: String!\n\n  \"\"\"Commit message\"\"\"\n  message: String!\n\n  \"\"\"Author name\"\"\"\n  author: String!\n\n  \"\"\"Author email\"\"\"\n  authorEmail: String!\n\n  \"\"\"Commit timestamp\"\"\"\n  timestamp: String!\n}\n\ntype Remote {\n  \"\"\"Remote name (e.g., origin)\"\"\"\n  name: String!\n\n  \"\"\"Fetch URL\"\"\"\n  fetchUrl: String!\n\n  \"\"\"Push URL\"\"\"\n  pushUrl: String!\n}\n\ntype RepositoryConfig {\n  \"\"\"Default branch name\"\"\"\n  defaultBranch: String!\n\n  \"\"\"Whether repository is bare\"\"\"\n  isBare: Boolean!\n\n  \"\"\"Whether repository is shallow\"\"\"\n  isShallow: Boolean!\n}\n\ntype ScanStatistics {\n  \"\"\"Total number of repositories\"\"\"\n  totalRepositories: Int!\n\n  \"\"\"Number of dirty repositories\"\"\"\n  dirtyRepositories: Int!\n\n  \"\"\"Total uncommitted files\"\"\"\n  totalUncommittedFiles: Int!\n\n  \"\"\"Total lines added\"\"\"\n  totalAdditions: Int!\n\n  \"\"\"Total lines deleted\"\"\"\n  totalDeletions: Int!\n\n  \"\"\"Breakdown by file type\"\"\"\n  changesByType: ChangesByType!\n}\n\ntype ChangesByType {\n  \"\"\"Modified files\"\"\"\n  modified: Int!\n\n  \"\"\"Added files\"\"\"\n  added: Int!\n\n  \"\"\"Deleted files\"\"\"\n  deleted: Int!\n\n  \"\"\"Renamed files\"\"\"\n  renamed: Int!\n\n  \"\"\"Untracked files\"\"\"\n  untracked: Int!\n}\n\ntype ScanMetadata {\n  \"\"\"When the scan started\"\"\"\n  startTime: String!\n\n  \"\"\"When the scan completed\"\"\"\n  endTime: String!\n\n  \"\"\"Scan duration in milliseconds\"\"\"\n  duration: Int!\n\n  \"\"\"Workspace root path\"\"\"\n  workspaceRoot: String!\n}\n\ntype Submodule {\n  \"\"\"Submodule name\"\"\"\n  name: String!\n\n  \"\"\"Path relative to parent repository\"\"\"\n  path: String!\n\n  \"\"\"Current commit hash\"\"\"\n  commit: String!\n\n  \"\"\"Submodule URL\"\"\"\n  url: String!\n\n  \"\"\"Whether submodule is initialized\"\"\"\n  isInitialized: Boolean!\n\n  \"\"\"Whether submodule has uncommitted changes\"\"\"\n  isDirty: Boolean!\n\n  \"\"\"Submodule status\"\"\"\n  status: SubmoduleStatus!\n}\n\ntype SubmoduleStatus {\n  \"\"\"Whether submodule is up to date\"\"\"\n  isUpToDate: Boolean!\n\n  \"\"\"Number of commits ahead\"\"\"\n  ahead: Int!\n\n  \"\"\"Number of commits behind\"\"\"\n  behind: Int!\n\n  \"\"\"Whether submodule has merge conflicts\"\"\"\n  hasConflicts: Boolean!\n}\n\ntype Branch {\n  \"\"\"Branch name\"\"\"\n  name: String!\n\n  \"\"\"Whether this is the current branch\"\"\"\n  isCurrent: Boolean!\n\n  \"\"\"Whether branch tracks a remote\"\"\"\n  isTracking: Boolean!\n\n  \"\"\"Remote tracking branch\"\"\"\n  trackingBranch: String\n\n  \"\"\"Last commit on branch\"\"\"\n  lastCommit: Commit!\n}\n\ntype Tag {\n  \"\"\"Tag name\"\"\"\n  name: String!\n\n  \"\"\"Tag type (lightweight or annotated)\"\"\"\n  type: TagType!\n\n  \"\"\"Tagged commit\"\"\"\n  commit: String!\n\n  \"\"\"Tag message (for annotated tags)\"\"\"\n  message: String\n\n  \"\"\"Tagger information\"\"\"\n  tagger: String\n\n  \"\"\"Tag date\"\"\"\n  date: String\n}\n\ntype RepositoryCleanStatus {\n  \"\"\"Whether the repository has uncommitted changes\"\"\"\n  isClean: Boolean!\n\n  \"\"\"Number of uncommitted files\"\"\"\n  uncommittedFiles: Int!\n\n  \"\"\"Latest commit hash\"\"\"\n  latestCommitHash: String!\n\n  \"\"\"Repository path\"\"\"\n  repository: String!\n}\n\ntype CommitInfo {\n  \"\"\"Commit hash\"\"\"\n  hash: String!\n\n  \"\"\"Short hash (7 characters)\"\"\"\n  shortHash: String!\n\n  \"\"\"Commit message\"\"\"\n  message: String!\n\n  \"\"\"Author name\"\"\"\n  author: String!\n\n  \"\"\"Commit timestamp\"\"\"\n  timestamp: String!\n\n  \"\"\"Repository path\"\"\"\n  repository: String!\n}\n\ntype RepositorySize {\n  \"\"\"Total size in bytes\"\"\"\n  totalSize: Int!\n\n  \"\"\"Number of files\"\"\"\n  fileCount: Int!\n\n  \"\"\"Number of commits\"\"\"\n  commitCount: Int!\n\n  \"\"\"Size of .git directory\"\"\"\n  gitSize: Int!\n}\n\ntype PackageInfo {\n  \"\"\"Package name from package.json\"\"\"\n  name: String!\n\n  \"\"\"Package version\"\"\"\n  version: String!\n\n  \"\"\"Package description\"\"\"\n  description: String\n\n  \"\"\"Main entry point\"\"\"\n  main: String\n\n  \"\"\"Scripts available\"\"\"\n  scripts: [String!]!\n\n  \"\"\"Dependencies count\"\"\"\n  dependencyCount: Int!\n\n  \"\"\"Dev dependencies count\"\"\"\n  devDependencyCount: Int!\n}\n\ntype GitCommandResult {\n  \"\"\"Whether command executed successfully\"\"\"\n  success: Boolean!\n\n  \"\"\"Command output\"\"\"\n  output: String\n\n  \"\"\"Error message if failed\"\"\"\n  error: String\n\n  \"\"\"Exit code\"\"\"\n  exitCode: Int!\n\n  \"\"\"Command that was executed\"\"\"\n  command: String!\n}\n\ntype CommitResult {\n  \"\"\"Whether commit was successful\"\"\"\n  success: Boolean!\n\n  \"\"\"Commit hash\"\"\"\n  commitHash: String\n\n  \"\"\"Error message if failed\"\"\"\n  error: String\n\n  \"\"\"Repository path\"\"\"\n  repository: String!\n\n  \"\"\"Files that were committed\"\"\"\n  committedFiles: [String!]!\n\n  \"\"\"Whether the working directory is clean after commit\"\"\"\n  isClean: Boolean\n\n  \"\"\"Number of uncommitted files remaining\"\"\"\n  remainingFiles: Int\n}\n\ntype BatchCommitResult {\n  \"\"\"Total repositories processed\"\"\"\n  totalRepositories: Int!\n\n  \"\"\"Number of successful commits\"\"\"\n  successCount: Int!\n\n  \"\"\"Individual results per repository\"\"\"\n  results: [CommitResult!]!\n\n  \"\"\"Execution time in milliseconds\"\"\"\n  executionTime: Int!\n}\n\ntype PushResult {\n  \"\"\"Whether push was successful\"\"\"\n  success: Boolean!\n\n  \"\"\"Remote name\"\"\"\n  remote: String!\n\n  \"\"\"Branch that was pushed\"\"\"\n  branch: String!\n\n  \"\"\"Error message if failed\"\"\"\n  error: String\n\n  \"\"\"Repository path\"\"\"\n  repository: String!\n}\n\nenum RepositoryType {\n  \"\"\"Regular git repository\"\"\"\n  REGULAR\n\n  \"\"\"Git submodule\"\"\"\n  SUBMODULE\n\n  \"\"\"Bare repository\"\"\"\n  BARE\n\n  \"\"\"Worktree\"\"\"\n  WORKTREE\n}\n\nenum TagType {\n  \"\"\"Lightweight tag\"\"\"\n  LIGHTWEIGHT\n\n  \"\"\"Annotated tag\"\"\"\n  ANNOTATED\n}\n\ninput GitCommandInput {\n  \"\"\"Repository path\"\"\"\n  repository: String!\n\n  \"\"\"Git command to execute (without 'git' prefix)\"\"\"\n  command: String!\n\n  \"\"\"Command arguments\"\"\"\n  args: [String!]!\n\n  \"\"\"Working directory (defaults to repository path)\"\"\"\n  workingDirectory: String\n}\n\ninput CommitInput {\n  \"\"\"Repository path\"\"\"\n  repository: String!\n\n  \"\"\"Commit message\"\"\"\n  message: String!\n\n  \"\"\"Files to stage (empty means all)\"\"\"\n  files: [String!]\n\n  \"\"\"Whether to stage all changes\"\"\"\n  stageAll: Boolean\n\n  \"\"\"Author name (optional)\"\"\"\n  author: String\n\n  \"\"\"Author email (optional)\"\"\"\n  authorEmail: String\n}\n\ninput BatchCommitInput {\n  \"\"\"List of commits to perform\"\"\"\n  commits: [CommitInput!]!\n\n  \"\"\"Whether to continue on error\"\"\"\n  continueOnError: Boolean\n\n  \"\"\"Maximum parallel operations\"\"\"\n  maxConcurrency: Int\n}\n\ninput PushInput {\n  \"\"\"Repository path\"\"\"\n  repository: String!\n\n  \"\"\"Remote name (defaults to origin)\"\"\"\n  remote: String\n\n  \"\"\"Branch to push (defaults to current)\"\"\"\n  branch: String\n\n  \"\"\"Whether to set upstream\"\"\"\n  setUpstream: Boolean\n\n  \"\"\"Whether to push tags\"\"\"\n  pushTags: Boolean\n}\n\ninput HierarchicalCommitInput {\n  \"\"\"Commit message to use for all repositories\"\"\"\n  message: String!\n\n  \"\"\"Whether to stage all changes in each repository\"\"\"\n  stageAll: Boolean\n\n  \"\"\"Author name (optional)\"\"\"\n  author: String\n\n  \"\"\"Author email (optional)\"\"\"\n  authorEmail: String\n}\n\ntype HierarchicalCommitResult {\n  \"\"\"Whether all commits were successful\"\"\"\n  success: Boolean!\n\n  \"\"\"Total repositories processed\"\"\"\n  totalRepositories: Int!\n\n  \"\"\"Number of successful commits\"\"\"\n  successCount: Int!\n\n  \"\"\"Commits made in submodules\"\"\"\n  submoduleCommits: [CommitResult!]!\n\n  \"\"\"Commit made in parent repository\"\"\"\n  parentCommit: CommitResult\n\n  \"\"\"Execution time in milliseconds\"\"\"\n  executionTime: Int!\n\n  \"\"\"Overall error message if failed\"\"\"\n  error: String\n}\n\ntype HierarchicalCommitAndPushResult {\n  \"\"\"Whether all operations were successful\"\"\"\n  success: Boolean!\n\n  \"\"\"Result of the hierarchical commit\"\"\"\n  commitResult: HierarchicalCommitResult!\n\n  \"\"\"Push results for each repository\"\"\"\n  pushResults: [PushResult!]!\n\n  \"\"\"Total execution time in milliseconds\"\"\"\n  executionTime: Int!\n\n  \"\"\"Overall error message if failed\"\"\"\n  error: String\n}\n\nenum link__Purpose {\n  \"\"\"\n  `SECURITY` features provide metadata necessary to securely resolve fields.\n  \"\"\"\n  SECURITY\n\n  \"\"\"\n  `EXECUTION` features provide metadata necessary for operation execution.\n  \"\"\"\n  EXECUTION\n}\n\nscalar link__Import\n\nscalar federation__FieldSet\n\nscalar federation__Scope\n\nscalar federation__Policy\n\nscalar federation__ContextFieldValue\n\nscalar _Any\n\ntype _Service {\n  sdl: String\n}\n\nunion _Entity = ClaudeSession | Repository\n"
+          }
+        }
+      },
+      {
+        "id": "2",
+        "kind": "GRAPHQL",
+        "name": "github-adapter",
+        "rootNodes": [
+          {
+            "typeName": "Query",
+            "fieldNames": [
+              "githubUser",
+              "githubRepository",
+              "githubRepositories"
+            ]
+          }
+        ],
+        "childNodes": [
+          {
+            "typeName": "GitHubUser"
+          },
+          {
+            "typeName": "GitHubRepository"
+          }
+        ],
+        "customGraphql": {
+          "fetch": {
+            "url": {
+              "staticVariableContent": "http://localhost:3005/graphql"
+            },
+            "method": "POST"
+          },
+          "federation": {
+            "enabled": true,
+            "serviceSdl": "schema\n  @link(url: \"https://specs.apollo.dev/link/v1.0\")\n{\n  query: Query\n}\n\nextend schema\n  @link(url: \"https://specs.apollo.dev/federation/v2.0\", import: [\"@key\", \"@shareable\"])\n\ndirective @link(url: String, as: String, for: link__Purpose, import: [link__Import]) repeatable on SCHEMA\n\ndirective @key(fields: federation__FieldSet!, resolvable: Boolean = true) repeatable on OBJECT | INTERFACE\n\ndirective @federation__requires(fields: federation__FieldSet!) on FIELD_DEFINITION\n\ndirective @federation__provides(fields: federation__FieldSet!) on FIELD_DEFINITION\n\ndirective @federation__external(reason: String) on OBJECT | FIELD_DEFINITION\n\ndirective @federation__tag(name: String!) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION\n\ndirective @federation__extends on OBJECT | INTERFACE\n\ndirective @shareable on OBJECT | FIELD_DEFINITION\n\ndirective @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION\n\ndirective @federation__override(from: String!) on FIELD_DEFINITION\n\ntype Query {\n  \"\"\"Get authenticated user\"\"\"\n  githubUser: GitHubUser\n\n  \"\"\"Get repository by owner and name\"\"\"\n  githubRepository(owner: String!, name: String!): GitHubRepository\n\n  \"\"\"List repositories for authenticated user\"\"\"\n  githubRepositories(first: Int = 30): [GitHubRepository!]!\n  _entities(representations: [_Any!]!): [_Entity]!\n  _service: _Service!\n}\n\ntype GitHubUser\n  @key(fields: \"id\")\n{\n  id: ID!\n  login: String!\n  name: String\n  email: String\n  avatarUrl: String\n  htmlUrl: String!\n}\n\ntype GitHubRepository\n  @key(fields: \"id\")\n{\n  id: ID!\n  name: String!\n  fullName: String!\n  description: String\n  private: Boolean!\n  fork: Boolean!\n  createdAt: String!\n  updatedAt: String!\n  pushedAt: String\n  homepage: String\n  language: String\n  forksCount: Int!\n  stargazersCount: Int!\n  watchersCount: Int!\n  defaultBranch: String!\n  owner: GitHubUser!\n  htmlUrl: String!\n  cloneUrl: String!\n  gitUrl: String!\n  sshUrl: String!\n}\n\nenum link__Purpose {\n  \"\"\"\n  `SECURITY` features provide metadata necessary to securely resolve fields.\n  \"\"\"\n  SECURITY\n\n  \"\"\"\n  `EXECUTION` features provide metadata necessary for operation execution.\n  \"\"\"\n  EXECUTION\n}\n\nscalar link__Import\n\nscalar federation__FieldSet\n\nscalar _Any\n\ntype _Service {\n  sdl: String\n}\n\nunion _Entity = GitHubRepository | GitHubUser\n"
+          }
+        }
+      }
+    ],
+    "fieldConfigurations": [
+      {
+        "typeName": "Query",
+        "fieldName": "_service",
+        "disableDefaultMapping": true
+      },
+      {
+        "typeName": "Query",
+        "fieldName": "_entities",
+        "disableDefaultMapping": true
+      }
+    ]
+  },
+  "subgraphs": [
+    {
+      "id": "0",
+      "name": "claude-service",
+      "routingUrl": "http://localhost:3002/graphql"
+    },
+    {
+      "id": "1",
+      "name": "git-service",
+      "routingUrl": "http://localhost:3004/graphql"
+    },
+    {
+      "id": "2",
+      "name": "github-adapter",
+      "routingUrl": "http://localhost:3005/graphql"
+    }
+  ]
+}

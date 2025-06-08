@@ -1,0 +1,14 @@
+# Supergraph configuration for Apollo Router
+# This file defines the subgraphs that make up our federated graph
+
+federation_version: 2.10
+
+subgraphs:
+  git:
+    routing_url: http://localhost:3004/graphql
+    schema:
+      subgraph_url: http://localhost:3004/graphql
+  claude:
+    routing_url: http://localhost:3002/graphql
+    schema:
+      subgraph_url: http://localhost:3002/graphql

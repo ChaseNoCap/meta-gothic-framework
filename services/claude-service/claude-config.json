@@ -1,0 +1,40 @@
+{
+  "dangerousMode": true,
+  "permissions": {
+    "allowedTools": ["Bash", "Read", "Write", "Edit"],
+    "allowPatterns": {
+      "Bash": [
+        "echo:*",
+        "ls:*",
+        "pwd",
+        "cd:*",
+        "cat:*",
+        "sleep:*",
+        "for:*",
+        "while:*",
+        "bash:*",
+        "sh:*",
+        "node:*",
+        "npm:*",
+        "git status",
+        "git diff:*",
+        "git log:*"
+      ]
+    },
+    "denyPatterns": {
+      "Bash": [
+        "rm -rf:*",
+        "sudo:*",
+        "curl:*",
+        "wget:*",
+        "nc:*",
+        "telnet:*"
+      ]
+    }
+  },
+  "sessionDefaults": {
+    "model": "claude-3-5-sonnet-20241022",
+    "maxTokens": 4096,
+    "temperature": 0.7
+  }
+}

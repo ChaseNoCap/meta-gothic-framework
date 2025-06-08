@@ -1,0 +1,20 @@
+# Cosmo Router Configuration - Local Development Mode
+version: "1"
+log_level: "info"
+listen_addr: "0.0.0.0:4000"
+dev_mode: true
+playground_enabled: true
+introspection_enabled: true
+
+# Load execution config from generated file
+execution_config:
+  file:
+    path: "./config.json"
+    watch: true
+    watch_interval: "1s"
+
+# CORS settings for local development
+cors:
+  allow_origins: ["*"]
+  allow_methods: ["POST", "GET"]
+  allow_headers: ["Content-Type", "Authorization"]
