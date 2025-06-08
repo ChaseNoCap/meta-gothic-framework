@@ -3,6 +3,7 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import type { Context } from '../context.js';
 
 interface ServiceHealthStatus {
   healthy: boolean;
@@ -12,14 +13,14 @@ interface ServiceHealthStatus {
   details: any;
 }
 
-export const healthResolver = async (): Promise<ServiceHealthStatus> => {
+export const healthResolver = async (_: any, __: any, context: Context): Promise<ServiceHealthStatus> => {
   try {
     // Get Git version (testing tsx watch restart)
     let gitVersion = 'unknown';
     try {
       gitVersion = execSync('git --version', { encoding: 'utf8' }).trim();
     } catch (error) {
-      console.error('Failed to get git version:', error);
+      context.logger?.error('Failed to get git version', error as Error);
     }
 
     // Count repositories (scan workspace)
@@ -41,7 +42,7 @@ export const healthResolver = async (): Promise<ServiceHealthStatus> => {
       };
       scanDir(workspaceRoot);
     } catch (error) {
-      console.error('Failed to scan repositories:', error);
+      context.logger?.error('Failed to scan repositories', error as Error);
     }
 
     // Get package version
@@ -53,7 +54,7 @@ export const healthResolver = async (): Promise<ServiceHealthStatus> => {
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
       version = packageJson.version;
     } catch (error) {
-      console.error('Failed to read package.json:', error);
+      context.logger?.error('Failed to read package.json', error as Error);
     }
 
     return {
@@ -74,7 +75,7 @@ export const healthResolver = async (): Promise<ServiceHealthStatus> => {
       }
     };
   } catch (error) {
-    console.error('Health check failed:', error);
+    context.logger?.error('Health check failed', error as Error);
     return {
       healthy: false,
       service: 'git-service',

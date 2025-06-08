@@ -9,6 +9,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@chasenocap/logger": "file:../../packages/logger",
     "@types/node-fetch": "^2.6.12",
     "graphql": "16.11.0",
     "graphql-tag": "^2.12.6",

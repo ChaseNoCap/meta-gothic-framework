@@ -17,24 +17,24 @@ import { healthMonitor } from './health-monitor.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3002;
 
+// Initialize logger first
+const logger = createLogger('claude-service', {}, {
+  logDir: join(__dirname, '../../logs/claude-service')
+});
+
 // Load configuration
 const configPath = join(__dirname, '../claude-config.json');
 let claudeConfig: any = { preWarmEnabled: true };
 try {
   claudeConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
 } catch (error) {
-  console.warn('[Claude Service] Could not load claude-config.json, using defaults');
+  logger.warn('[Claude Service] Could not load claude-config.json, using defaults');
 }
-
-// Initialize services
-const logger = createLogger('claude-service', {}, {
-  logDir: join(__dirname, '../../logs/claude-service')
-});
 
 // Add global error handlers
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
-  console.error('Uncaught Exception:', error);
+  // console.error kept for critical errors that need immediate visibility
   healthMonitor.recordError(error);
   // Give time to flush logs before exit
   setTimeout(() => process.exit(1), 1000);
@@ -42,7 +42,7 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // console.error kept for critical errors that need immediate visibility
   healthMonitor.recordError(reason instanceof Error ? reason : new Error(String(reason)));
   // Don't exit on unhandled rejection, but log it
 });
@@ -66,7 +66,7 @@ const schemaPath = join(__dirname, '../schema/schema-federated.graphql');
 const typeDefs = gql(readFileSync(schemaPath, 'utf-8'));
 
 // Debug: Check resolvers structure
-console.log('[Claude Service] Resolvers structure:', {
+logger.debug('[Claude Service] Resolvers structure:', {
   hasQuery: !!resolvers.Query,
   queryKeys: Object.keys(resolvers.Query || {}),
   hasMutation: !!resolvers.Mutation,
@@ -213,6 +213,7 @@ server.listen(PORT, async () => {
   logger.info(`🏥 Health check at http://localhost:${PORT}/health`);
   logger.info(`📊 Federation: Cosmo-compatible subgraph`);
   
+  // Also log to console for PM2/systemd visibility
   console.log('Starting Claude Service...');
   console.log(`🚀 Claude Service running at http://localhost:${PORT}/graphql`);
   console.log(`📡 SSE endpoint at http://localhost:${PORT}/graphql/stream`);
@@ -229,14 +230,17 @@ server.listen(PORT, async () => {
       await preWarmManager.initialize();
       preWarmManager.startCleanupInterval();
       logger.info('🔥 Pre-warm session manager initialized');
+      // Also log to console for PM2/systemd visibility
       console.log('🔥 Pre-warm session manager initialized');
     } catch (error) {
       logger.error('Failed to initialize pre-warm session manager:', error);
+      // Also log to console for PM2/systemd visibility
       console.error('Failed to initialize pre-warm session manager:', error);
       // Don't crash the service if pre-warm fails
     }
   } else {
     logger.info('ℹ️  Pre-warm sessions disabled by configuration');
+    // Also log to console for PM2/systemd visibility
     console.log('ℹ️  Pre-warm sessions disabled by configuration');
   }
 });
@@ -244,6 +248,7 @@ server.listen(PORT, async () => {
 // Graceful shutdown handler
 const gracefulShutdown = (signal: string) => {
   logger.info(`${signal} received, shutting down gracefully...`);
+  // Also log to console for PM2/systemd visibility
   console.log(`${signal} received, shutting down gracefully...`);
   
   // Stop health monitoring
@@ -267,6 +272,7 @@ const gracefulShutdown = (signal: string) => {
   
   server.close(() => {
     logger.info('Server closed');
+    // Also log to console for PM2/systemd visibility
     console.log('Server closed');
     process.exit(0);
   });
@@ -274,6 +280,7 @@ const gracefulShutdown = (signal: string) => {
   // Force exit after 10 seconds
   setTimeout(() => {
     logger.error('Forced exit after timeout');
+    // Also log to console for PM2/systemd visibility
     console.error('Forced exit after timeout');
     process.exit(1);
   }, 10000);

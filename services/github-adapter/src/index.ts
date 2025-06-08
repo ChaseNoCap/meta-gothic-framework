@@ -7,6 +7,7 @@ import { buildCosmoSubgraphSchema } from '../../shared/federation/cosmo-subgraph
 import { parse, execute, DocumentNode } from '../../shared/federation/node_modules/graphql/index.js';
 import gql from 'graphql-tag';
 import { createRequire } from 'module';
+import { createLogger } from '@chasenocap/logger';
 
 interface Event {
   type: string;
@@ -20,7 +21,7 @@ interface EventBus {
 
 interface Context {
   eventBus: EventBus;
-  logger: Console;
+  logger: ReturnType<typeof createLogger>;
   correlationId: string;
   githubToken: string | undefined;
 }
@@ -35,6 +36,11 @@ const require = createRequire(import.meta.url);
 const PORT = process.env.PORT || 3005;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.VITE_GITHUB_TOKEN;
 
+// Initialize logger
+const logger = createLogger('github-adapter', {}, {
+  logDir: join(__dirname, '../../logs/github-adapter')
+});
+
 // Read schema
 const schemaPath = join(__dirname, '../schema.graphql');
 const typeDefs = gql(readFileSync(schemaPath, 'utf-8'));
@@ -42,7 +48,7 @@ const typeDefs = gql(readFileSync(schemaPath, 'utf-8'));
 // Create a simple event bus stub
 const eventBus: EventBus = {
   emit: (event: Event) => {
-    console.log('[Event]', event.type, event.payload);
+    logger.debug('[Event]', { type: event.type, payload: event.payload });
   }
 };
 
@@ -55,7 +61,7 @@ const schema = buildCosmoSubgraphSchema({ typeDefs, resolvers });
 // Create context function
 const createContext = (): Context => ({
   eventBus,
-  logger: console,
+  logger,
   correlationId: Math.random().toString(36).substring(7),
   githubToken: GITHUB_TOKEN
 });
@@ -96,7 +102,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       } catch (error: any) {
-        console.error('GraphQL execution error:', error);
+        logger.error('GraphQL execution error:', error);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ errors: [{ message: error.message }] }));
       }
@@ -123,6 +129,13 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 });
 
 server.listen(PORT, () => {
+  logger.info('Starting GitHub Adapter...');
+  logger.info(`🚀 GitHub Adapter running at http://localhost:${PORT}/graphql`);
+  logger.info(`🏥 Health check at http://localhost:${PORT}/health`);
+  logger.info(`📊 Federation: Cosmo-compatible subgraph`);
+  logger.info(`🔑 GitHub Token: ${GITHUB_TOKEN ? 'Configured' : 'Not configured'}`);
+  
+  // Also log to console for PM2/systemd visibility
   console.log('Starting GitHub Adapter...');
   console.log(`🚀 GitHub Adapter running at http://localhost:${PORT}/graphql`);
   console.log(`🏥 Health check at http://localhost:${PORT}/health`);
@@ -132,8 +145,11 @@ server.listen(PORT, () => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully...');
+  // Also log to console for PM2/systemd visibility
   console.log('SIGTERM received, shutting down gracefully...');
   server.close(() => {
+    logger.info('Server closed');
     console.log('Server closed');
     process.exit(0);
   });

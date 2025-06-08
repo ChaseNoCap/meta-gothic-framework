@@ -120,7 +120,7 @@ export class RunStorage {
       this.logger?.info('Run storage initialized successfully');
     } catch (error) {
       this.logger?.error('Failed to initialize run storage:', error);
-      console.error('Failed to initialize run storage:', error);
+      this.logger?.error('Failed to initialize run storage', error as Error);
       // Don't throw - allow service to continue without persistence
     }
   }
@@ -140,14 +140,14 @@ export class RunStorage {
           loadedCount++;
         } catch (error) {
           this.logger?.error(`Failed to load run from ${file}:`, error);
-          console.error(`Failed to load run from ${file}:`, error);
+          this.logger?.error(`Failed to load run from ${file}`, error as Error);
         }
       }
       
       this.logger?.info(`Loaded ${loadedCount} existing runs from storage`);
     } catch (error) {
       this.logger?.error('Failed to load existing runs:', error);
-      console.error('Failed to load existing runs:', error);
+      this.logger?.error('Failed to load existing runs', error as Error);
       // Don't throw - continue with empty runs map
     }
   }
@@ -168,7 +168,7 @@ export class RunStorage {
       await this.fileSystem.writeFile(filePath, JSON.stringify(run, null, 2));
       this.logger?.debug(`Saved run ${run.id} to storage`);
     } catch (error) {
-      console.error(`Failed to persist run ${run.id}:`, error);
+      this.logger?.error(`Failed to persist run ${run.id}`, error as Error);
     }
   }
 
@@ -283,7 +283,7 @@ export class RunStorage {
           await this.fileSystem.deleteFile(filePath);
           deletedCount++;
         } catch (error) {
-          console.error(`Failed to delete run file ${id}:`, error);
+          this.logger?.error(`Failed to delete run file ${id}`, error as Error);
         }
       }
     }

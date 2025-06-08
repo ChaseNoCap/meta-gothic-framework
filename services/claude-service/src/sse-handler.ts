@@ -98,7 +98,7 @@ export function createSSEHandler(options: SSEHandlerOptions) {
     const subscriptionFields = subscriptionType?.getFields() || {};
     const preWarmField = subscriptionFields['preWarmStatus'];
     
-    console.log('[SSE Handler] Executing subscription:', {
+    logger?.debug('[SSE Handler] Executing subscription:', {
       operationName,
       hasSchema: !!options.schema,
       hasDocument: !!document,
@@ -121,8 +121,8 @@ export function createSSEHandler(options: SSEHandlerOptions) {
         operationName: operationName || undefined,
       });
     } catch (subscribeError: any) {
-      console.error('[SSE Handler] Subscribe error:', subscribeError);
-      console.error('[SSE Handler] Error stack:', subscribeError.stack);
+      logger?.error('[SSE Handler] Subscribe error:', subscribeError);
+      logger?.error('[SSE Handler] Error stack:', { stack: subscribeError.stack });
       throw subscribeError;
     }
 

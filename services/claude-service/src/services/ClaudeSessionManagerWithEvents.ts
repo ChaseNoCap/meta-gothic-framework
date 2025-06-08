@@ -170,19 +170,19 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
   })
   @Traces({ threshold: 500, includeArgs: true })
   async executeCommandInSession(sessionId: string, command: string): Promise<CommandOutput> {
-    console.log(`\n[executeCommandInSession] START - sessionId: ${sessionId}`);
-    console.log(`[executeCommandInSession] Command: ${command}`);
+    this.logger?.debug(`[executeCommandInSession] START - sessionId: ${sessionId}`);
+    this.logger?.debug(`[executeCommandInSession] Command: ${command}`);
     
     const session = this.sessions.get(sessionId);
     const commandLogger = this.logger?.child({ sessionId, operation: 'executeCommand' });
     
     if (!session) {
-      console.error(`[executeCommandInSession] Session ${sessionId} not found in sessions map`);
-      console.log(`[executeCommandInSession] Available sessions:`, Array.from(this.sessions.keys()));
+      this.logger?.error(`[executeCommandInSession] Session ${sessionId} not found in sessions map`);
+      this.logger?.debug(`[executeCommandInSession] Available sessions:`, { sessions: Array.from(this.sessions.keys()) });
       throw new Error(`Session ${sessionId} not found`);
     }
     
-    console.log(`[executeCommandInSession] Session found:`, {
+    this.logger?.debug(`[executeCommandInSession] Session found:`, {
       id: session.id,
       status: session.status,
       historyLength: session.history?.length || 0,
@@ -193,7 +193,7 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     if (session.status !== 'active' && session.status !== 'ACTIVE') {
       // For now, allow any session to execute commands
       // throw new Error(`Session ${sessionId} is not active`);
-      console.log(`[executeCommandInSession] Session ${sessionId} status: ${session.status}, proceeding anyway`);
+      this.logger?.debug(`[executeCommandInSession] Session ${sessionId} status: ${session.status}, proceeding anyway`);
     }
     
     commandLogger?.info('Executing command', { command: command.substring(0, 100) });
@@ -234,14 +234,14 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       
       // Check if we need to build context into the prompt
       let actualPrompt = command;
-      console.log(`[executeCommandInSession] Checking if context needed...`);
-      console.log(`[executeCommandInSession] Session history:`, session.history);
+      this.logger?.debug(`[executeCommandInSession] Checking if context needed...`);
+      this.logger?.debug(`[executeCommandInSession] Session history:`, { history: session.history });
       
       if (session.history && session.history.length > 0) {
-        console.log(`[executeCommandInSession] Session has ${session.history.length} history entries`);
+        this.logger?.debug(`[executeCommandInSession] Session has ${session.history.length} history entries`);
         const hasClaudeHistory = session.history.some((h: any) => h.response);
-        console.log(`[executeCommandInSession] Has Claude history (with responses): ${hasClaudeHistory}`);
-        console.log(`[executeCommandInSession] Has Claude session ID: ${!!session.metadata?.claudeSessionId}`);
+        this.logger?.debug(`[executeCommandInSession] Has Claude history (with responses): ${hasClaudeHistory}`);
+        this.logger?.debug(`[executeCommandInSession] Has Claude session ID: ${!!session.metadata?.claudeSessionId}`);
         
         // Log the last few history entries for debugging
         const recentHistory = session.history.slice(-3).map((h: any, idx: number) => ({
@@ -250,21 +250,21 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
           response: h.response?.substring(0, 50) + (h.response?.length > 50 ? '...' : ''),
           claudeSessionId: h.claudeSessionId
         }));
-        console.log(`[executeCommandInSession] Recent history:`, JSON.stringify(recentHistory, null, 2));
+        this.logger?.debug(`[executeCommandInSession] Recent history:`, { recentHistory });
         
         // Determine if this is a forked session (no claudeSessionId means it's forked)
         const isForkedSession = !session.metadata?.claudeSessionId;
         
         if (hasClaudeHistory && session.metadata?.claudeSessionId) {
           // Continue conversation using the first session ID
-          console.log(`[executeCommandInSession] Using --resume with first session ID: ${session.metadata.claudeSessionId}`);
+          this.logger?.debug(`[executeCommandInSession] Using --resume with first session ID: ${session.metadata.claudeSessionId}`);
           args.push('--resume', session.metadata.claudeSessionId);
         } else {
           // New session or no Claude session ID yet
-          console.log(`[executeCommandInSession] New session, no --resume needed`);
+          this.logger?.debug(`[executeCommandInSession] New session, no --resume needed`);
         }
       } else {
-        console.log(`[executeCommandInSession] No history, using original prompt`);
+        this.logger?.debug(`[executeCommandInSession] No history, using original prompt`);
       }
       
       commandLogger?.info('Spawning Claude CLI', { 
@@ -277,7 +277,7 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       // Add the prompt to args
       args.unshift('-p', actualPrompt);
       
-      console.log(`[executeCommandInSession] Final args:`, args);
+      this.logger?.debug(`[executeCommandInSession] Final args:`, { args });
       commandLogger?.info('Final Claude CLI args', { args });
       
       const claude = spawn(claudePath, args, {
@@ -530,12 +530,12 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
   getSession(sessionId: string): ClaudeSession | null {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      console.log(`[SessionManagerWithEvents] Session ${sessionId} not found`);
-      console.log(`[SessionManagerWithEvents] Available sessions:`, Array.from(this.sessions.keys()));
+      this.logger?.debug(`[SessionManagerWithEvents] Session ${sessionId} not found`);
+      this.logger?.debug(`[SessionManagerWithEvents] Available sessions:`, { sessions: Array.from(this.sessions.keys()) });
       return null;
     }
     
-    console.log(`[SessionManagerWithEvents] Session ${sessionId} found:`, {
+    this.logger?.debug(`[SessionManagerWithEvents] Session ${sessionId} found:`, {
       historyLength: session.history?.length || 0,
       hasClaudeSessionId: !!session.metadata?.claudeSessionId,
       claudeSessionId: session.metadata?.claudeSessionId,
@@ -562,10 +562,10 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
   }
   
   private buildContextualPrompt(history: any[], newPrompt: string): string {
-    console.log(`[buildContextualPrompt] Called with history length: ${history?.length || 0}`);
+    this.logger?.debug(`[buildContextualPrompt] Called with history length: ${history?.length || 0}`);
     
     if (!history || history.length === 0) {
-      console.log(`[buildContextualPrompt] No history, returning original prompt`);
+      this.logger?.debug(`[buildContextualPrompt] No history, returning original prompt`);
       return newPrompt;
     }
 
@@ -575,7 +575,7 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     let entryCount = 0;
     
     history.forEach((entry, index) => {
-      console.log(`[buildContextualPrompt] Processing history entry ${index}:`, {
+      this.logger?.debug(`[buildContextualPrompt] Processing history entry ${index}:`, {
         hasPrompt: !!entry.prompt,
         hasResponse: !!entry.response,
         timestamp: entry.timestamp
@@ -595,8 +595,8 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     context += "Now, continuing our conversation:\n\n";
     context += `Human: ${newPrompt}`;
     
-    console.log(`[buildContextualPrompt] Built context with ${entryCount} entries, total length: ${context.length}`);
-    console.log(`[buildContextualPrompt] Last prompt in history:`, history[history.length - 1]?.prompt);
+    this.logger?.debug(`[buildContextualPrompt] Built context with ${entryCount} entries, total length: ${context.length}`);
+    this.logger?.debug(`[buildContextualPrompt] Last prompt in history:`, { lastPrompt: history[history.length - 1]?.prompt });
     
     return context;
   }

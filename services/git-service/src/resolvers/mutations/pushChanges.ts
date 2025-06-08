@@ -12,7 +12,7 @@ export async function pushChanges(
   const { repository: repoPath, remote, branch, setUpstream = false, pushTags = false } = input;
   const remoteToUse = remote || 'origin';
   
-  console.log('[pushChanges] Called with:', { repoPath, remote: remoteToUse, branch, setUpstream });
+  context.logger?.debug('[pushChanges] Called with:', { repoPath, remote: remoteToUse, branch, setUpstream });
   
   try {
     // Resolve absolute path
@@ -20,7 +20,7 @@ export async function pushChanges(
       ? repoPath 
       : path.join(context.workspaceRoot, repoPath);
     
-    console.log('[pushChanges] Absolute path:', absolutePath);
+    context.logger?.debug('[pushChanges] Absolute path:', { absolutePath });
     
     // Check if directory exists and is a git repository
     try {
@@ -56,7 +56,7 @@ export async function pushChanges(
     // Check if there are commits to push
     try {
       const status = await git.status();
-      console.log('[pushChanges] Repository status:', { 
+      context.logger?.debug('[pushChanges] Repository status:', { 
         repo: repoPath,
         ahead: status.ahead,
         behind: status.behind,
@@ -65,7 +65,7 @@ export async function pushChanges(
       });
       
       if (status.ahead === 0) {
-        console.log('[pushChanges] No commits to push, returning success');
+        context.logger?.debug('[pushChanges] No commits to push, returning success');
         return {
           success: true,
           remote: remoteToUse,
@@ -75,14 +75,14 @@ export async function pushChanges(
         };
       }
     } catch (error) {
-      console.log('[pushChanges] Could not get status, continuing:', error);
+      context.logger?.debug('[pushChanges] Could not get status, continuing:', { error });
       // If we can't get status, continue with push anyway
     }
     
     // Get commits that will be pushed (optional, for logging)
     try {
       const log = await git.log([`${remoteToUse}/${targetBranch}..HEAD`]);
-      console.log(`Pushing ${log.all.length} commits to ${remoteToUse}/${targetBranch}`);
+      context.logger?.info(`Pushing ${log.all.length} commits to ${remoteToUse}/${targetBranch}`);
     } catch {
       // If we can't get the log, continue
     }
