@@ -4,11 +4,13 @@ This directory contains the GraphQL microservices that power the Meta GOTHIC fra
 
 ## Architecture
 
-The system consists of three main services:
+The system consists of five main services:
 
-1. **git-service** (Port 3004) - Handles all Git repository operations
-2. **claude-service** (Port 3002) - Manages Claude AI interactions and sessions
-3. **gothic-gateway** (Port 3000) - Federation gateway that unifies all services
+1. **Cosmo Router** (Port 4000) - Federation gateway that unifies all services
+2. **Claude Service** (Port 3002) - Manages Claude AI interactions and sessions
+3. **Git Service** (Port 3004) - Handles all Git repository operations
+4. **GitHub Adapter** (Port 3005) - GitHub API integration service
+5. **UI Dashboard** (Port 3001) - Web interface for the Meta GOTHIC framework
 
 ## Quick Start
 
@@ -19,6 +21,8 @@ The system consists of three main services:
 cd services/git-service && npm install
 cd ../claude-service && npm install
 cd ../gothic-gateway && npm install
+cd ../github-adapter && npm install
+cd ../../packages/ui-components && npm install
 ```
 
 ### Start Services
@@ -34,16 +38,26 @@ npm run dev
 cd services/claude-service
 npm run dev
 
-# Terminal 3: Start federation gateway
+# Terminal 3: Start Cosmo Router (federation gateway)
 cd services/gothic-gateway
+npm run dev
+
+# Terminal 4: Start GitHub Adapter
+cd services/github-adapter
+npm run dev
+
+# Terminal 5: Start UI Dashboard
+cd packages/ui-components
 npm run dev
 ```
 
-### Access GraphQL Playground
+### Access Services
 
-- Federation Gateway: http://localhost:3000/graphql (recommended)
-- Git Service: http://localhost:3004/graphql
-- Claude Service: http://localhost:3002/graphql
+- **Cosmo Router** (Federation Gateway): http://localhost:4000/graphql (recommended)
+- **UI Dashboard**: http://localhost:3001
+- **Claude Service**: http://localhost:3002/graphql
+- **Git Service**: http://localhost:3004/graphql
+- **GitHub Adapter**: http://localhost:3005/graphql
 
 ## Service Details
 
@@ -83,13 +97,29 @@ Manages Claude AI interactions:
 **Subscriptions:**
 - `commandOutput(sessionId)` - Real-time command output
 
-### gothic-gateway
+### cosmo-router (gothic-gateway)
 
-Federation gateway that:
+Federation gateway using Cosmo Router that:
 - Unifies all services into a single GraphQL endpoint
 - Handles authentication and authorization
-- Provides schema stitching and query planning
-- Supports WebSocket subscriptions
+- Provides Federation v2 supergraph composition
+- Supports SSE subscriptions for real-time updates
+
+### github-adapter
+
+GitHub API integration service that:
+- Provides GraphQL interface to GitHub API
+- Handles repository management
+- Manages workflows and actions
+- Fetches repository metrics and statistics
+
+### ui-dashboard
+
+Web interface that:
+- Monitors package health and CI/CD pipelines
+- Controls pipeline operations
+- Provides repository browser
+- Enables AI-assisted development workflows
 
 ## Development
 
@@ -126,7 +156,9 @@ npm run build
 ### Service-Specific
 - `GIT_SERVICE_PORT` - Port for git-service (default: 3004)
 - `CLAUDE_SERVICE_PORT` - Port for claude-service (default: 3002)
-- `GATEWAY_PORT` - Port for federation gateway (default: 3000)
+- `GATEWAY_PORT` - Port for Cosmo Router gateway (default: 4000)
+- `GITHUB_ADAPTER_PORT` - Port for GitHub Adapter (default: 3005)
+- `UI_DASHBOARD_PORT` - Port for UI Dashboard (default: 3001)
 
 ## Migration from REST
 

@@ -329,7 +329,7 @@ query CombinedHealthCheck {
 npm run start-yoga-services
 
 # Query the gateway to see renamed fields
-curl -X POST http://localhost:3000/graphql \
+curl -X POST http://localhost:4000/graphql \
   -H "Content-Type: application/json" \
   -d '{
     "query": "{ __schema { queryType { fields { name } } } }"
@@ -350,7 +350,7 @@ But NOT `health` (the collision is resolved).
 const { request } = require('graphql-request');
 
 async function testHealthQueries() {
-  const endpoint = 'http://localhost:3000/graphql';
+  const endpoint = 'http://localhost:4000/graphql';
   
   try {
     // This should work - uses renamed fields

@@ -11,7 +11,7 @@ The Gothic Gateway now supports SSE subscriptions alongside traditional GraphQL 
 ```
 ┌─────────────────┐     ┌──────────────────┐
 │   UI (React)    │────▶│  Gothic Gateway  │
-│ Apollo Client   │     │  (Port 3000)     │
+│ Apollo Client   │     │  (Port 4000)     │
 └─────────────────┘     └────────┬─────────┘
                                  │
         ┌────────────────────────┼────────────────────────┐
@@ -19,7 +19,7 @@ The Gothic Gateway now supports SSE subscriptions alongside traditional GraphQL 
         ▼                        ▼                        ▼
 ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
 │ Claude Service│      │  Git Service  │      │GitHub Adapter │
-│  (Port 3002)  │      │  (Port 3003)  │      │  (Port 3005)  │
+│  (Port 3002)  │      │  (Port 3004)  │      │  (Port 3005)  │
 │   GraphQL     │      │   GraphQL     │      │   GraphQL     │
 │   + SSE       │      │   (No SSE)    │      │   (No SSE)    │
 └───────────────┘      └───────────────┘      └───────────────┘
@@ -51,7 +51,7 @@ cd services/gothic-gateway && npm run dev:sse &
 ./services/gothic-gateway/test-sse-gateway.sh
 
 # Or manually check endpoints
-curl http://localhost:3000/health
+curl http://localhost:4000/health
 curl http://localhost:3002/graphql -X POST -H "Content-Type: application/json" -d '{"query":"{__typename}"}'
 curl http://localhost:3004/graphql -X POST -H "Content-Type: application/json" -d '{"query":"{__typename}"}'
 curl http://localhost:3005/graphql -X POST -H "Content-Type: application/json" -d '{"query":"{__typename}"}'
@@ -59,17 +59,17 @@ curl http://localhost:3005/graphql -X POST -H "Content-Type: application/json" -
 
 ### 3. Access Points
 
-- **Gothic Gateway**: http://localhost:3000/graphql
-- **GraphiQL Playground**: http://localhost:3000/graphql
+- **Gothic Gateway**: http://localhost:4000/graphql
+- **GraphiQL Playground**: http://localhost:4000/graphql
 - **SSE Endpoint**:
-  - Claude: http://localhost:3000/graphql/stream/claude
+  - Claude: http://localhost:4000/graphql/stream/claude
 - **UI Dashboard**: http://localhost:3001
 
 ## Service Configuration
 
 ### Gothic Gateway (SSE Mode)
 
-The gateway runs in SSE mode with Apollo Federation for queries/mutations and custom SSE proxy for subscriptions.
+The gateway runs in SSE mode with Cosmo Router Federation v2 for queries/mutations and custom SSE proxy for subscriptions.
 
 ```typescript
 // Configuration in gateway-sse-simple.ts
@@ -102,7 +102,7 @@ SSE Stream: http://localhost:3002/graphql/stream
 
 ```yaml
 # Endpoints
-GraphQL: http://localhost:3003/graphql
+GraphQL: http://localhost:3004/graphql
 
 # No subscriptions defined - queries and mutations only
 # If real-time features are needed, subscriptions must be added to schema first
@@ -121,7 +121,7 @@ GraphQL: http://localhost:3005/graphql
 
 ### Using GraphiQL
 
-1. Open http://localhost:3000/graphql
+1. Open http://localhost:4000/graphql
 2. Run a subscription:
 
 ```graphql
@@ -138,7 +138,7 @@ subscription WatchCommands {
 
 ```bash
 # Test Claude subscription
-curl -N -X POST http://localhost:3000/graphql/stream/claude \
+curl -N -X POST http://localhost:4000/graphql/stream/claude \
   -H "Accept: text/event-stream" \
   -H "Content-Type: application/json" \
   -d '{
@@ -154,7 +154,7 @@ curl -N -X POST http://localhost:3000/graphql/stream/claude \
 ```javascript
 const EventSource = require('eventsource');
 
-const es = new EventSource('http://localhost:3000/graphql/stream/claude', {
+const es = new EventSource('http://localhost:4000/graphql/stream/claude', {
   headers: {
     'Content-Type': 'application/json'
   }
@@ -172,7 +172,7 @@ es.onmessage = (event) => {
 export GITHUB_TOKEN=your_github_token
 
 # Optional
-export PORT=3000              # Gateway port
+export PORT=4000              # Gateway port
 export NODE_ENV=development   # Environment
 export LOG_LEVEL=debug        # Logging level
 ```
@@ -183,10 +183,10 @@ export LOG_LEVEL=debug        # Logging level
 
 ```bash
 # Check if ports are in use
-lsof -i :3000,3002,3004,3005
+lsof -i :4000,3002,3004,3005
 
 # Kill processes if needed
-kill -9 $(lsof -t -i:3000)
+kill -9 $(lsof -t -i:4000)
 
 # Check logs
 pm2 logs

@@ -155,7 +155,7 @@ Note: Direct file access may have CORS limitations for WebSocket connections.
 3. Check browser console for errors
 
 ### No Events Showing
-1. Ensure gateway is running on port 3000
+1. Ensure gateway is running on port 4000
 2. Check WebSocket connection status (top right)
 3. Verify services are generating events
 4. Check browser console for WebSocket errors

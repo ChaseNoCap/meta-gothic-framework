@@ -19,15 +19,16 @@ Covers Git submodules architecture, automated publishing, NPM authentication, an
 - Tag-based publishing to GitHub Packages
 - Unified NPM_TOKEN authentication
 
-### [ADR-GraphQL](./ADR-GraphQL.md) ✅
-**API Architecture and Implementation**  
-Documents GraphQL-first architecture, technology stack (Fastify + Yoga + Mesh), federation approach, and GitHub API integration. Fully migrated from Mercurius with excellent performance.
+### [ADR-Federation-Architecture](./ADR-Federation-Architecture.md) ✅
+**GraphQL Federation with Cosmo Router**  
+Documents the complete Federation v2 implementation using Cosmo Router, SSE for subscriptions, and shared type patterns. Fully implemented and operational.
 
 **Key Decisions**:
-- GraphQL as primary API paradigm
-- GraphQL Yoga for all services
-- GraphQL Mesh for federation
-- Direct REST wrapping for GitHub API
+- Cosmo Router for federation gateway
+- Federation v2 protocol
+- SSE for real-time subscriptions
+- Shared types across services
+- Local-first development
 
 ### [ADR-Architecture-Patterns](./ADR-Architecture-Patterns.md) 🚧
 **Core Framework Patterns**  
@@ -75,9 +76,10 @@ Documents patterns considered but not implemented, like OpenAPI transformation. 
 - **Dependencies**: Automated updates → [Infrastructure](./ADR-Infrastructure.md)
 
 ### API Architecture  
-- **Primary API**: GraphQL over REST → [GraphQL](./ADR-GraphQL.md)
-- **Framework**: Fastify + Yoga → [GraphQL](./ADR-GraphQL.md)
-- **External APIs**: Direct wrapping → [GraphQL](./ADR-GraphQL.md)
+- **Federation**: Cosmo Router → [Federation Architecture](./ADR-Federation-Architecture.md)
+- **Protocol**: Federation v2 → [Federation Architecture](./ADR-Federation-Architecture.md)
+- **Subscriptions**: SSE → [Federation Architecture](./ADR-Federation-Architecture.md)
+- **Services**: See [Service Architecture Guide](./service-architecture-guide.md)
 
 ### Development Patterns
 - **Architecture**: GOTHIC pattern → [Architecture Patterns](./ADR-Architecture-Patterns.md)
@@ -94,10 +96,13 @@ Documents patterns considered but not implemented, like OpenAPI transformation. 
 ### Fully Implemented ✅
 - Git submodules package management
 - Automated CI/CD pipelines
-- GraphQL Yoga migration
-- GraphQL federation with Mesh
+- Cosmo Router federation
+- Federation v2 protocol
+- SSE subscriptions
 - GitHub API integration
 - CI/CD metrics dashboard
+- Structured logging
+- Health monitoring
 
 ### Partially Implemented 🚧
 - Event-driven architecture (GraphQL subscriptions working)
@@ -113,6 +118,11 @@ Documents patterns considered but not implemented, like OpenAPI transformation. 
 
 ## Navigation
 
-- [View Implementation Backlog](./backlog.md)
-- [Troubleshooting Guide](./troubleshooting/)
-- [Migration Guides](./migration/)
+### Current Documentation
+- [Federation Implementation Guide](./federation-implementation-guide.md) - How to work with federation
+- [Service Architecture Guide](./service-architecture-guide.md) - Service patterns and conventions
+- [View Implementation Backlog](./backlog.md) - Current development priorities
+
+### Historical Reference
+- [Historical Migration Reference](./historical-migration-reference.md) - Completed migrations
+- [Troubleshooting Guide](./troubleshooting/) - Common issues and solutions
