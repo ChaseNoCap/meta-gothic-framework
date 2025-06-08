@@ -1,0 +1,29 @@
+# Generated files
+config.json
+router-config.json
+subgraphs.yaml
+
+# Temporary files
+*.tmp
+*.bak
+*-backup.json
+*-working.json
+*-composed.json
+
+# Logs
+*.log
+logs/
+
+# Process files
+*.pid
+
+# Environment files
+.env
+.env.*
+
+# Node modules (if not already in root .gitignore)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
