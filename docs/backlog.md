@@ -59,7 +59,136 @@ All managed by PM2 with `npm start`
 
 **Documentation**: See [federation-setup-guide.md](./federation-setup-guide.md) for details
 
-## 🚨 TOP PRIORITY: Test Framework Setup
+## 🚨 TOP PRIORITY: Claude Console Tab Management UI
+
+### Goal
+**Implement tabbed interface for Claude console with intelligent pre-warmed session management**
+
+### Why This Is Critical
+- Enables multiple concurrent Claude sessions without page navigation
+- Improves developer workflow with context preservation via forking
+- Leverages pre-warmed sessions for instant responsiveness
+- Reduces friction when working with multiple tasks
+
+### Epic: Multi-Session Tab Interface
+
+**Task 1: Tab Container Component**
+- [ ] Create SessionTabContainer component using existing Tabs components:
+  - Use `<Tabs>`, `<TabsList>`, `<TabsTrigger>`, `<TabsContent>` from ui/tabs.tsx
+  - Extend TabsList to support horizontal scrolling for overflow
+- [ ] Modify TabsTrigger to include:
+  - Session name/title
+  - Status indicator (dot with color based on SessionStatus enum)
+  - Close button using `<X className="h-3 w-3 ml-2" />` from lucide-react
+- [ ] Add new tab button in TabsList:
+  - Use `<Button variant="ghost" size="icon">` with `<Plus className="h-4 w-4" />`
+  - Position at end of tab list
+- [ ] Implement tab state management:
+  - Track sessions in array with id, name, status, createdAt
+  - Use React Context for tab state (similar to existing TabsContext pattern)
+- [ ] Style modifications using Tailwind:
+  - Adjust TabsList padding and height for better fit
+  - Add max-width per tab with text truncation
+  - Show scrollbar on overflow with 10 tab limit
+
+**Task 2: Session Management Integration**
+- [ ] Modify console to use session from active tab
+- [ ] Update PreWarmSessionManager to maintain pool of sessions
+- [ ] Implement session claiming logic for new tabs
+- [ ] Add session status indicators on tabs (active/processing/idle)
+- [ ] Handle session lifecycle per tab
+- [ ] Configure working directory:
+  - Set console CWD to meta-gothic-framework root (`/Users/josh/Documents/meta-gothic-framework`)
+  - Detect project root dynamically using process.cwd() or config
+  - Ensure this doesn't conflict with Change Review's repository-specific paths
+  - Document that commit generation uses isolated sessions with repo-specific paths
+
+**Task 3: Pre-warmed Session Flow**
+- [ ] On initial load, claim pre-warmed session for default tab
+- [ ] Immediately start warming another session
+- [ ] Show pre-warm availability indicator
+- [ ] On "+" click: claim pre-warmed if available, else create new
+- [ ] Always maintain at least one pre-warmed session
+
+**Task 4: Fork Session Feature**
+- [ ] Add Fork button to console toolbar:
+  - Use `<Button variant="outline" size="sm">` with `<GitBranch className="h-4 w-4 mr-2" />` icon
+  - Position in existing console toolbar
+- [ ] Implement context cloning:
+  - Call new `forkSession` mutation with parent sessionId
+  - Server-side: copy full context and history to new session
+- [ ] Create new tab with forked session:
+  - Add tab with name format: "Fork of [parent-name]"
+  - Include small fork indicator icon in tab
+- [ ] Auto-focus newly forked tab:
+  - Use Tabs `onValueChange` to switch to new tab ID
+- [ ] Visual indicators:
+  - Small `<GitBranch className="h-3 w-3" />` icon in forked tabs
+  - Tooltip showing parent session name
+
+**Task 5: State Persistence**
+- [ ] Save tab state to localStorage
+- [ ] Restore tabs on page refresh
+- [ ] Persist session IDs and basic metadata
+- [ ] Handle stale sessions gracefully
+
+**Task 6: UI/UX Polish**
+- [ ] Tab naming:
+  - Default: "Session {number}" or first meaningful command
+  - Double-click tab to edit name inline
+  - Use `<Input className="h-6 text-sm" />` for inline editing
+- [ ] Drag to reorder (consider react-sortable-hoc if needed)
+- [ ] Keyboard shortcuts using useEffect with keydown listeners:
+  - Cmd/Ctrl+T: Create new tab
+  - Cmd/Ctrl+W: Close current tab
+  - Cmd/Ctrl+Tab: Cycle tabs
+  - Cmd/Ctrl+1-9: Jump to tab by number
+- [ ] Resource indicators in tabs:
+  - Small token count using `<Badge variant="secondary" className="ml-1">`
+  - Memory usage as tooltip
+- [ ] Background activity indicators:
+  - Pulsing dot for active processing
+  - Use Tailwind animation classes: `animate-pulse`
+  - Different colors: green (idle), yellow (processing), red (error)
+
+### Acceptance Criteria
+- [ ] Users can create multiple Claude sessions in tabs
+- [ ] Pre-warmed sessions provide instant tab creation
+- [ ] Forking preserves full context in new tab
+- [ ] Tabs persist across page refreshes
+- [ ] Clean session cleanup on tab close
+
+### Implementation Notes
+
+**Component Library Versions (Current as of June 2025):**
+- Tailwind CSS: v3.4.1 (LTS)
+- lucide-react: v0.316.0 (latest stable)
+- clsx: v2.1.0 (for conditional classes)
+- No external component libraries - using custom components
+
+**Key Components to Use:**
+- `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` from `ui/tabs.tsx`
+- `Button` from `ui/button.tsx` (variants: default, outline, ghost)
+- `Badge` from `ui/badge.tsx` for status indicators
+- `Input` from `ui/input.tsx` for inline editing
+- Icons from `lucide-react`: `Plus`, `X`, `GitBranch`, `AlertCircle`
+
+**Patterns to Follow:**
+- Use existing TabsContext pattern for state management
+- Follow Tailwind utility classes for styling
+- Maintain accessibility with ARIA attributes
+- Use `clsx` for conditional styling
+- Icon sizing: h-3 w-3 (small), h-4 w-4 (default), h-5 w-5 (large)
+
+**Working Directory Configuration:**
+- Console sessions use project root: `/Users/josh/Documents/meta-gothic-framework`
+- Change line 327 in ClaudeConsoleGraphQL.tsx from `/Users/josh/Documents` to project root
+- This is safe because:
+  - Commit message generation creates isolated sessions with repo-specific paths (line 751 in ClaudeSessionManagerWithEvents.ts)
+  - Console and commit generation don't share sessions
+  - Each commit generation gets its own session with `workingDir = input.path || process.cwd()`
+
+## 🔧 SECOND PRIORITY: Test Framework Setup
 
 ### Goal
 **Establish comprehensive testing infrastructure across all services**
