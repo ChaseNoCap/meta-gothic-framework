@@ -29,7 +29,7 @@ const services = [
     name: 'github-adapter',
     path: './services/github-adapter',
     checks: [
-      { type: 'file', path: 'index.js', description: 'Service entry point' },
+      { type: 'file', path: 'src/index.ts', description: 'TypeScript entry point' },
       { type: 'env', var: 'GITHUB_TOKEN', description: 'GitHub API token' },
       { type: 'port', port: 3005 }
     ]

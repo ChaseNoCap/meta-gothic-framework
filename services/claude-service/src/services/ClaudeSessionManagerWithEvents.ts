@@ -15,6 +15,8 @@ import type {
   OutputType 
 } from '../types/generated.js';
 import { promisify } from 'util';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
 const execAsync = promisify(exec);
 
@@ -44,6 +46,7 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
   private runStorage: RunStorage;
   private logger?: ILogger;
   private correlationId?: string;
+  private config: any = {};
   
   constructor(eventBus?: IEventBus, logger?: ILogger, correlationId?: string) {
     super();
@@ -64,6 +67,37 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     
     // Configure concurrent Claude process limits
     this.queue = new PQueue({ concurrency: 3 });
+    
+    // Load configuration if available
+    this.loadConfig();
+  }
+  
+  private loadConfig(): void {
+    try {
+      const configPath = join(process.cwd(), 'claude-config.json');
+      if (existsSync(configPath)) {
+        this.config = JSON.parse(readFileSync(configPath, 'utf-8'));
+        this.logger?.info('Loaded Claude configuration', { 
+          allowedTools: this.config.permissions?.allowedTools 
+        });
+      } else {
+        // Default configuration
+        this.config = {
+          permissions: {
+            allowedTools: ['Bash', 'Read', 'Write', 'Edit']
+          }
+        };
+        this.logger?.info('Using default Claude configuration');
+      }
+    } catch (error) {
+      this.logger?.error('Failed to load Claude configuration', error);
+      // Fallback to defaults
+      this.config = {
+        permissions: {
+          allowedTools: ['Bash', 'Read', 'Write', 'Edit']
+        }
+      };
+    }
   }
 
   @Emits('claude.session.started', {
@@ -157,8 +191,32 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       // Use full path to claude to avoid PATH issues
       const claudePath = '/Users/josh/.nvm/versions/node/v18.20.8/bin/claude';
       
-      // Build args array
-      const args = ['--print', '--output-format', 'json'];
+      // Build args array starting with the prompt
+      const args: string[] = [];
+      
+      // Add allowed tools from configuration
+      const allowedTools = this.config.permissions?.allowedTools || ['Bash', 'Read', 'Write', 'Edit'];
+      
+      // Check if we should use dangerous mode (for testing/development)
+      const dangerousMode = process.env.CLAUDE_DANGEROUS_MODE;
+      commandLogger?.info('Environment check', { 
+        CLAUDE_DANGEROUS_MODE: dangerousMode,
+        isDangerous: dangerousMode === 'true'
+      });
+      
+      if (dangerousMode === 'true') {
+        args.push('--dangerously-skip-permissions');
+        commandLogger?.warn('Using dangerous mode - all permissions granted');
+      } else {
+        // Try different formats for allowedTools
+        allowedTools.forEach(tool => {
+          args.push('--allowedTools', tool);
+        });
+        commandLogger?.info('Using allowed tools', { allowedTools });
+      }
+      
+      // Add output format flags
+      args.push('--print', '--output-format', 'json');
       
       // Check if we need to build context into the prompt
       let actualPrompt = command;
@@ -196,6 +254,9 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       
       // Add the prompt to args
       args.unshift('-p', actualPrompt);
+      
+      console.log(`[executeCommandInSession] Final args:`, args);
+      commandLogger?.info('Final Claude CLI args', { args });
       
       const claude = spawn(claudePath, args, {
         cwd: session.workingDirectory,

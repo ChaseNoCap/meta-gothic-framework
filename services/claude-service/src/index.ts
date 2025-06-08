@@ -4,8 +4,9 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { buildCosmoSubgraphSchema } from '../../shared/federation/cosmo-subgraph.js';
 // Import GraphQL from the shared federation to avoid version conflicts
-import { parse, execute } from '../../shared/federation/node_modules/graphql/index.js';
+import { parse, execute, subscribe } from '../../shared/federation/node_modules/graphql/index.js';
 import gql from 'graphql-tag';
+import { createSSEHandler } from './sse-handler.js';
 import { resolvers } from './resolvers/index.js';
 import { ClaudeSessionManager } from './services/ClaudeSessionManager.js';
 import { RunStorage } from './services/RunStorage.js';
@@ -18,8 +19,12 @@ const PORT = process.env.PORT || 3002;
 const logger = createLogger('claude-service', {}, {
   logDir: join(__dirname, '../../logs/claude-service')
 });
-const sessionManager = new ClaudeSessionManager(logger);
-const runStorage = new RunStorage(logger);
+const sessionManager = new ClaudeSessionManager();
+const runStorage = new RunStorage(
+  join(__dirname, '../../logs/claude-runs'),
+  undefined,
+  logger
+);
 
 // Load the federated schema
 const schemaPath = join(__dirname, '../schema/schema-federated.graphql');
@@ -58,7 +63,8 @@ const server = createServer(async (req, res) => {
           sessionManager,
           runStorage,
           logger,
-          correlationId: Math.random().toString(36).substring(7)
+          correlationId: Math.random().toString(36).substring(7),
+          workspaceRoot: process.env.WORKSPACE_ROOT || process.cwd()
         };
         
         const result = await execute({
@@ -80,24 +86,22 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  // SSE endpoint for subscriptions
-  if (req.url === '/graphql/stream' && req.method === 'GET') {
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
+  // SSE endpoint for subscriptions using custom handler
+  if (req.url?.startsWith('/graphql/stream')) {
+    const sseHandler = createSSEHandler({
+      schema,
+      execute,
+      subscribe,
+      context: () => ({
+        sessionManager,
+        runStorage,
+        logger,
+        correlationId: Math.random().toString(36).substring(7),
+        workspaceRoot: process.env.WORKSPACE_ROOT || process.cwd()
+      })
     });
     
-    // Send heartbeat every 30 seconds
-    const heartbeat = setInterval(() => {
-      res.write(':heartbeat\n\n');
-    }, 30000);
-    
-    req.on('close', () => {
-      clearInterval(heartbeat);
-    });
-    
-    return;
+    return sseHandler(req, res);
   }
 
   // Health check

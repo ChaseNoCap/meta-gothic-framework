@@ -14,7 +14,8 @@ module.exports = {
         NODE_ENV: 'development',
         PORT: 3002,
         WORKSPACE_ROOT: WORKSPACE_ROOT,
-        FEDERATION: 'cosmo'
+        FEDERATION: 'cosmo',
+        CLAUDE_DANGEROUS_MODE: 'true' // Enable for development - grants all permissions
       },
       watch: false,
       max_memory_restart: '1G',

@@ -19,9 +19,9 @@ The Gothic Gateway now supports SSE subscriptions alongside traditional GraphQL 
         ▼                        ▼                        ▼
 ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
 │ Claude Service│      │  Git Service  │      │GitHub Adapter │
-│  (Port 3002)  │      │  (Port 3004)  │      │  (Port 3005)  │
+│  (Port 3002)  │      │  (Port 3003)  │      │  (Port 3005)  │
 │   GraphQL     │      │   GraphQL     │      │   GraphQL     │
-│   + SSE       │      │   + SSE       │      │   (No SSE)    │
+│   + SSE       │      │   (No SSE)    │      │   (No SSE)    │
 └───────────────┘      └───────────────┘      └───────────────┘
 ```
 
@@ -61,9 +61,8 @@ curl http://localhost:3005/graphql -X POST -H "Content-Type: application/json" -
 
 - **Gothic Gateway**: http://localhost:3000/graphql
 - **GraphiQL Playground**: http://localhost:3000/graphql
-- **SSE Endpoints**:
+- **SSE Endpoint**:
   - Claude: http://localhost:3000/graphql/stream/claude
-  - Git: http://localhost:3000/graphql/stream/git
 - **UI Dashboard**: http://localhost:3001
 
 ## Service Configuration
@@ -81,8 +80,8 @@ const services = [
 ];
 
 const SSE_ENDPOINTS = {
-  claude: 'http://localhost:3002/graphql/stream',
-  git: 'http://localhost:3004/graphql/stream'
+  claude: 'http://localhost:3002/graphql/stream'
+  // git: No SSE endpoint - service has no subscriptions
 };
 ```
 
@@ -99,16 +98,14 @@ SSE Stream: http://localhost:3002/graphql/stream
 - sessionUpdated(sessionId: String!)
 ```
 
-### Git Service (SSE Enabled)
+### Git Service (No SSE)
 
 ```yaml
 # Endpoints
-GraphQL: http://localhost:3004/graphql
-SSE Stream: http://localhost:3004/graphql/stream
+GraphQL: http://localhost:3003/graphql
 
-# Available Subscriptions
-- fileChanged(path: String!)
-- repositoryActivity(repoPath: String!)
+# No subscriptions defined - queries and mutations only
+# If real-time features are needed, subscriptions must be added to schema first
 ```
 
 ### GitHub Adapter (GraphQL Only)
@@ -148,13 +145,8 @@ curl -N -X POST http://localhost:3000/graphql/stream/claude \
     "query": "subscription { commandOutput(sessionId: \"test\") { output } }"
   }'
 
-# Test Git subscription
-curl -N -X POST http://localhost:3000/graphql/stream/git \
-  -H "Accept: text/event-stream" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "subscription { fileChanged(path: \"/test\") { path event } }"
-  }'
+# Git Service has no subscriptions
+# If real-time features are needed, add subscriptions to the schema first
 ```
 
 ### Using Node.js Client

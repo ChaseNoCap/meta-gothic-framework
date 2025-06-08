@@ -24,14 +24,17 @@ export async function executeCommand(
       }
     );
     
-    logger.info('executeCommand result', { result });
+    // Wait for the output promise to resolve
+    const output = await result.output;
+    
+    logger.info('executeCommand result', { sessionId: result.sessionId, output });
     
     // Return the complete response including the output
     return {
       sessionId: result.sessionId,
       success: true,
       error: null,
-      initialResponse: result.output || '', // Return the actual output from Claude
+      initialResponse: output || '', // Return the actual output from Claude
       metadata: {
         startTime: new Date().toISOString(),
         pid: undefined,

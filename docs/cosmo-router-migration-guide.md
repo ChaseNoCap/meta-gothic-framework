@@ -192,6 +192,13 @@ const unsubscribe = client.subscribe(
 4. **Production Deployment**: Deploy with proper SSL and authentication
 5. **Performance Optimization**: Add caching and query optimization
 
+## SSE Federation Setup
+
+For detailed instructions on setting up SSE subscriptions with Cosmo Router:
+- [SSE Setup Guide](../services/gothic-gateway/README-SSE-SETUP.md)
+- [Troubleshooting Guide](../services/gothic-gateway/TROUBLESHOOTING-CONFIG.md)
+- Quick setup: Run `./setup-sse-federation.sh` in the gateway directory
+
 ## Resources
 
 - [WunderGraph Cosmo Docs](https://cosmo-docs.wundergraph.com/)

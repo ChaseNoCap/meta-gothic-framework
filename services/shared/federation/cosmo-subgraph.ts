@@ -76,38 +76,42 @@ export function buildCosmoSubgraphSchema(config: SubgraphConfig): GraphQLSchema 
     ${entityUnion}
   `;
 
+  // Merge federation resolvers with user resolvers
+  const mergedResolvers = {
+    ...resolvers,
+    Query: {
+      ...resolvers.Query,
+      _entities: async (
+        _parent: any,
+        { representations }: { representations: EntityReference[] },
+        context: any,
+        info: GraphQLResolveInfo
+      ) => {
+        const results = await Promise.all(
+          representations.map(async (reference) => {
+            const typename = reference.__typename;
+            
+            // Look for resolver in the original resolvers
+            if (resolvers[typename]?.__resolveReference) {
+              return resolvers[typename].__resolveReference(reference, context, info);
+            }
+            
+            // Default: return the reference itself
+            return reference;
+          })
+        );
+        
+        return results;
+      },
+      _service: () => ({
+        sdl: fullTypeDefs
+      })
+    }
+  };
+
   const schema = makeExecutableSchema({
     typeDefs: fullTypeDefs,
-    resolvers: {
-      Query: {
-        _entities: async (
-          _parent: any,
-          { representations }: { representations: EntityReference[] },
-          context: any,
-          info: GraphQLResolveInfo
-        ) => {
-          const results = await Promise.all(
-            representations.map(async (reference) => {
-              const typename = reference.__typename;
-              
-              // Look for resolver in the original resolvers
-              if (resolvers[typename]?.__resolveReference) {
-                return resolvers[typename].__resolveReference(reference, context, info);
-              }
-              
-              // Default: return the reference itself
-              return reference;
-            })
-          );
-          
-          return results;
-        },
-        _service: () => ({
-          sdl: typeDefsWithFederation
-        })
-      },
-      ...resolvers
-    }
+    resolvers: mergedResolvers
   });
 
   return schema;

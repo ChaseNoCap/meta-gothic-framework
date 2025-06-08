@@ -25,6 +25,7 @@
     "@meta-gothic/shared-types": "file:../shared",
     "dataloader": "^2.2.3",
     "eventemitter3": "^5.0.1",
+    "eventsource": "^3.0.7",
     "fastify": "^4.26.0",
     "graphql": "16.11.0",
     "graphql-sse": "^2.5.4",
