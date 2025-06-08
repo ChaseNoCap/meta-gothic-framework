@@ -278,8 +278,8 @@ function waitForHealth(service, timeout = 60000) {
     
     let lastError = null;
     let attempts = 0;
-    const maxAttempts = service.name === 'gateway' ? 45 : 30;
-    const delay = 2000; // 2 seconds between attempts
+    const maxAttempts = service.name === 'gateway' ? 60 : 60;
+    const delay = 100; // 100ms between attempts for rapid polling
     
     const check = () => {
       attempts++;
@@ -316,7 +316,10 @@ function waitForHealth(service, timeout = 60000) {
                 reject(new Error(`${service.name} health check timeout on ${url}\nLast error: ${lastError}\nAttempts: ${attempts}\nRecent logs:\n${logs}`));
               });
             } else {
-              log(`${service.name} health check attempt ${attempts}/${maxAttempts}...`, 'dim');
+              // Only log every 10th attempt to reduce noise with rapid polling
+              if (attempts % 10 === 0) {
+                log(`${service.name} health check attempt ${attempts}/${maxAttempts}...`, 'dim');
+              }
               setTimeout(check, delay);
             }
           });
@@ -341,17 +344,18 @@ function waitForHealth(service, timeout = 60000) {
                 reject(new Error(`${service.name} health check timeout on ${url}\nLast error: ${lastError}\nAttempts: ${attempts}\nRecent logs:\n${logs}`));
               });
             } else {
-              log(`${service.name} health check attempt ${attempts}/${maxAttempts}...`, 'dim');
+              // Only log every 10th attempt to reduce noise with rapid polling
+              if (attempts % 10 === 0) {
+                log(`${service.name} health check attempt ${attempts}/${maxAttempts}...`, 'dim');
+              }
               setTimeout(check, delay);
             }
           });
       }
     };
     
-    // Different initial delays for different services
-    const initialDelay = service.name === 'gateway' ? 5000 : 2000;
-    log(`Waiting ${initialDelay/1000}s before checking ${service.name}...`, 'dim');
-    setTimeout(check, initialDelay);
+    // Start checking immediately
+    check();
   });
 }
 
@@ -364,25 +368,15 @@ async function validateServices() {
     const backendServices = services.filter(s => !['gateway', 'ui'].includes(s.name));
     await Promise.all(backendServices.map(service => waitForHealth(service)));
     
-    // Give gateway more time to start since it depends on backend services
-    log('Waiting 10s for gateway to initialize...', 'dim');
-    await new Promise(resolve => setTimeout(resolve, 10000));
-    
-    // Check gateway
-    try {
-      const response = await fetch('http://localhost:4000/graphql', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: '{ __typename }' })
-      });
-      if (response.ok || response.status === 500) {
-        logSuccess('gateway is healthy');
-      } else {
-        throw new Error(`Gateway returned ${response.status}`);
+    // Check gateway immediately after backend services are ready
+    const gatewayService = services.find(s => s.name === 'gateway');
+    if (gatewayService) {
+      try {
+        await waitForHealth(gatewayService);
+      } catch (err) {
+        log('⚠️  Gateway health check failed, but continuing...', 'yellow');
+        log('You can check gateway status with: pm2 logs gateway', 'dim');
       }
-    } catch (err) {
-      log('⚠️  Gateway health check failed, but continuing...', 'yellow');
-      log('You can check gateway status with: pm2 logs gateway', 'dim');
     }
     
     // Finally check UI service
@@ -517,7 +511,6 @@ async function main() {
     await cleanPM2();
     await killZombies();
     await cleanPorts();
-    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Check dependencies
     await checkDependencies();
@@ -528,10 +521,7 @@ async function main() {
     // Start services
     await startServices();
     
-    // Wait a bit for services to initialize
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Validate health
+    // Validate health immediately
     await validateServices();
     
     // Generate supergraph schema first (with timeout)
@@ -540,10 +530,7 @@ async function main() {
       log('⚠️  Supergraph generation had issues, but continuing...', 'yellow');
     });
     
-    // Give the router a moment to reload with the new supergraph
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Verify gateway can handle GraphQL queries before starting UI
+    // Verify gateway can handle GraphQL queries immediately
     try {
       const testQuery = await fetch('http://localhost:4000/graphql', {
         method: 'POST',
