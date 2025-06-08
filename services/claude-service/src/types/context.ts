@@ -1,4 +1,5 @@
 import type { ClaudeSessionManagerWithEvents } from '../services/ClaudeSessionManagerWithEvents.js';
+import type { PreWarmSessionManager } from '../services/PreWarmSessionManager.js';
 import type { PubSub } from 'mercurius';
 import type { RunStorage } from '../services/RunStorage';
 import type { DataLoaders } from '../dataloaders';
@@ -7,6 +8,7 @@ import type { PerformanceMonitoringConfig } from '../../../shared/performance/co
 
 export interface Context extends GraphQLContext {
   sessionManager: ClaudeSessionManagerWithEvents;
+  preWarmManager?: PreWarmSessionManager;
   workspaceRoot: string;
   runStorage: RunStorage;
   loaders: DataLoaders;

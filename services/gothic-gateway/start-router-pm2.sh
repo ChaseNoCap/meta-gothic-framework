@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Set environment variables
-export CONFIG_PATH="${CONFIG_PATH:-./config.yaml}"
+export CONFIG_PATH="${CONFIG_PATH:-./router.yaml}"
 export EXECUTION_CONFIG_FILE_PATH="${EXECUTION_CONFIG_FILE_PATH:-./config.json}"
 export DEV_MODE="${DEV_MODE:-true}"
 

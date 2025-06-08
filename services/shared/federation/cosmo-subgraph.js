@@ -78,8 +78,22 @@ export function buildCosmoSubgraphSchema(config) {
             _service: () => ({
                 sdl: fullTypeDefs
             })
-        }
+        },
+        // Ensure Mutation and Subscription resolvers are preserved
+        ...(resolvers.Mutation && { Mutation: resolvers.Mutation }),
+        ...(resolvers.Subscription && { Subscription: resolvers.Subscription })
     };
+    // Debug log merged resolvers
+    console.log('[buildCosmoSubgraphSchema] Merged resolvers:', {
+        hasQuery: !!mergedResolvers.Query,
+        queryKeys: Object.keys(mergedResolvers.Query || {}),
+        hasMutation: !!mergedResolvers.Mutation,
+        mutationKeys: Object.keys(mergedResolvers.Mutation || {}),
+        hasSubscription: !!mergedResolvers.Subscription,
+        subscriptionKeys: Object.keys(mergedResolvers.Subscription || {}),
+        subscriptionResolverTypes: mergedResolvers.Subscription ?
+            Object.entries(mergedResolvers.Subscription).map(([key, value]) => `${key}: ${typeof value}`) : []
+    });
     const schema = makeExecutableSchema({
         typeDefs: fullTypeDefs,
         resolvers: mergedResolvers

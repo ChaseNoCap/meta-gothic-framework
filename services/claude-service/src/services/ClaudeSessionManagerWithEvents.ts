@@ -400,12 +400,13 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
         reject(error);
       });
       
-      // Set a longer timeout (5 minutes) since Claude needs time to process complex requests
+      // Set a very long timeout (20 minutes) since Claude CLI can take a long time
+      // for complex requests like analyzing large codebases
       const timeout = setTimeout(() => {
-        commandLogger?.warn('Claude command timed out, killing process');
+        commandLogger?.warn('Claude command timed out after 20 minutes, killing process');
         claude.kill();
-        reject(new Error('Claude command timed out after 300 seconds (5 minutes)'));
-      }, 300000); // 5 minutes
+        reject(new Error('Claude command timed out after 1200 seconds (20 minutes). This usually means Claude is processing a very complex request. Please try breaking it into smaller tasks.'));
+      }, 1200000); // 20 minutes
       
       // Clear timeout on completion
       claude.on('exit', () => {

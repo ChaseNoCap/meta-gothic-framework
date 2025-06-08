@@ -10,16 +10,20 @@ import {
   sessionResumption,
   resumableSessions
 } from './sessionAnalytics.js';
+import { preWarmStatus } from './preWarmStatus.js';
+import { preWarmMetrics } from './preWarmMetrics.js';
 
 export const resolvers = {
   sessions,
   session,
-  claudeHealth: health,
+  health,
   performanceMetrics,
   sessionAnalytics,
   batchSessionAnalytics,
   sessionTemplates,
   sessionTemplate,
   sessionResumption,
-  resumableSessions
+  resumableSessions,
+  preWarmStatus,
+  preWarmMetrics
 };

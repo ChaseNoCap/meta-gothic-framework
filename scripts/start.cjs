@@ -8,7 +8,7 @@ const net = require('net');
 // Service configuration for Cosmo
 const services = [
   { name: 'claude-service', port: 3002 },
-  { name: 'git-service', port: 3003 },
+  { name: 'git-service', port: 3004 },
   { name: 'github-adapter', port: 3005 },
   { name: 'gateway', port: 4000 },
   { name: 'ui', port: 3001 }

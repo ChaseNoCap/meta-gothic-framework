@@ -11,13 +11,24 @@ interface SSEHandlerOptions {
 
 export function createSSEHandler(options: SSEHandlerOptions) {
   return async (req: IncomingMessage, res: ServerResponse) => {
-    // Set SSE headers
-    res.writeHead(200, {
+    // Set CORS headers based on origin
+    const origin = req.headers.origin;
+    const corsHeaders: any = {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-    });
+    };
+    
+    if (origin === 'http://localhost:3001' || origin === 'http://127.0.0.1:3001' || origin === 'http://localhost:4000') {
+      corsHeaders['Access-Control-Allow-Origin'] = origin;
+      corsHeaders['Access-Control-Allow-Credentials'] = 'true';
+    } else {
+      corsHeaders['Access-Control-Allow-Origin'] = 'http://localhost:3001';
+      corsHeaders['Access-Control-Allow-Credentials'] = 'true';
+    }
+    
+    // Set SSE headers
+    res.writeHead(200, corsHeaders);
 
     // Parse query parameters
     const url = new URL(req.url!, `http://${req.headers.host}`);
@@ -73,13 +84,37 @@ export function createSSEHandler(options: SSEHandlerOptions) {
     const contextValue = await options.context();
 
     // Execute the subscription
-    const result = await options.subscribe({
-      schema: options.schema,
-      document,
-      contextValue,
-      variableValues: parsedVariables,
-      operationName: operationName || undefined,
+    const subscriptionType = options.schema.getSubscriptionType();
+    const subscriptionFields = subscriptionType?.getFields() || {};
+    const preWarmField = subscriptionFields['preWarmStatus'];
+    
+    console.log('[SSE Handler] Executing subscription:', {
+      operationName,
+      hasSchema: !!options.schema,
+      hasDocument: !!document,
+      contextKeys: Object.keys(contextValue),
+      schemaType: options.schema.constructor.name,
+      subscriptionType: subscriptionType?.name,
+      subscriptionFields: Object.keys(subscriptionFields),
+      preWarmFieldExists: !!preWarmField,
+      preWarmFieldResolve: typeof preWarmField?.resolve,
+      preWarmFieldSubscribe: typeof preWarmField?.subscribe
     });
+    
+    let result;
+    try {
+      result = await options.subscribe({
+        schema: options.schema,
+        document,
+        contextValue,
+        variableValues: parsedVariables,
+        operationName: operationName || undefined,
+      });
+    } catch (subscribeError: any) {
+      console.error('[SSE Handler] Subscribe error:', subscribeError);
+      console.error('[SSE Handler] Error stack:', subscribeError.stack);
+      throw subscribeError;
+    }
 
     // Handle subscription errors
     if ('errors' in result && result.errors) {

@@ -3,9 +3,16 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { QueryResolvers } from '../../types/generated';
 
-export const healthResolver: QueryResolvers['repoAgentHealth'] = async () => {
+interface ServiceHealthStatus {
+  healthy: boolean;
+  service: string;
+  version: string;
+  timestamp: string;
+  details: any;
+}
+
+export const healthResolver = async (): Promise<ServiceHealthStatus> => {
   try {
     // Get Git version (testing tsx watch restart)
     let gitVersion = 'unknown';
@@ -50,9 +57,10 @@ export const healthResolver: QueryResolvers['repoAgentHealth'] = async () => {
     }
 
     return {
-      status: 'healthy',
+      healthy: true,
+      service: 'git-service',
+      version: version || '1.0.0',
       timestamp: new Date().toISOString(),
-      version: version || null,
       details: {
         repositoryCount,
         gitVersion,
@@ -68,10 +76,12 @@ export const healthResolver: QueryResolvers['repoAgentHealth'] = async () => {
   } catch (error) {
     console.error('Health check failed:', error);
     return {
-      status: 'unhealthy',
+      healthy: false,
+      service: 'git-service',
+      version: '1.0.0',
       timestamp: new Date().toISOString(),
-      version: null,
       details: {
+        error: error instanceof Error ? error.message : 'Unknown error',
         repositoryCount: 0,
         gitVersion: 'unknown',
         system: {

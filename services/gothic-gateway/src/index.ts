@@ -19,7 +19,7 @@ const SERVICES = {
     name: 'claude-service'
   },
   git: {
-    url: `http://localhost:${process.env.GIT_SERVICE_PORT || 3003}/graphql`,
+    url: `http://localhost:${process.env.GIT_SERVICE_PORT || 3004}/graphql`,
     name: 'git-service'
   },
   github: {

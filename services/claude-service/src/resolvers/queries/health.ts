@@ -1,6 +1,13 @@
 import type { Context } from '../../types/context.js';
-import type { HealthStatus } from '../../types/generated.js';
 import os from 'os';
+
+interface ServiceHealthStatus {
+  healthy: boolean;
+  service: string;
+  version: string;
+  timestamp: string;
+  details: any;
+}
 
 /**
  * Check service health and Claude availability
@@ -9,7 +16,7 @@ export async function health(
   _parent: unknown,
   _args: {},
   context: Context
-): Promise<HealthStatus> {
+): Promise<ServiceHealthStatus> {
   const { sessionManager } = context;
   
   // Check Claude CLI availability
@@ -46,14 +53,18 @@ export async function health(
   
   return {
     healthy: true,
+    service: 'claude-service',
     version: process.env.npm_package_version || '1.0.0',
-    claudeAvailable,
-    claudeVersion,
-    activeSessions,
-    resources: {
-      memoryUsage,
-      cpuUsage,
-      activeProcesses
+    timestamp: new Date().toISOString(),
+    details: {
+      claudeAvailable,
+      claudeVersion,
+      activeSessions,
+      resources: {
+        memoryUsage,
+        cpuUsage,
+        activeProcesses
+      }
     }
   };
 }

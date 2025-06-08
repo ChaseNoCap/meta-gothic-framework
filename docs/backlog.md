@@ -35,7 +35,28 @@ All managed by PM2 with `npm start`
 - ✅ **Gothic Gateway**: Removed all TypeScript source files (using Cosmo Router binary)
 - ✅ **TypeScript Migration**: All JavaScript files converted to TypeScript
 
-## 🚨 NEXT PRIORITY: SSE Implementation for Real-time Subscriptions
+## 🚨 TOP PRIORITY: Federation Field Naming Pattern Implementation
+
+### Goal
+**Fix gateway field routing by implementing proper federation field naming patterns**
+
+### Why This Is Critical
+- Gateway cannot route queries due to field name mismatches
+- UI health checks are failing
+- Blocking all GraphQL-dependent functionality
+- Sets the pattern for all future federation work
+
+### Tasks
+- [x] Clean service schemas to use generic field names
+- [x] Generate new gateway configuration with proper composition
+- [x] Update UI to query the composed schema correctly
+- [x] Document the pattern for future services
+
+**✅ COMPLETED**: Successfully implemented shared `ServiceHealthStatus` type across all services. The wgc tool now properly composes the federated schema!
+
+**See detailed implementation plan**: [federation-field-naming-implementation.md](./federation-field-naming-implementation.md)
+
+## 🔧 SECOND PRIORITY: SSE Implementation for Real-time Subscriptions
 
 ### Goal
 **Implement Server-Sent Events (SSE) support for real-time subscriptions in the Cosmo Router setup**

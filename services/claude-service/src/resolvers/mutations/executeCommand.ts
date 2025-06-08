@@ -9,15 +9,27 @@ export async function executeCommand(
   { input }: { input: ClaudeExecuteInput },
   context: Context
 ): Promise<ClaudeExecuteResult> {
-  const { sessionManager, logger } = context;
+  const { sessionManager, preWarmManager, logger } = context;
   
   logger.info('executeCommand called', { input });
   
   try {
+    // Check if we should use a pre-warmed session
+    let sessionId = input.sessionId;
+    
+    if (!sessionId && preWarmManager) {
+      // Try to claim a pre-warmed session
+      const claimedSessionId = await preWarmManager.claimSession();
+      if (claimedSessionId) {
+        sessionId = claimedSessionId;
+        logger.info('Using pre-warmed session', { sessionId });
+      }
+    }
+    
     const result = await sessionManager.executeCommand(
       input.prompt,
       {
-        sessionId: input.sessionId || undefined,
+        sessionId: sessionId || undefined,
         workingDirectory: input.workingDirectory || context.workspaceRoot,
         context: input.context,
         commandOptions: input.options

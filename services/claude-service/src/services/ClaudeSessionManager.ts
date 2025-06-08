@@ -326,8 +326,8 @@ export class ClaudeSessionManager extends EventEmitter {
         args.push(...options.commandOptions.customFlags);
       }
       
-      // Add the prompt with -p flag
-      args.unshift('-p', prompt);
+      // Add the prompt with -p flag at the end
+      args.push('-p', prompt);
 
       const claude = spawn(claudePath, args, {
         cwd: options.workingDirectory || process.cwd()
@@ -436,9 +436,10 @@ export class ClaudeSessionManager extends EventEmitter {
         let parsedResult = output;
         try {
           const jsonData = JSON.parse(output);
-          if (jsonData.session_id && !session.metadata.claudeSessionId) {
+          if (jsonData.session_id) {
+            // Always update the Claude session ID from the response
             session.metadata.claudeSessionId = jsonData.session_id;
-            console.log(`[ClaudeSessionManager] Stored Claude session ID: ${jsonData.session_id}`);
+            console.log(`[ClaudeSessionManager] Updated Claude session ID: ${jsonData.session_id}`);
           }
           // Extract just the result for the UI
           if (jsonData.result) {

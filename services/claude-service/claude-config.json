@@ -1,5 +1,13 @@
 {
   "dangerousMode": true,
+  "preWarmEnabled": true,
+  "preWarmSettings": {
+    "poolSize": 1,
+    "maxSessionAge": 300000,
+    "cleanupInterval": 60000,
+    "warmupCommand": "Hello! Please respond with 'Session ready' to confirm initialization.",
+    "warmupTimeout": 30000
+  },
   "permissions": {
     "allowedTools": ["Bash", "Read", "Write", "Edit"],
     "allowPatterns": {

@@ -8,7 +8,7 @@ import { isRepositoryClean } from './isRepositoryClean.js';
 import { latestCommit } from './latestCommit.js';
 
 export const resolvers = {
-  repoAgentHealth: healthResolver,
+  health: healthResolver,
   gitStatus,
   scanAllRepositories,
   scanAllDetailed,

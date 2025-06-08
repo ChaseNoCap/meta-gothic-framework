@@ -1,15 +1,14 @@
-version: 1
+federation_version: V2_10
 subgraphs:
   - name: claude-service
     routing_url: http://localhost:3002/graphql
     subscription:
+      protocol: SSE
       url: http://localhost:3002/graphql/stream
-      protocol: sse
-  - name: git-service  
+  - name: git-service
     routing_url: http://localhost:3004/graphql
     subscription:
+      protocol: SSE
       url: http://localhost:3004/graphql/stream
-      protocol: sse
   - name: github-adapter
     routing_url: http://localhost:3005/graphql
-    # No subscriptions for GitHub adapter

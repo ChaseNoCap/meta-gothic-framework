@@ -16,7 +16,7 @@ import type { GitContext } from './resolvers/context.js';
 
 const fileSystem = getFileSystem();
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = process.env.GIT_SERVICE_PORT || 3003;
+const PORT = process.env.PORT || process.env.GIT_SERVICE_PORT || 3004;
 
 // Initialize logger
 const logger = createLogger('git-service', {}, {

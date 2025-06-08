@@ -11,6 +11,7 @@ import {
   archiveSession,
   shareSession
 } from './sessionManagement.js';
+import { claimPreWarmedSession } from './claimPreWarmedSession.js';
 
 export const resolvers = {
   executeCommand,
@@ -23,5 +24,6 @@ export const resolvers = {
   createSessionFromTemplate,
   batchSessionOperation,
   archiveSession,
-  shareSession
+  shareSession,
+  claimPreWarmedSession
 };

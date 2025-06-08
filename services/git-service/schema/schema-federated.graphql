@@ -5,8 +5,8 @@ extend schema
   @link(url: "https://specs.apollo.dev/federation/v2.10", import: ["@key", "@shareable", "@external", "@tag"])
 
 type Query {
-  """Check Repo Agent service health and Git availability"""
-  repoAgentHealth: RepoAgentHealth!
+  """Check service health and Git availability"""
+  health: ServiceHealthStatus! @shareable
   
   """Get the current git status of a repository"""
   gitStatus(path: String!): GitStatus!
@@ -106,19 +106,29 @@ type Repository @key(fields: "path") {
 
 # Types
 
-type RepoAgentHealth {
-  """Service health status"""
-  status: String!
+"""
+Standard health status for all services in the federation.
+Service-specific details are in the 'details' field.
+"""
+type ServiceHealthStatus @shareable {
+  """Whether the service is healthy and operational"""
+  healthy: Boolean!
   
-  """Current timestamp"""
-  timestamp: String!
+  """Service name for identification"""
+  service: String!
   
   """Service version"""
-  version: String
+  version: String!
   
-  """Additional service information"""
-  details: RepoAgentHealthDetails!
+  """ISO timestamp of the health check"""
+  timestamp: String!
+  
+  """Service-specific details (repositoryCount, gitVersion, system info, etc.)"""
+  details: JSON
 }
+
+"""JSON scalar for flexible service-specific data"""
+scalar JSON
 
 type RepoAgentHealthDetails {
   """Number of repositories being monitored"""

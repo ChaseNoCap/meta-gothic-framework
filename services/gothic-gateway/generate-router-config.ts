@@ -165,7 +165,7 @@ const routerConfig: RouterConfig = {
         "customGraphql": {
           "fetch": {
             "url": {
-              "staticVariableContent": "http://localhost:3003/graphql"
+              "staticVariableContent": "http://localhost:3004/graphql"
             },
             "method": "POST"
           },

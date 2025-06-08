@@ -11,8 +11,8 @@ type Query {
   """Get details of a specific session"""
   session(id: ID!): ClaudeSession @shareable
   
-  """Check Claude service health and CLI availability"""
-  claudeHealth: ClaudeHealthStatus! @shareable
+  """Check service health and CLI availability"""
+  health: ServiceHealthStatus! @shareable
   
   """Get performance metrics for operations"""
   performanceMetrics(operation: String, lastMinutes: Int): PerformanceReport! @shareable
@@ -34,6 +34,12 @@ type Query {
   
   """Get resumable sessions with intelligent suggestions"""
   resumableSessions(limit: Int = 5): [ResumableSession!]! @shareable
+  
+  """Get current pre-warmed session status"""
+  preWarmStatus: PreWarmStatus! @shareable
+  
+  """Get detailed pre-warm pool metrics"""
+  preWarmMetrics: PreWarmMetrics @shareable
 }
 
 type Mutation {
@@ -42,6 +48,9 @@ type Mutation {
   
   """Continue an existing Claude session with a new prompt"""
   continueSession(input: ContinueSessionInput!): ClaudeExecuteResult!
+  
+  """Claim a pre-warmed session for use"""
+  claimPreWarmedSession: PreWarmedSessionResult!
   
   """Kill an active Claude session"""
   killSession(id: ID!): Boolean!
@@ -80,6 +89,9 @@ type Subscription {
   
   """Subscribe to aggregate progress for multiple runs"""
   batchProgress(batchId: ID!): BatchProgress!
+  
+  """Subscribe to pre-warmed session status updates"""
+  preWarmStatus: PreWarmStatus!
 }
 
 # Types
@@ -172,25 +184,29 @@ type CommandHistoryItem {
   success: Boolean!
 }
 
-type ClaudeHealthStatus {
-  """Whether service is healthy"""
+"""
+Standard health status for all services in the federation.
+Service-specific details are in the 'details' field.
+"""
+type ServiceHealthStatus @shareable {
+  """Whether the service is healthy and operational"""
   healthy: Boolean!
+  
+  """Service name for identification"""
+  service: String!
   
   """Service version"""
   version: String!
   
-  """Claude CLI availability"""
-  claudeAvailable: Boolean!
+  """ISO timestamp of the health check"""
+  timestamp: String!
   
-  """Claude CLI version if available"""
-  claudeVersion: String
-  
-  """Number of active sessions"""
-  activeSessions: Int!
-  
-  """System resource usage"""
-  resources: ClaudeResourceUsage!
+  """Service-specific details (claudeAvailable, claudeVersion, activeSessions, etc.)"""
+  details: JSON
 }
+
+"""JSON scalar for flexible service-specific data"""
+scalar JSON
 
 type ClaudeResourceUsage {
   """Memory usage in MB"""
@@ -1071,4 +1087,110 @@ enum ProgressStage {
   
   """Cancelled by user"""
   CANCELLED
+}
+
+# Pre-warm Types
+
+type PreWarmedSessionResult {
+  """Whether a pre-warmed session was available"""
+  success: Boolean!
+  
+  """Session ID if available"""
+  sessionId: ID
+  
+  """Current pre-warm status"""
+  status: String!
+  
+  """Error message if failed"""
+  error: String
+}
+
+type PreWarmStatus {
+  """Current status of pre-warming"""
+  status: PreWarmStatusType!
+  
+  """Session ID being warmed or ready"""
+  sessionId: ID
+  
+  """Timestamp of status update"""
+  timestamp: String!
+  
+  """Error message if warming failed"""
+  error: String
+}
+
+enum PreWarmStatusType {
+  """Currently warming a session"""
+  WARMING
+  
+  """Session is ready for use"""
+  READY
+  
+  """Session was claimed"""
+  CLAIMED
+  
+  """Warming failed"""
+  FAILED
+  
+  """No pre-warmed sessions"""
+  NONE
+}
+
+type PreWarmMetrics {
+  """Configured settings for pre-warm pool"""
+  configured: PreWarmConfiguration!
+  
+  """Current state of pre-warm pool"""
+  current: PreWarmCurrentState!
+  
+  """Detailed information about each session"""
+  sessions: [PreWarmSessionInfo!]!
+}
+
+type PreWarmConfiguration {
+  """Target pool size"""
+  poolSize: Int!
+  
+  """Maximum session age in milliseconds"""
+  maxSessionAge: Int!
+  
+  """Cleanup interval in milliseconds"""
+  cleanupInterval: Int!
+  
+  """Warmup timeout in milliseconds"""
+  warmupTimeout: Int!
+}
+
+type PreWarmCurrentState {
+  """Total sessions in pool"""
+  total: Int!
+  
+  """Sessions ready for use"""
+  ready: Int!
+  
+  """Sessions currently warming"""
+  warming: Int!
+  
+  """Sessions that have been claimed"""
+  claimed: Int!
+  
+  """Whether warming is in progress"""
+  isWarming: Boolean!
+}
+
+type PreWarmSessionInfo {
+  """Session identifier"""
+  sessionId: ID!
+  
+  """Claude session ID if available"""
+  claudeSessionId: ID
+  
+  """Session status"""
+  status: String!
+  
+  """Session age in milliseconds"""
+  age: Int!
+  
+  """Creation timestamp"""
+  createdAt: String!
 }

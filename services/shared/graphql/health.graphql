@@ -1,0 +1,28 @@
+# Shared health status type for all services
+# This provides a consistent health check interface across the federation
+
+"""
+Standard health status for all services in the federation.
+Each service returns this type from their health query.
+"""
+type ServiceHealthStatus @shareable {
+  """Whether the service is healthy and operational"""
+  healthy: Boolean!
+  
+  """Service name for identification"""
+  service: String!
+  
+  """Service version"""
+  version: String!
+  
+  """ISO timestamp of the health check"""
+  timestamp: String!
+  
+  """Optional service-specific details as JSON"""
+  details: JSON
+}
+
+"""
+JSON scalar for flexible service-specific data
+"""
+scalar JSON

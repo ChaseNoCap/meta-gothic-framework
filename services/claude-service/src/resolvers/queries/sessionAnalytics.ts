@@ -126,16 +126,20 @@ export async function resumableSessions(
 
   // Analyze each session for resumption
   return recentSessions.map(session => {
-    intelligentResumption.analyzeSessionForResumption(session);
+    const analysisContext = intelligentResumption.analyzeSessionForResumption(session);
     const resumptionData = intelligentResumption.generateResumptionStrategy(session.id);
     
     return {
       session,
       resumptionData: {
-        ...resumptionData,
-        unresolvedErrors: resumptionData.contextMessages.filter(
-          m => m.type === 'error'
-        ).length
+        sessionId: session.id,
+        lastActivity: session.lastActivity,
+        summary: resumptionData.summary,
+        priority: resumptionData.priority.toUpperCase(), // Convert to uppercase for GraphQL enum
+        suggestedPrompt: resumptionData.suggestedPrompt || null,
+        openTasks: analysisContext.openTasks || [],
+        unresolvedErrors: analysisContext.unresolvedErrors?.length || 0,
+        currentFiles: analysisContext.currentFiles || []
       }
     };
   });

@@ -22,7 +22,7 @@ const services = [
     path: './services/git-service',
     checks: [
       { type: 'file', path: 'src/index.ts', description: 'Cosmo entry point' },
-      { type: 'port', port: 3003 }
+      { type: 'port', port: 3004 }
     ]
   },
   {
