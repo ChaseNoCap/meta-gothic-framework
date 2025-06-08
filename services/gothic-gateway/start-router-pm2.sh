@@ -7,16 +7,21 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Set environment variables
-export CONFIG_PATH="${CONFIG_PATH:-./router.yaml}"
+# The execution config path is read from config.yaml or can be overridden
 export EXECUTION_CONFIG_FILE_PATH="${EXECUTION_CONFIG_FILE_PATH:-./config.json}"
-export DEV_MODE="${DEV_MODE:-true}"
 
-# Config.json should already exist - copied from router-execution-config.json
+# Verify required files exist
 if [ ! -f "config.json" ]; then
-    echo "Error: config.json not found. It should be copied from router-execution-config.json"
+    echo "Error: config.json not found. Run ./generate-config.sh first"
     exit 1
 fi
 
-# Start the router directly (no background process)
-echo "Starting router..."
-exec ./router/router
+if [ ! -f "config.yaml" ]; then
+    echo "Error: config.yaml not found. This file contains runtime configuration"
+    exit 1
+fi
+
+# Start the router with the runtime configuration
+# The execution config path is specified in config.yaml or via env var
+echo "Starting router with config.yaml..."
+exec ./router/router -config config.yaml

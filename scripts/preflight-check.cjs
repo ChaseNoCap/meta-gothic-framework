@@ -39,7 +39,9 @@ const services = [
     path: './services/gothic-gateway',
     checks: [
       { type: 'file', path: 'router/router', description: 'Cosmo router binary' },
-      { type: 'file', path: 'router.yaml', description: 'Router configuration' },
+      { type: 'file', path: 'config.yaml', description: 'Router runtime configuration' },
+      { type: 'file', path: 'generate-config.sh', description: 'Config generation script' },
+      { type: 'file', path: 'wgc', description: 'WunderGraph CLI for config generation' },
       { type: 'port', port: 4000 }
     ]
   },

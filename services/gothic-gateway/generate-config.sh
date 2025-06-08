@@ -102,12 +102,28 @@ if ! wgc router compose -i subgraphs.yaml -o router-config.json; then
   SUPERGRAPH_SDL="$CLAUDE_SDL"
 else
   echo "✅ Supergraph composed successfully with wgc"
-  # wgc generates router-config.json, copy it to config.json
+  
+  # Copy the wgc-generated config as-is (timeouts are handled in config.yaml)
   cp router-config.json config.json
+  
   echo "✅ Configuration generated successfully!"
   echo "📄 Output written to: config.json"
   echo ""
+  echo "ℹ️  Configuration includes:"
+  echo "    ✓ Supergraph SDL with federated schema"
+  echo "    ✓ Service routing configuration"
+  echo "    ✓ Type definitions and field mappings"
+  echo ""
+  echo "⏱️  Timeout configuration:"
+  echo "    ✓ Handled via config.yaml (runtime configuration)"
+  echo "    ✓ Claude service: 25-minute timeout"
+  echo "    ✓ Other services: 60-second default"
+  echo ""
   echo "🚀 Start the gateway with: pm2 restart gateway"
+  
+  # Clean up temporary files
+  rm -f subgraphs.yaml
+  
   exit 0
 fi
 
