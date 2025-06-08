@@ -135,7 +135,8 @@ export function createSSEHandler(options: SSEHandlerOptions) {
 
     // Set up heartbeat
     const heartbeat = setInterval(() => {
-      res.write(':heartbeat\n\n');
+      // Send heartbeat as a proper event so client can detect it
+      res.write('event: heartbeat\ndata: {}\n\n');
     }, 30000);
 
     // Handle client disconnect
