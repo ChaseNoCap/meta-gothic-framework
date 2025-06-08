@@ -100,6 +100,19 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     }
   }
 
+  /**
+   * Add a session to the manager (used for forked sessions)
+   */
+  public addSession(sessionId: string, sessionData: SessionData): void {
+    this.sessions.set(sessionId, sessionData);
+    this.logger?.info('Session added to manager', { 
+      sessionId, 
+      historyLength: sessionData.history?.length || 0,
+      status: sessionData.status,
+      hasClaudeSessionId: !!sessionData.metadata?.claudeSessionId
+    });
+  }
+
   @Emits('claude.session.started', {
     payloadMapper: (workingDirectory: string, projectContext?: string) => ({
       workingDirectory,
@@ -229,17 +242,25 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
         console.log(`[executeCommandInSession] Has Claude history (with responses): ${hasClaudeHistory}`);
         console.log(`[executeCommandInSession] Has Claude session ID: ${!!session.metadata?.claudeSessionId}`);
         
+        // Log the last few history entries for debugging
+        const recentHistory = session.history.slice(-3).map((h: any, idx: number) => ({
+          index: session.history.length - 3 + idx,
+          prompt: h.prompt?.substring(0, 50) + (h.prompt?.length > 50 ? '...' : ''),
+          response: h.response?.substring(0, 50) + (h.response?.length > 50 ? '...' : ''),
+          claudeSessionId: h.claudeSessionId
+        }));
+        console.log(`[executeCommandInSession] Recent history:`, JSON.stringify(recentHistory, null, 2));
+        
+        // Determine if this is a forked session (no claudeSessionId means it's forked)
+        const isForkedSession = !session.metadata?.claudeSessionId;
+        
         if (hasClaudeHistory && session.metadata?.claudeSessionId) {
-          // Use resume if we have real Claude history
-          console.log(`[executeCommandInSession] Using --resume with session ID: ${session.metadata.claudeSessionId}`);
+          // Continue conversation using the first session ID
+          console.log(`[executeCommandInSession] Using --resume with first session ID: ${session.metadata.claudeSessionId}`);
           args.push('--resume', session.metadata.claudeSessionId);
         } else {
-          // Build context for forked sessions or sessions with copied history
-          console.log(`[executeCommandInSession] Building contextual prompt...`);
-          actualPrompt = this.buildContextualPrompt(session.history, command);
-          console.log(`[executeCommandInSession] Built contextual prompt for session ${sessionId}`);
-          console.log(`[executeCommandInSession] Context length: ${actualPrompt.length} chars`);
-          console.log(`[executeCommandInSession] Context preview:`, actualPrompt.substring(0, 200) + '...');
+          // New session or no Claude session ID yet
+          console.log(`[executeCommandInSession] New session, no --resume needed`);
         }
       } else {
         console.log(`[executeCommandInSession] No history, using original prompt`);
@@ -317,10 +338,15 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
             
             const result = jsonData.result || '4'; // Default to expected answer for 2+2
             
-            // Store Claude's session ID for future commands
-            if (jsonData.session_id && !session.metadata.claudeSessionId) {
+            // Always update the Claude session ID to the most recent one
+            // This ensures we have the full context up to the latest message
+            if (jsonData.session_id) {
               session.metadata.claudeSessionId = jsonData.session_id;
-              commandLogger?.info('Stored Claude session ID', { claudeSessionId: jsonData.session_id });
+              commandLogger?.info('Updated Claude session ID to latest', { 
+                claudeSessionId: jsonData.session_id,
+                isForkedSession: !!session.metadata.forkedFrom,
+                historyLength: session.history.length
+              });
             }
             
             // Update session with actual cost data
@@ -330,13 +356,14 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
             
             session.lastActivity = new Date();
             
-            // Add to history
+            // Add to history with the Claude session ID for this specific message
             session.history.push({
               timestamp: new Date().toISOString(),
               prompt: command,
               response: result,
               executionTime: duration,
-              success: true
+              success: true,
+              claudeSessionId: jsonData.session_id  // Store the session ID with EACH message!
             });
             
             commandLogger?.info('Command executed successfully', {
@@ -484,10 +511,16 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     const session = this.sessions.get(sessionId);
     if (!session) {
       console.log(`[SessionManagerWithEvents] Session ${sessionId} not found`);
+      console.log(`[SessionManagerWithEvents] Available sessions:`, Array.from(this.sessions.keys()));
       return null;
     }
     
-    console.log(`[SessionManagerWithEvents] Session ${sessionId} found, history length:`, session.history?.length || 0);
+    console.log(`[SessionManagerWithEvents] Session ${sessionId} found:`, {
+      historyLength: session.history?.length || 0,
+      hasClaudeSessionId: !!session.metadata?.claudeSessionId,
+      claudeSessionId: session.metadata?.claudeSessionId,
+      lastPrompt: session.history?.[session.history.length - 1]?.prompt?.substring(0, 50)
+    });
     
     return {
       id: session.id,
@@ -501,7 +534,8 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
         projectContext: session.metadata?.projectContext || undefined,
         model: session.metadata?.model || 'claude-3-opus',
         tokenUsage: session.metadata?.tokenUsage || { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
-        flags: session.metadata?.flags || []
+        flags: session.metadata?.flags || [],
+        claudeSessionId: session.metadata?.claudeSessionId // Make sure this is included!
       },
       history: session.history || [] // Ensure history is always an array
     };
@@ -516,7 +550,8 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     }
 
     // Build conversation context from history
-    let context = "Previous conversation:\n\n";
+    // Format as a clear conversation to help Claude understand this is a continuation
+    let context = "This is a continuation of our previous conversation. Here's what we discussed:\n\n";
     let entryCount = 0;
     
     history.forEach((entry, index) => {
@@ -536,10 +571,12 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       }
     });
     
-    // Add current prompt
+    // Add clear transition to current prompt
+    context += "Now, continuing our conversation:\n\n";
     context += `Human: ${newPrompt}`;
     
     console.log(`[buildContextualPrompt] Built context with ${entryCount} entries, total length: ${context.length}`);
+    console.log(`[buildContextualPrompt] Last prompt in history:`, history[history.length - 1]?.prompt);
     
     return context;
   }

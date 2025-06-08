@@ -30,6 +30,23 @@ export async function forkSession(
     ? originalHistory
     : [];
 
+  // Get the Claude session ID from the fork point message
+  let forkPointClaudeSessionId = undefined;
+  if (messageIndex !== undefined && originalHistory[messageIndex]) {
+    forkPointClaudeSessionId = originalHistory[messageIndex].claudeSessionId;
+    console.log('[ForkSession] Fork point details:', {
+      messageIndex,
+      historyEntry: {
+        prompt: originalHistory[messageIndex].prompt?.substring(0, 50),
+        response: originalHistory[messageIndex].response?.substring(0, 50),
+        claudeSessionId: forkPointClaudeSessionId
+      },
+      totalHistoryLength: originalHistory.length
+    });
+  } else {
+    console.log('[ForkSession] No specific fork point, using latest history');
+  }
+
   // Create the forked session in the correct format for SessionData
   const forkedSessionData = {
     id: forkedSessionId,
@@ -41,20 +58,20 @@ export async function forkSession(
     history: historyToInclude,
     metadata: {
       ...originalSession.metadata,
+      claudeSessionId: forkPointClaudeSessionId, // Use the Claude session ID from the fork point!
       name: name || `Fork of ${originalSession.metadata?.name || 'Session'}`,
       forkedFrom: sessionId,
       forkPoint: messageIndex || (originalSession.history?.length || 0)
     }
   };
 
-  // Store the forked session
-  context.sessionManager.sessions.set(forkedSessionId, forkedSessionData);
+  // Store the forked session using the public method
+  context.sessionManager.addSession(forkedSessionId, forkedSessionData);
   
   console.log('[ForkSession] Forked session history length:', forkedSessionData.history.length);
   console.log('[ForkSession] Forked session ID:', forkedSessionId);
   console.log('[ForkSession] First history entry:', forkedSessionData.history[0]);
   console.log('[ForkSession] Session manager type:', context.sessionManager.constructor.name);
-  console.log('[ForkSession] Sessions in manager:', Array.from(context.sessionManager.sessions.keys()));
   
   // Get the mapped version for return
   const forkedSession = context.sessionManager.getSession(forkedSessionId);
