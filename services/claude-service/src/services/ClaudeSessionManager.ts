@@ -433,21 +433,26 @@ export class ClaudeSessionManager extends EventEmitter {
         }
 
         // Try to parse Claude's session ID from the output
+        let parsedResult = output;
         try {
           const jsonData = JSON.parse(output);
           if (jsonData.session_id && !session.metadata.claudeSessionId) {
             session.metadata.claudeSessionId = jsonData.session_id;
             console.log(`[ClaudeSessionManager] Stored Claude session ID: ${jsonData.session_id}`);
           }
+          // Extract just the result for the UI
+          if (jsonData.result) {
+            parsedResult = jsonData.result;
+          }
         } catch (e) {
           // Output might not be JSON, that's okay
         }
 
-        // Emit final output
+        // Emit final output - send just the result, not the full JSON
         this.emit(`output:${sessionId}`, {
           sessionId,
           type: 'FINAL' as OutputType,
-          content: output,
+          content: parsedResult,
           timestamp: new Date().toISOString(),
           isFinal: true
         });

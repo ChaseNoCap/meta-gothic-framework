@@ -27,14 +27,45 @@ export async function executeCommand(
     // Wait for the output promise to resolve
     const output = await result.output;
     
-    logger.info('executeCommand result', { sessionId: result.sessionId, output });
+    logger.info('executeCommand result', { 
+      sessionId: result.sessionId, 
+      output,
+      outputType: typeof output,
+      outputLength: output?.length 
+    });
+    
+    // Parse the JSON response from Claude to extract just the result
+    let claudeResponse = output || '';
+    try {
+      const parsed = JSON.parse(output);
+      logger.info('Parsed Claude output', { 
+        hasResult: !!parsed.result,
+        hasMessage: !!parsed.message,
+        resultValue: parsed.result,
+        messageValue: parsed.message,
+        parsedKeys: Object.keys(parsed)
+      });
+      
+      // Extract the actual result from Claude's JSON response
+      if (parsed.result) {
+        claudeResponse = parsed.result;
+      } else if (parsed.message) {
+        claudeResponse = parsed.message;
+      }
+    } catch (e) {
+      // If parsing fails, use the raw output
+      logger.warn('Failed to parse Claude output as JSON, using raw output', { 
+        error: e,
+        rawOutput: output?.substring(0, 200) 
+      });
+    }
     
     // Return the complete response including the output
     return {
       sessionId: result.sessionId,
       success: true,
       error: null,
-      initialResponse: output || '', // Return the actual output from Claude
+      initialResponse: claudeResponse, // Return just the result text, not the full JSON
       metadata: {
         startTime: new Date().toISOString(),
         pid: undefined,
