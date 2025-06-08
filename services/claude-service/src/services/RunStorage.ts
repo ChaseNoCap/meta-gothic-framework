@@ -107,10 +107,21 @@ export class RunStorage {
 
   private async initializeStorage(): Promise<void> {
     try {
+      this.logger?.info('Initializing run storage directory:', this.storageDir);
+      
+      // Ensure storageDir is a string
+      if (typeof this.storageDir !== 'string') {
+        throw new Error(`Invalid storage directory: expected string but got ${typeof this.storageDir}`);
+      }
+      
       await this.fileSystem.createDirectory(this.storageDir);
       await this.loadExistingRuns();
+      
+      this.logger?.info('Run storage initialized successfully');
     } catch (error) {
+      this.logger?.error('Failed to initialize run storage:', error);
       console.error('Failed to initialize run storage:', error);
+      // Don't throw - allow service to continue without persistence
     }
   }
 
@@ -119,17 +130,25 @@ export class RunStorage {
       const files = await this.fileSystem.listDirectory(this.storageDir);
       const runFiles = files.filter(f => f.endsWith('.json'));
       
+      let loadedCount = 0;
       for (const file of runFiles) {
         try {
+          // File is already the full path from listDirectory
           const content = await this.fileSystem.readFile(file);
           const run = JSON.parse(content, this.reviveDates);
           this.runs.set(run.id, run);
+          loadedCount++;
         } catch (error) {
+          this.logger?.error(`Failed to load run from ${file}:`, error);
           console.error(`Failed to load run from ${file}:`, error);
         }
       }
+      
+      this.logger?.info(`Loaded ${loadedCount} existing runs from storage`);
     } catch (error) {
+      this.logger?.error('Failed to load existing runs:', error);
       console.error('Failed to load existing runs:', error);
+      // Don't throw - continue with empty runs map
     }
   }
 
@@ -147,6 +166,7 @@ export class RunStorage {
     try {
       const filePath = this.fileSystem.join(this.storageDir, `${run.id}.json`);
       await this.fileSystem.writeFile(filePath, JSON.stringify(run, null, 2));
+      this.logger?.debug(`Saved run ${run.id} to storage`);
     } catch (error) {
       console.error(`Failed to persist run ${run.id}:`, error);
     }

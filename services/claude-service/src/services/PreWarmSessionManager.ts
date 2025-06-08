@@ -73,6 +73,8 @@ export class PreWarmSessionManager extends EventEmitter {
     this.isWarming = true;
     const sessionId = uuidv4();
     
+    this.logger?.info(`Starting pre-warm for session: ${sessionId}`);
+    
     const session: PreWarmedSession = {
       sessionId,
       createdAt: new Date(),

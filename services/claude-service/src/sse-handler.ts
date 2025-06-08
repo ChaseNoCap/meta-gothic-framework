@@ -11,6 +11,16 @@ interface SSEHandlerOptions {
 
 export function createSSEHandler(options: SSEHandlerOptions) {
   return async (req: IncomingMessage, res: ServerResponse) => {
+    const logger = (options.context() as any).logger;
+    const correlationId = Math.random().toString(36).substring(7);
+    
+    logger?.info('[SSE Handler] New SSE connection', {
+      url: req.url,
+      headers: req.headers,
+      correlationId
+    });
+    
+    try {
     // Set CORS headers based on origin
     const origin = req.headers.origin;
     const corsHeaders: any = {
@@ -130,29 +140,61 @@ export function createSSEHandler(options: SSEHandlerOptions) {
 
     // Handle client disconnect
     req.on('close', () => {
+      logger?.info('[SSE Handler] Client disconnected', { correlationId });
       clearInterval(heartbeat);
       // If result is an async iterator, clean it up
       if (result && typeof result === 'object' && Symbol.asyncIterator in result) {
         const iterator = result as AsyncIterator<any>;
         if (iterator.return) {
-          iterator.return();
+          iterator.return().catch((error: any) => {
+            logger?.error('[SSE Handler] Error cleaning up iterator', error);
+          });
         }
       }
+    });
+    
+    // Handle errors
+    req.on('error', (error) => {
+      logger?.error('[SSE Handler] Request error', error, { correlationId });
+      clearInterval(heartbeat);
+    });
+    
+    res.on('error', (error) => {
+      logger?.error('[SSE Handler] Response error', error, { correlationId });
+      clearInterval(heartbeat);
     });
 
     // Stream the subscription results
     if (result && typeof result === 'object' && Symbol.asyncIterator in result) {
       try {
         for await (const value of result as AsyncIterable<any>) {
+          if (res.destroyed || res.writableEnded) {
+            logger?.info('[SSE Handler] Response closed, stopping iteration', { correlationId });
+            break;
+          }
           const message = `event: next\ndata: ${JSON.stringify(value)}\n\n`;
           res.write(message);
         }
-        res.write('event: complete\ndata: {}\n\n');
+        if (!res.destroyed && !res.writableEnded) {
+          res.write('event: complete\ndata: {}\n\n');
+        }
       } catch (error: any) {
-        res.write(`event: error\ndata: ${JSON.stringify({ message: error.message })}\n\n`);
+        logger?.error('[SSE Handler] Stream error', error, { correlationId });
+        if (!res.destroyed && !res.writableEnded) {
+          res.write(`event: error\ndata: ${JSON.stringify({ message: error.message })}\n\n`);
+        }
       }
     }
 
-    res.end();
+    if (!res.destroyed && !res.writableEnded) {
+      res.end();
+    }
+    } catch (error: any) {
+      logger?.error('[SSE Handler] Unhandled error', error, { correlationId });
+      if (!res.destroyed && !res.writableEnded) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Internal server error' }));
+      }
+    }
   };
 }

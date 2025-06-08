@@ -12,6 +12,7 @@ import { ClaudeSessionManagerWithEvents } from './services/ClaudeSessionManagerW
 import { PreWarmSessionManager } from './services/PreWarmSessionManager.js';
 import { RunStorage } from './services/RunStorage.js';
 import { createLogger } from '@chasenocap/logger';
+import { healthMonitor } from './health-monitor.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3002;
@@ -29,13 +30,34 @@ try {
 const logger = createLogger('claude-service', {}, {
   logDir: join(__dirname, '../../logs/claude-service')
 });
+
+// Add global error handlers
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
+  healthMonitor.recordError(error);
+  // Give time to flush logs before exit
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  healthMonitor.recordError(reason instanceof Error ? reason : new Error(String(reason)));
+  // Don't exit on unhandled rejection, but log it
+});
+
 const sessionManager = new ClaudeSessionManagerWithEvents();
 const preWarmManager = claudeConfig.preWarmEnabled 
   ? new PreWarmSessionManager(sessionManager, claudeConfig.preWarmSettings, logger)
   : undefined;
+
+// Fix RunStorage initialization - ensure storageDir is first parameter
+const runStorageDir = join(__dirname, '../../logs/claude-runs');
+logger.info('Initializing RunStorage with directory:', runStorageDir);
 const runStorage = new RunStorage(
-  join(__dirname, '../../logs/claude-runs'),
-  undefined,
+  runStorageDir,
+  undefined, // eventBus
   logger
 );
 
@@ -81,11 +103,23 @@ const server = createServer(async (req, res) => {
 
   // GraphQL endpoint
   if (req.url === '/graphql' && req.method === 'POST') {
+    healthMonitor.incrementActiveRequests();
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { query, variables, operationName } = JSON.parse(body);
+        let query, variables, operationName;
+        try {
+          const parsed = JSON.parse(body);
+          query = parsed.query;
+          variables = parsed.variables;
+          operationName = parsed.operationName;
+        } catch (parseError: any) {
+          logger.error('Failed to parse GraphQL request body:', parseError);
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ errors: [{ message: 'Invalid JSON in request body' }] }));
+          return;
+        }
         
         // Parse and execute the query
         const document = parse(query);
@@ -108,8 +142,17 @@ const server = createServer(async (req, res) => {
         
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
+        healthMonitor.decrementActiveRequests();
       } catch (error: any) {
-        console.error('GraphQL execution error:', error);
+        healthMonitor.recordError(error);
+        healthMonitor.decrementActiveRequests();
+        logger.error('GraphQL execution error:', {
+          error: error.message,
+          stack: error.stack,
+          correlationId: contextValue.correlationId,
+          operationName,
+          query: query?.substring(0, 200)
+        });
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ errors: [{ message: error.message }] }));
       }
@@ -138,12 +181,22 @@ const server = createServer(async (req, res) => {
 
   // Health check
   if (req.url === '/health') {
+    const metrics = healthMonitor.getMetrics();
+    const status = metrics.errors.length > 5 ? 'degraded' : 'ok';
+    
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ 
-      status: 'ok', 
+      status, 
       service: 'claude-service',
       federation: 'cosmo',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor(metrics.uptime),
+      memory: {
+        heapUsed: Math.round(metrics.memoryUsage.heapUsed / 1024 / 1024) + 'MB',
+        rss: Math.round(metrics.memoryUsage.rss / 1024 / 1024) + 'MB'
+      },
+      activeRequests: metrics.activeRequests,
+      recentErrors: metrics.errors.length
     }));
     return;
   }
@@ -154,52 +207,77 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, async () => {
+  logger.info('Starting Claude Service...');
+  logger.info(`🚀 Claude Service running at http://localhost:${PORT}/graphql`);
+  logger.info(`📡 SSE endpoint at http://localhost:${PORT}/graphql/stream`);
+  logger.info(`🏥 Health check at http://localhost:${PORT}/health`);
+  logger.info(`📊 Federation: Cosmo-compatible subgraph`);
+  
   console.log('Starting Claude Service...');
   console.log(`🚀 Claude Service running at http://localhost:${PORT}/graphql`);
   console.log(`📡 SSE endpoint at http://localhost:${PORT}/graphql/stream`);
   console.log(`🏥 Health check at http://localhost:${PORT}/health`);
   console.log(`📊 Federation: Cosmo-compatible subgraph`);
   
+  // Start health monitoring
+  healthMonitor.start();
+  logger.info('Health monitoring started');
+  
   // Initialize pre-warm session manager if enabled
   if (preWarmManager) {
     try {
       await preWarmManager.initialize();
       preWarmManager.startCleanupInterval();
+      logger.info('🔥 Pre-warm session manager initialized');
       console.log('🔥 Pre-warm session manager initialized');
     } catch (error) {
+      logger.error('Failed to initialize pre-warm session manager:', error);
       console.error('Failed to initialize pre-warm session manager:', error);
+      // Don't crash the service if pre-warm fails
     }
   } else {
+    logger.info('ℹ️  Pre-warm sessions disabled by configuration');
     console.log('ℹ️  Pre-warm sessions disabled by configuration');
   }
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
+// Graceful shutdown handler
+const gracefulShutdown = (signal: string) => {
+  logger.info(`${signal} received, shutting down gracefully...`);
+  console.log(`${signal} received, shutting down gracefully...`);
+  
+  // Stop health monitoring
+  healthMonitor.stop();
   
   // Stop pre-warm cleanup interval
   if (preWarmManager) {
-    preWarmManager.stopCleanupInterval();
+    try {
+      preWarmManager.stopCleanupInterval();
+    } catch (error) {
+      logger.error('Error stopping pre-warm cleanup:', error);
+    }
+  }
+  
+  // Clean up sessions
+  try {
+    sessionManager.cleanup();
+  } catch (error) {
+    logger.error('Error cleaning up sessions:', error);
   }
   
   server.close(() => {
+    logger.info('Server closed');
     console.log('Server closed');
     process.exit(0);
   });
-});
+  
+  // Force exit after 10 seconds
+  setTimeout(() => {
+    logger.error('Forced exit after timeout');
+    console.error('Forced exit after timeout');
+    process.exit(1);
+  }, 10000);
+};
 
-// Handle SIGINT (Ctrl+C) gracefully
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully...');
-  
-  // Stop pre-warm cleanup interval
-  if (preWarmManager) {
-    preWarmManager.stopCleanupInterval();
-  }
-  
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

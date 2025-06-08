@@ -59,8 +59,9 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
     this.logger = logger;
     this.correlationId = correlationId;
     
-    // Initialize run storage
-    this.runStorage = new RunStorage('/Users/josh/Documents/meta-gothic-framework/logs/claude-runs');
+    // Initialize run storage with proper parameters
+    const runStorageDir = '/Users/josh/Documents/meta-gothic-framework/logs/claude-runs';
+    this.runStorage = new RunStorage(runStorageDir, eventBus, logger);
     
     // Initialize cleanup job (runs every 24 hours)
     initializeCleanupJob(this.runStorage, 24);
@@ -424,6 +425,25 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
       
       claude.on('error', (error) => {
         commandLogger?.error('Claude process error:', error);
+        
+        // Clean up on error
+        try {
+          claude.kill('SIGTERM');
+        } catch (killError) {
+          commandLogger?.error('Failed to kill Claude process after error:', killError);
+        }
+        
+        // Update session status
+        session.status = 'ERROR' as SessionStatus;
+        session.history.push({
+          timestamp: new Date().toISOString(),
+          prompt: command,
+          response: null,
+          error: error.message,
+          executionTime: Date.now() - startTime,
+          success: false
+        });
+        
         reject(error);
       });
       
@@ -676,6 +696,18 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
           error: (error as Error).message,
           executedAt: new Date()
         });
+        
+        // Update run status to failed
+        await this.runStorage.updateRunStatus(run.id, 'failed');
+        
+        // Update progress tracker
+        progressTracker.updateProgress(run.id, {
+          stage: ProgressStage.FAILED,
+          percentage: 100,
+          currentStep: i + 1,
+          message: `Failed: ${(error as Error).message}`
+        });
+        
         throw error;
       }
     }
@@ -783,5 +815,31 @@ ${input.diff ? input.diff.substring(0, 1000) : 'No diff provided'}
 Return ONLY the commit message following conventional commits format (feat:, fix:, docs:, etc.), nothing else.`;
     
     return prompt;
+  }
+
+  /**
+   * Clean up all sessions and resources
+   */
+  cleanup(): void {
+    try {
+      this.logger?.info('Cleaning up Claude sessions...');
+      
+      // Clean up any open sessions
+      for (const [sessionId, session] of this.sessions) {
+        this.logger?.debug(`Cleaning up session ${sessionId}`);
+        // Session data doesn't have process references in this implementation
+        // Just clear the session data
+      }
+      
+      // Clear all sessions
+      this.sessions.clear();
+      
+      // Clear event listeners
+      this.removeAllListeners();
+      
+      this.logger?.info('Claude sessions cleaned up successfully');
+    } catch (error) {
+      this.logger?.error('Error during cleanup:', error);
+    }
   }
 }
