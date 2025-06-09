@@ -1,13 +1,10 @@
 import { ESLint } from 'eslint';
-import { readFile } from 'fs/promises';
 import { createHash } from 'crypto';
-import path from 'path';
-import type { Violation, ESLintResult } from '../types/index';
-import type { BaseAnalyzer } from './base-analyzer';
+import type { Violation } from '../types/index.js';
+import type { BaseAnalyzer } from './base-analyzer.js';
 
 export interface ESLintAnalyzerOptions {
   configFile?: string;
-  baseConfig?: ESLint.ConfigData;
   fix?: boolean;
   cache?: boolean;
   cacheLocation?: string;
@@ -16,19 +13,15 @@ export interface ESLintAnalyzerOptions {
 
 export class ESLintAnalyzer implements BaseAnalyzer {
   private eslint: ESLint;
-  private options: ESLintAnalyzerOptions;
 
   constructor(options: ESLintAnalyzerOptions = {}) {
-    this.options = options;
     
     // Initialize ESLint with configuration
     this.eslint = new ESLint({
       fix: options.fix || false,
       cache: options.cache || false,
       cacheLocation: options.cacheLocation || '.eslintcache',
-      baseConfig: options.baseConfig || this.getDefaultConfig(),
-      overrideConfigFile: options.configFile,
-      extensions: options.extensions || ['.js', '.jsx', '.ts', '.tsx']
+      ...(options.configFile && { overrideConfigFile: options.configFile })
     });
   }
 
@@ -51,6 +44,9 @@ export class ESLintAnalyzer implements BaseAnalyzer {
       }
 
       const result = results[0];
+      if (!result) {
+        return [];
+      }
       return this.mapESLintResultToViolations(result);
     } catch (error) {
       console.error(`Error analyzing file ${filePath}:`, error);
@@ -97,12 +93,12 @@ export class ESLintAnalyzer implements BaseAnalyzer {
   /**
    * Apply auto-fixes to a file
    */
-  async fixFile(filePath: string): Promise<{ fixed: boolean; violations: Violation[] }> {
+  async fix(filePath: string): Promise<{ fixed: boolean; violations: Violation[] }> {
     try {
       // Create a new ESLint instance with fix enabled
       const eslintWithFix = new ESLint({
-        ...this.eslint.options,
-        fix: true
+        fix: true,
+        cache: false
       });
 
       const results = await eslintWithFix.lintFiles([filePath]);
@@ -112,6 +108,9 @@ export class ESLintAnalyzer implements BaseAnalyzer {
       }
 
       const result = results[0];
+      if (!result) {
+        return { fixed: false, violations: [] };
+      }
       
       // Write the fixed content if any fixes were applied
       if (result.output) {
@@ -159,7 +158,7 @@ export class ESLintAnalyzer implements BaseAnalyzer {
   /**
    * Generate a unique ID for a violation
    */
-  private generateViolationId(filePath: string, message: ESLint.Linter.LintMessage): string {
+  private generateViolationId(filePath: string, message: any): string {
     // Generate a UUID-like string from violation details
     const hash = createHash('md5');
     hash.update(filePath);
@@ -193,56 +192,16 @@ export class ESLintAnalyzer implements BaseAnalyzer {
     }
   }
 
-  /**
-   * Get default ESLint configuration
-   */
-  private getDefaultConfig(): ESLint.ConfigData {
-    return {
-      env: {
-        es2022: true,
-        node: true
-      },
-      extends: [
-        'eslint:recommended'
-      ],
-      parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: 'module'
-      },
-      rules: {
-        // Basic rules - can be customized
-        'no-unused-vars': 'warn',
-        'no-console': 'warn',
-        'no-debugger': 'error',
-        'semi': ['error', 'always'],
-        'quotes': ['error', 'single'],
-        'indent': ['error', 2],
-        'comma-dangle': ['error', 'never']
-      },
-      overrides: [
-        {
-          files: ['*.ts', '*.tsx'],
-          parser: '@typescript-eslint/parser',
-          plugins: ['@typescript-eslint'],
-          extends: [
-            'plugin:@typescript-eslint/recommended'
-          ],
-          rules: {
-            '@typescript-eslint/no-unused-vars': 'warn',
-            '@typescript-eslint/no-explicit-any': 'warn',
-            '@typescript-eslint/explicit-module-boundary-types': 'off'
-          }
-        }
-      ]
-    };
-  }
 
   /**
    * Get ESLint formatter
    */
   async formatResults(results: ESLint.LintResult[]): Promise<string> {
     const formatter = await this.eslint.loadFormatter('stylish');
-    return formatter.format(results);
+    return formatter.format(results, {
+      cwd: process.cwd(),
+      rulesMeta: {}
+    });
   }
 
   /**

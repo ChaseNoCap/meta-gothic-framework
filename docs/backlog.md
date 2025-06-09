@@ -64,6 +64,8 @@ All managed by PM2 with `npm start`
 
 ## 🚨 TOP PRIORITY: TimescaleDB Code Quality Service
 
+### Current Phase: Epic 3 - MCP Server for Claude Integration
+
 ### Goal
 **Implement comprehensive code quality enforcement system with TimescaleDB for time-series analytics**
 
@@ -126,7 +128,7 @@ A three-flow system for code quality management:
 - [x] Add gitignore and pattern filtering
 - [x] Optimize for large codebases with hash-based change detection
 
-### Epic 3: MCP Server for Claude Integration (Week 2)
+### 🎯 NEXT UP: Epic 3 - MCP Server for Claude Integration (Week 2)
 
 **Task 7: MCP Server Foundation**
 - [ ] Set up MCP server with TypeScript SDK

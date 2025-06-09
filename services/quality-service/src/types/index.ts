@@ -29,7 +29,7 @@ export interface Violation {
 
 export interface QualitySession {
   id: string;
-  sessionType: 'INTERACTIVE' | 'HEADLESS' | 'REPORT';
+  sessionType: 'INTERACTIVE' | 'HEADLESS' | 'REPORT' | 'WATCH';
   triggeredBy: string;
   status: 'in_progress' | 'completed' | 'failed';
   startedAt: Date;
@@ -188,5 +188,9 @@ export interface QualityConfig {
   mcp?: {
     port?: number;
     heartbeatInterval?: number;
+    sessionTimeout?: number;
   };
 }
+
+// Alias for convenience
+export type Config = QualityConfig;

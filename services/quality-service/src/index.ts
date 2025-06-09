@@ -1,5 +1,6 @@
-import { TimescaleQualityEngine } from './core/quality-engine';
-import type { QualityConfig } from './types/index';
+import { TimescaleQualityEngine } from './core/quality-engine.js';
+import { QualityMCPServer } from './mcp/server.js';
+import type { QualityConfig } from './types/index.js';
 
 // Default configuration
 const defaultConfig: QualityConfig = {
@@ -34,10 +35,10 @@ async function main(): Promise<void> {
     await engine.connect();
     console.log('✅ Connected to TimescaleDB');
 
-    // TODO: Start MCP Server
-    // const mcpServer = new InteractiveQualityMCPServer(defaultConfig);
-    // await mcpServer.start();
-    // console.log(`✅ MCP Server started on port ${defaultConfig.mcp?.port}`);
+    // Start MCP Server
+    const mcpServer = new QualityMCPServer(engine, defaultConfig);
+    await mcpServer.start();
+    console.log(`✅ MCP Server started`);
 
     // TODO: Start Web Portal
     // const webPortal = await setupWebPortal(defaultConfig);
@@ -88,8 +89,9 @@ async function main(): Promise<void> {
     // Graceful shutdown
     process.on('SIGINT', async () => {
       console.log('\n🛑 Shutting down...');
+      await mcpServer.stop();
       await engine.disconnect();
-      // TODO: Close MCP server and web portal
+      // TODO: Close web portal
       process.exit(0);
     });
 
@@ -100,8 +102,9 @@ async function main(): Promise<void> {
 }
 
 // Export for use as a library
-export { TimescaleQualityEngine } from './core/quality-engine';
-export * from './types/index';
+export { TimescaleQualityEngine } from './core/quality-engine.js';
+export { QualityMCPServer } from './mcp/server.js';
+export * from './types/index.js';
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {

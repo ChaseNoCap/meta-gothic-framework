@@ -13,11 +13,11 @@ import type {
   QualityTrend,
   ViolationPattern,
   QualityConfig
-} from '../types/index';
-import { AnalyzerRegistry } from '../analyzers/base-analyzer';
-import { ESLintAnalyzer } from '../analyzers/eslint-analyzer';
-import { PrettierAnalyzer } from '../analyzers/prettier-analyzer';
-import { TypeScriptAnalyzer } from '../analyzers/typescript-analyzer';
+} from '../types/index.js';
+import { AnalyzerRegistry } from '../analyzers/base-analyzer.js';
+import { ESLintAnalyzer } from '../analyzers/eslint-analyzer.js';
+import { PrettierAnalyzer } from '../analyzers/prettier-analyzer.js';
+import { TypeScriptAnalyzer } from '../analyzers/typescript-analyzer.js';
 
 export class TimescaleQualityEngine {
   private pool: Pool;
@@ -53,7 +53,7 @@ export class TimescaleQualityEngine {
   }
 
   async processFile(filePath: string, context: ProcessingContext): Promise<QualityResult> {
-    const session = await this.createSession(context);
+    const session = await this.createSessionFromContext(context);
     const client = await this.pool.connect();
     
     try {
@@ -103,7 +103,7 @@ export class TimescaleQualityEngine {
     }
   }
 
-  async createSession(context: ProcessingContext): Promise<QualitySession> {
+  async createSessionFromContext(context: ProcessingContext): Promise<QualitySession> {
     const result: QueryResult<QualitySession> = await this.pool.query(`
       INSERT INTO quality_sessions (session_type, triggered_by, context)
       VALUES ($1, $2, $3)
@@ -133,17 +133,17 @@ export class TimescaleQualityEngine {
    */
   async fixFile(filePath: string, analyzerName: string = 'eslint'): Promise<{ fixed: boolean; violations: Violation[] }> {
     const analyzer = this.analyzers.get(analyzerName);
-    if (!analyzer || !analyzer.fixFile) {
+    if (!analyzer) {
       return { fixed: false, violations: [] };
     }
 
-    return analyzer.fixFile(filePath);
+    return analyzer.fix(filePath);
   }
 
   private setupAnalyzers(): void {
     // Register ESLint analyzer
     const eslintAnalyzer = new ESLintAnalyzer({
-      configFile: this.config.analysis?.eslintConfig,
+      ...(this.config.analysis?.eslintConfig && { configFile: this.config.analysis.eslintConfig }),
       cache: true,
       fix: false
     });
@@ -151,7 +151,7 @@ export class TimescaleQualityEngine {
 
     // Register Prettier analyzer
     const prettierAnalyzer = new PrettierAnalyzer({
-      configFile: this.config.analysis?.prettierConfig,
+      ...(this.config.analysis?.prettierConfig && { configFile: this.config.analysis.prettierConfig }),
       checkOnly: false
     });
     this.analyzers.register('prettier', prettierAnalyzer);
@@ -430,7 +430,7 @@ export class TimescaleQualityEngine {
         rule,
         tool_type,
         count(*) as frequency,
-        avg(EXTRACT(epoch FROM (resolved_at - time))/3600) as avg_resolution_hours
+        NULL as avg_resolution_hours
       FROM violation_events
       WHERE file_path = $1 
         AND event_type = 'created' 
@@ -508,6 +508,225 @@ export class TimescaleQualityEngine {
       testCoverage: row.test_coverage,
       toolType: row.tool_type,
       metadata: row.metadata
+    };
+  }
+
+  // MCP Integration Methods
+
+  async recordMCPEvent(event: {
+    eventType: string;
+    toolName: string;
+    sessionId: string;
+    payload?: any;
+  }): Promise<void> {
+    // Convert 'system' to null for UUID column
+    const sessionId = event.sessionId === 'system' ? null : event.sessionId;
+    
+    await this.pool.query(`
+      INSERT INTO mcp_events (time, event_type, session_id, client_type, event_data)
+      VALUES (NOW(), $1, $2, $3, $4)
+    `, [
+      event.eventType,
+      sessionId,
+      `mcp:${event.toolName}`,
+      JSON.stringify(event.payload || {})
+    ]);
+  }
+
+  async createSession(sessionType: string, metadata?: any): Promise<QualitySession> {
+    const result = await this.pool.query(`
+      INSERT INTO quality_sessions (session_type, triggered_by, status, context)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [
+      sessionType,
+      metadata?.triggeredBy || 'user',
+      'in_progress',
+      JSON.stringify(metadata || {})
+    ]);
+    
+    return this.mapSession(result.rows[0]);
+  }
+
+  async updateSessionMetadata(sessionId: string, metadata: any): Promise<void> {
+    await this.pool.query(`
+      UPDATE quality_sessions 
+      SET context = context || $2
+      WHERE id = $1
+    `, [sessionId, JSON.stringify(metadata)]);
+  }
+
+  async endSession(sessionId: string): Promise<void> {
+    await this.pool.query(`
+      UPDATE quality_sessions 
+      SET status = 'completed', completed_at = NOW()
+      WHERE id = $1
+    `, [sessionId]);
+  }
+
+  async recordSessionActivityPublic(sessionId: string, activityType: string, details: any): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await this.recordSessionActivity(client, sessionId, activityType, details);
+    } finally {
+      client.release();
+    }
+  }
+
+  async getFileAnalysis(filePath: string): Promise<{
+    file: QualityFile | null;
+    violations: Violation[];
+    score: number;
+  }> {
+    const client = await this.pool.connect();
+    try {
+      // Get file info
+      const fileResult = await client.query(
+        'SELECT * FROM files WHERE path = $1',
+        [filePath]
+      );
+      
+      if (fileResult.rows.length === 0) {
+        return { file: null, violations: [], score: 0 };
+      }
+      
+      const file = this.mapFile(fileResult.rows[0]);
+      
+      // Get current violations
+      const violationsResult = await client.query(
+        'SELECT * FROM current_violations WHERE file_id = $1 AND status = $2',
+        [file.id, 'active']
+      );
+      
+      const violations = violationsResult.rows.map(row => this.mapViolation(row));
+      
+      return {
+        file,
+        violations,
+        score: file.currentQualityScore || 0
+      };
+    } finally {
+      client.release();
+    }
+  }
+
+  async getSuggestionsForFile(filePath: string): Promise<{
+    violations: Violation[];
+    suggestions: string[];
+    autoFixableCount: number;
+  }> {
+    const analysis = await this.getFileAnalysis(filePath);
+    
+    const autoFixableCount = analysis.violations.filter(v => v.autoFixable).length;
+    
+    const suggestions = this.generateSuggestions(analysis.violations);
+    
+    return {
+      violations: analysis.violations,
+      suggestions,
+      autoFixableCount
+    };
+  }
+
+  private generateSuggestions(violations: Violation[]): string[] {
+    const suggestions: string[] = [];
+    
+    // Group violations by rule
+    const violationsByRule = violations.reduce((acc, v) => {
+      if (!acc[v.rule]) acc[v.rule] = [];
+      acc[v.rule]!.push(v);
+      return acc;
+    }, {} as Record<string, Violation[]>);
+    
+    // Generate suggestions based on patterns
+    for (const [rule, ruleViolations] of Object.entries(violationsByRule)) {
+      if (ruleViolations.length > 3) {
+        suggestions.push(`Consider disabling or configuring rule '${rule}' - found ${ruleViolations.length} violations`);
+      }
+      
+      const autoFixable = ruleViolations.filter(v => v.autoFixable).length;
+      if (autoFixable > 0) {
+        suggestions.push(`Rule '${rule}' has ${autoFixable} auto-fixable violations`);
+      }
+    }
+    
+    // Tool-specific suggestions
+    const toolCounts = violations.reduce((acc, v) => {
+      acc[v.toolType] = (acc[v.toolType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    for (const [tool, count] of Object.entries(toolCounts)) {
+      if (tool === 'eslint' && count > 10) {
+        suggestions.push(`High number of ESLint violations (${count}). Consider running with --fix`);
+      }
+      if (tool === 'prettier' && count > 0) {
+        suggestions.push(`Formatting issues detected. Run Prettier to fix automatically`);
+      }
+      if (tool === 'typescript' && count > 5) {
+        suggestions.push(`Multiple TypeScript errors. Check type definitions and imports`);
+      }
+    }
+    
+    return suggestions;
+  }
+
+  async applyAutoFix(filePath: string, toolType?: string): Promise<{
+    fixed: boolean;
+    fixedCount: number;
+    remainingViolations: Violation[];
+  }> {
+    const analysis = await this.getFileAnalysis(filePath);
+    
+    if (!analysis.file) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+    
+    // Get auto-fixable violations
+    let violationsToFix = analysis.violations.filter(v => v.autoFixable);
+    
+    if (toolType) {
+      violationsToFix = violationsToFix.filter(v => v.toolType === toolType);
+    }
+    
+    if (violationsToFix.length === 0) {
+      return {
+        fixed: false,
+        fixedCount: 0,
+        remainingViolations: analysis.violations
+      };
+    }
+    
+    // Group by tool and apply fixes
+    const toolGroups = violationsToFix.reduce((acc, v) => {
+      if (!acc[v.toolType]) acc[v.toolType] = [];
+      acc[v.toolType]!.push(v);
+      return acc;
+    }, {} as Record<string, Violation[]>);
+    
+    let totalFixed = 0;
+    
+    for (const [tool, violations] of Object.entries(toolGroups)) {
+      const analyzer = this.analyzers.get(tool);
+      if (!analyzer || !analyzer.fix) continue;
+      
+      try {
+        const result = await analyzer.fix(filePath);
+        if (result.fixed) {
+          totalFixed += violations.length;
+        }
+      } catch (error) {
+        console.error(`Failed to apply ${tool} fixes:`, error);
+      }
+    }
+    
+    // Re-analyze to get remaining violations
+    const newAnalysis = await this.analyzeFile(filePath);
+    
+    return {
+      fixed: totalFixed > 0,
+      fixedCount: totalFixed,
+      remainingViolations: newAnalysis
     };
   }
 }

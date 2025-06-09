@@ -17,7 +17,7 @@ export interface BaseAnalyzer {
   /**
    * Apply auto-fixes to a file if supported
    */
-  fixFile?(filePath: string): Promise<{ fixed: boolean; violations: Violation[] }>;
+  fix(filePath: string): Promise<{ fixed: boolean; violations: Violation[] }>;
 
   /**
    * Get the tool type identifier

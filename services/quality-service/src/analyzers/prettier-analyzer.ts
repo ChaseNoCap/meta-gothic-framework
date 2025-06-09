@@ -140,7 +140,7 @@ export class PrettierAnalyzer implements BaseAnalyzer {
   /**
    * Apply auto-fixes to a file
    */
-  async fixFile(filePath: string): Promise<{ fixed: boolean; violations: Violation[] }> {
+  async fix(filePath: string): Promise<{ fixed: boolean; violations: Violation[] }> {
     try {
       // Check if file is supported
       const fileInfo = await getFileInfo(filePath);

@@ -1,0 +1,30 @@
+{
+  "name": "quality-service",
+  "version": "1.0.0",
+  "description": "Code quality analysis MCP server for real-time feedback during Claude editing sessions",
+  "main": "dist/mcp/server.js",
+  "mcp": {
+    "transport": "stdio",
+    "capabilities": {
+      "tools": true
+    }
+  },
+  "tools": [
+    {
+      "name": "quality_check_interactive",
+      "description": "Performs real-time quality analysis on a file during Claude editing sessions"
+    },
+    {
+      "name": "get_quality_suggestions",
+      "description": "Provides intelligent code quality improvement suggestions based on violation patterns"
+    },
+    {
+      "name": "apply_quality_fix",
+      "description": "Applies automatic fixes for code quality violations"
+    }
+  ],
+  "scripts": {
+    "start": "node --loader tsx dist/mcp/server.js",
+    "build": "tsc"
+  }
+}

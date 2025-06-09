@@ -1,9 +1,8 @@
 import * as ts from 'typescript';
-import { readFile } from 'fs/promises';
 import { createHash } from 'crypto';
 import path from 'path';
-import type { Violation } from '../types/index';
-import type { BaseAnalyzer } from './base-analyzer';
+import type { Violation } from '../types/index.js';
+import type { BaseAnalyzer } from './base-analyzer.js';
 
 export interface TypeScriptAnalyzerOptions {
   configFile?: string;
@@ -15,7 +14,6 @@ export interface TypeScriptAnalyzerOptions {
 export class TypeScriptAnalyzer implements BaseAnalyzer {
   private options: TypeScriptAnalyzerOptions;
   private program: ts.Program | null = null;
-  private languageService: ts.LanguageService | null = null;
 
   constructor(options: TypeScriptAnalyzerOptions = {}) {
     this.options = options;
@@ -105,7 +103,7 @@ export class TypeScriptAnalyzer implements BaseAnalyzer {
   /**
    * TypeScript doesn't have auto-fix capability built-in
    */
-  async fixFile(filePath: string): Promise<{ fixed: boolean; violations: Violation[] }> {
+  async fix(filePath: string): Promise<{ fixed: boolean; violations: Violation[] }> {
     // TypeScript compiler doesn't provide auto-fix functionality
     // Could potentially implement code fixes using the Language Service API
     // but that's more complex and context-dependent
@@ -267,7 +265,7 @@ export class TypeScriptAnalyzer implements BaseAnalyzer {
   /**
    * Get quick fixes for a diagnostic using Language Service
    */
-  async getQuickFixes(filePath: string, lineNumber: number, columnNumber: number): Promise<ts.CodeFixAction[]> {
+  async getQuickFixes(_filePath: string, _lineNumber: number, _columnNumber: number): Promise<ts.CodeFixAction[]> {
     // This would require implementing a full Language Service
     // which is beyond the scope of this basic analyzer
     return [];

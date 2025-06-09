@@ -63,8 +63,8 @@ export class QualityFileWatcher extends EventEmitter {
       ],
       persistent: true,
       ignoreInitial: false,
-      followSymlinks: this.config.followSymlinks,
-      depth: this.config.depth,
+      ...(this.config.followSymlinks !== undefined && { followSymlinks: this.config.followSymlinks }),
+      ...(this.config.depth !== undefined && { depth: this.config.depth }),
       awaitWriteFinish: {
         stabilityThreshold: 500,
         pollInterval: 100
@@ -253,8 +253,7 @@ export class QualityFileWatcher extends EventEmitter {
       
       const context: ProcessingContext = {
         sessionType: 'WATCH',
-        triggeredBy: `file-watcher:${eventType}`,
-        watchMode: true
+        triggeredBy: `file-watcher:${eventType}`
       };
 
       const result = await this.engine.processFile(filePath, context);

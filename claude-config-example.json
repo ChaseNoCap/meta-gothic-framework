@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "quality-service": {
+      "command": "npm",
+      "args": ["run", "start:mcp"],
+      "cwd": "/Users/josh/Documents/meta-gothic-framework/services/quality-service",
+      "env": {
+        "DATABASE_URL": "postgresql://josh@localhost:5432/quality_service",
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}

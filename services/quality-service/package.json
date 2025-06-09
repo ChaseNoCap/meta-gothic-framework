@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "tsc",
     "start": "tsx src/index.ts",
+    "start:mcp": "tsx src/mcp/standalone.ts",
     "db:setup": "tsx scripts/setup-database-flexible.ts",
     "db:setup:timescale": "tsx scripts/setup-database.ts",
     "db:migrate": "tsx scripts/run-migrations.ts",
@@ -37,6 +38,7 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@types/eslint": "^9.6.1",
     "@types/node": "^20.8.0",
     "@types/pg": "^8.10.0",
     "@types/react": "^18.2.0",
