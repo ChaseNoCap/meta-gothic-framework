@@ -10,6 +10,7 @@ This document defines the standard port configuration for all Meta GOTHIC Framew
 | **Claude Service** | 3002 | http://localhost:3002/graphql | AI agent operations and session management |
 | **Git Service** | 3004 | http://localhost:3004/graphql | Git repository operations |
 | **GitHub Adapter** | 3005 | http://localhost:3005/graphql | GitHub API integration |
+| **Quality Service** | 3006 | http://localhost:3006 | Code quality analysis with TimescaleDB |
 | **UI Dashboard** | 3001 | http://localhost:3001 | Web interface for Meta GOTHIC |
 
 ## SSE Endpoints
@@ -38,6 +39,7 @@ GATEWAY_PORT=4000         # Cosmo Router port
 CLAUDE_SERVICE_PORT=3002  # Claude Service port
 GIT_SERVICE_PORT=3004     # Git Service port
 GITHUB_ADAPTER_PORT=3005  # GitHub Adapter port
+QUALITY_SERVICE_PORT=3006 # Quality Service port
 UI_DASHBOARD_PORT=3001    # UI Dashboard port
 ```
 
@@ -68,6 +70,19 @@ curl http://localhost:3004/graphql
 # Check GitHub Adapter
 curl http://localhost:3005/graphql
 
+# Check Quality Service
+curl http://localhost:3006
+
 # Check UI Dashboard
 open http://localhost:3001
+```
+
+## Quality Service MCP Mode
+
+The Quality Service also runs as an MCP server for Claude integration:
+
+```bash
+# Start MCP server (for Claude)
+cd services/quality-service
+npm run start:mcp
 ```

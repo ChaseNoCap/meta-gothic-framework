@@ -94,6 +94,26 @@ module.exports = {
       shutdown_with_message: true
     },
     {
+      name: 'quality-service',
+      script: './start.sh',
+      cwd: './services/quality-service',
+      interpreter: 'bash',
+      env: {
+        NODE_ENV: 'development',
+        PORT: 3006,
+        WORKSPACE_ROOT: WORKSPACE_ROOT,
+        DATABASE_URL: 'postgresql://josh@localhost:5432/quality_service'
+      },
+      watch: false,
+      max_memory_restart: '1G',
+      error_file: './logs/quality-service-error.log',
+      out_file: './logs/quality-service-out.log',
+      log_file: './logs/quality-service-combined.log',
+      time: true,
+      combine_logs: true,
+      merge_logs: true
+    },
+    {
       name: 'ui',
       script: './start.sh',
       cwd: './packages/ui-components',

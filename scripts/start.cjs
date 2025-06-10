@@ -10,6 +10,7 @@ const services = [
   { name: 'claude-service', port: 3002 },
   { name: 'git-service', port: 3004 },
   { name: 'github-adapter', port: 3005 },
+  { name: 'quality-service', port: 3006 },
   { name: 'gateway', port: 4000 },
   { name: 'ui', port: 3001 }
 ];
@@ -78,6 +79,7 @@ function killZombies() {
       'node.*meta-gothic',
       'node.*claude-service',
       'node.*git-service',
+      'node.*quality-service',
       'node.*yoga',
       'node.*gateway',
       'router.*cosmo',
@@ -268,6 +270,21 @@ function waitForHealth(service, timeout = 60000) {
     } else if (service.name === 'ui') {
       // UI service just needs to respond
       url = `http://localhost:${port}/`;
+    } else if (service.name === 'quality-service') {
+      // Quality service doesn't have HTTP endpoint - check via PM2 status
+      // Skip HTTP health check and just verify process is running
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          exec(`pm2 jlist | grep -q '"name":"quality-service".*"status":"online"'`, (error) => {
+            if (!error) {
+              logSuccess(`${service.name} is healthy (process running)`);
+              resolve();
+            } else {
+              reject(new Error(`${service.name} process not found or not online`));
+            }
+          });
+        }, 2000); // Give it 2 seconds to start
+      });
     } else {
       // GraphQL services (claude-service, git-service, github-adapter)
       url = `http://localhost:${port}/graphql`;
@@ -563,6 +580,7 @@ async function main() {
     log('   Claude Service: http://localhost:3002/graphql', 'dim');
     log('   Git Service: http://localhost:3004/graphql', 'dim');
     log('   GitHub Adapter: http://localhost:3005/graphql', 'dim');
+    log('   Quality Service: http://localhost:3006 (MCP: npm run start:mcp)', 'dim');
     log('   UI Dashboard: http://localhost:3001', 'dim');
     
     if (options.noMonitor) {
