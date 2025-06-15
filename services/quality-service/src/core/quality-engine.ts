@@ -729,4 +729,166 @@ export class TimescaleQualityEngine {
       remainingViolations: newAnalysis
     };
   }
+
+  async isConnected(): Promise<boolean> {
+    try {
+      const client = await this.pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getSession(sessionId: string): Promise<QualitySession | null> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT * FROM quality_sessions WHERE id = $1
+      `, [sessionId]);
+      
+      return result.rows[0] ? this.mapSession(result.rows[0]) : null;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getRecentSessions(limit: number = 10): Promise<QualitySession[]> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT * FROM quality_sessions 
+        ORDER BY start_time DESC 
+        LIMIT $1
+      `, [limit]);
+      
+      return result.rows.map(row => this.mapSession(row));
+    } finally {
+      client.release();
+    }
+  }
+
+  async getFileQuality(path: string): Promise<any> {
+    const analysis = await this.getFileAnalysis(path);
+    
+    if (!analysis.file) {
+      return null;
+    }
+
+    return {
+      path: analysis.file.path,
+      hash: analysis.file.hash,
+      score: analysis.score,
+      violations: analysis.violations.map(v => ({
+        id: `${v.rule}-${v.lineNumber}-${v.columnNumber}`,
+        tool: v.toolType,
+        rule: v.rule,
+        severity: v.severity,
+        message: v.message,
+        line: v.lineNumber,
+        column: v.columnNumber,
+        endLine: v.endLine,
+        endColumn: v.endColumn,
+        fixable: v.autoFixable,
+        suggestions: []
+      })),
+      lastChecked: analysis.file.updatedAt || new Date().toISOString(),
+      trends: null
+    };
+  }
+
+  async getFileViolations(path: string): Promise<Violation[]> {
+    const analysis = await this.getFileAnalysis(path);
+    return analysis.violations;
+  }
+
+  async getViolationStats(filters: {
+    sessionId?: string;
+    severity?: string;
+    tool?: string;
+  }): Promise<any> {
+    const client = await this.pool.connect();
+    try {
+      let whereClause = 'WHERE 1=1';
+      const params: any[] = [];
+      let paramIndex = 1;
+
+      if (filters.sessionId) {
+        whereClause += ` AND session_id = $${paramIndex++}`;
+        params.push(filters.sessionId);
+      }
+      if (filters.severity) {
+        whereClause += ` AND severity = $${paramIndex++}`;
+        params.push(filters.severity);
+      }
+      if (filters.tool) {
+        whereClause += ` AND tool_type = $${paramIndex++}`;
+        params.push(filters.tool);
+      }
+
+      // Get total count
+      const totalResult = await client.query(`
+        SELECT COUNT(*) as total FROM violation_events ${whereClause}
+      `, params);
+      const total = parseInt(totalResult.rows[0]?.total || '0');
+
+      // Get by severity
+      const severityResult = await client.query(`
+        SELECT severity, COUNT(*) as count 
+        FROM violation_events ${whereClause}
+        GROUP BY severity
+      `, params);
+
+      // Get by tool
+      const toolResult = await client.query(`
+        SELECT tool_type as tool, COUNT(*) as count 
+        FROM violation_events ${whereClause}
+        GROUP BY tool_type
+      `, params);
+
+      // Get top rules
+      const rulesResult = await client.query(`
+        SELECT rule, tool_type as tool, COUNT(*) as count 
+        FROM violation_events ${whereClause}
+        GROUP BY rule, tool_type
+        ORDER BY count DESC
+        LIMIT 10
+      `, params);
+
+      // Get fixable count
+      const fixableResult = await client.query(`
+        SELECT COUNT(*) as count 
+        FROM violation_events ${whereClause}
+        AND auto_fixable = true
+      `, params);
+      const fixableCount = parseInt(fixableResult.rows[0]?.count || '0');
+
+      return {
+        total,
+        bySeverity: severityResult.rows,
+        byTool: toolResult.rows,
+        topRules: rulesResult.rows,
+        fixableCount
+      };
+    } finally {
+      client.release();
+    }
+  }
+
+  async getQualityThresholds(): Promise<any> {
+    // Return default thresholds for now
+    // In a real implementation, these would be stored in the database
+    return {
+      errorThreshold: 0,
+      warningThreshold: 5,
+      passingScore: 7.0
+    };
+  }
+
+  async updateQualityThresholds(thresholds: any): Promise<void> {
+    // In a real implementation, this would update the database
+    // For now, just log the update
+    console.log('Updating quality thresholds:', thresholds);
+  }
 }

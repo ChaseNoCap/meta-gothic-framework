@@ -1,0 +1,327 @@
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@extends", "@external"])
+
+type Query {
+  # Get quality metrics for a specific file
+  fileQuality(path: String!, sessionId: String): FileQuality
+
+  # Get quality metrics for multiple files
+  filesQuality(paths: [String!]!, sessionId: String): [FileQuality!]!
+
+  # Get quality session details
+  qualitySession(sessionId: String!): QualitySession
+
+  # List recent quality sessions
+  qualitySessions(limit: Int = 10): [QualitySession!]!
+
+  # Get quality trends over time
+  qualityTrends(
+    path: String
+    startTime: String!
+    endTime: String!
+    bucketSize: String = "1h"
+  ): QualityTrends!
+
+  # Get violation statistics
+  violationStats(
+    sessionId: String
+    severity: ViolationSeverity
+    tool: String
+  ): ViolationStats!
+
+  # Get suggestions for a file
+  qualitySuggestions(path: String!): [QualitySuggestion!]!
+
+  # Health check
+  health: ServiceHealthStatus! @shareable
+}
+
+type Mutation {
+  # Run quality check on files
+  runQualityCheck(input: RunQualityCheckInput!): QualityCheckResult!
+
+  # Apply a quality fix
+  applyQualityFix(input: ApplyQualityFixInput!): ApplyFixResult!
+
+  # Create a new quality session
+  createQualitySession(input: CreateSessionInput!): QualitySession!
+
+  # Update quality thresholds
+  updateQualityThresholds(input: UpdateThresholdsInput!): QualityThresholds!
+}
+
+type Subscription {
+  # Subscribe to quality updates for a session
+  qualityUpdates(sessionId: String!): QualityUpdate!
+
+  # Subscribe to violation events
+  violationEvents(severity: ViolationSeverity): ViolationEvent!
+
+  # Subscribe to file quality changes
+  fileQualityChanges(paths: [String!]!): FileQualityChange!
+}
+
+# Core types
+type FileQuality {
+  path: String!
+  hash: String!
+  score: Float!
+  violations: [Violation!]!
+  lastChecked: String!
+  trends: QualityTrendData
+}
+
+type Violation {
+  id: String!
+  tool: String!
+  rule: String!
+  severity: ViolationSeverity!
+  message: String!
+  line: Int
+  column: Int
+  endLine: Int
+  endColumn: Int
+  fixable: Boolean!
+  suggestions: [String!]
+}
+
+enum ViolationSeverity {
+  ERROR
+  WARNING
+  INFO
+  HINT
+}
+
+type QualitySession {
+  id: String!
+  type: SessionType!
+  startTime: String!
+  endTime: String
+  filesAnalyzed: Int!
+  totalViolations: Int!
+  averageScore: Float!
+  metadata: SessionMetadata
+}
+
+enum SessionType {
+  MANUAL
+  WATCH
+  CI
+  MCP
+}
+
+type SessionMetadata {
+  claudeSessionId: String
+  gitBranch: String
+  gitCommit: String
+  userId: String
+}
+
+type QualityTrends {
+  path: String
+  buckets: [TrendBucket!]!
+  summary: TrendSummary!
+}
+
+type TrendBucket {
+  time: String!
+  averageScore: Float!
+  violationCount: Int!
+  filesAnalyzed: Int!
+}
+
+type TrendSummary {
+  improvement: Float!
+  totalViolations: Int!
+  averageScore: Float!
+  trend: TrendDirection!
+}
+
+enum TrendDirection {
+  IMPROVING
+  DECLINING
+  STABLE
+}
+
+type ViolationStats {
+  total: Int!
+  bySeverity: [SeverityCount!]!
+  byTool: [ToolCount!]!
+  topRules: [RuleCount!]!
+  fixableCount: Int!
+}
+
+type SeverityCount {
+  severity: ViolationSeverity!
+  count: Int!
+}
+
+type ToolCount {
+  tool: String!
+  count: Int!
+}
+
+type RuleCount {
+  rule: String!
+  count: Int!
+  tool: String!
+}
+
+type QualitySuggestion {
+  file: String!
+  suggestion: String!
+  impact: ImpactLevel!
+  effort: EffortLevel!
+  category: SuggestionCategory!
+}
+
+enum ImpactLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum EffortLevel {
+  MINIMAL
+  MODERATE
+  SIGNIFICANT
+}
+
+enum SuggestionCategory {
+  PERFORMANCE
+  MAINTAINABILITY
+  SECURITY
+  TESTING
+  DOCUMENTATION
+}
+
+# Input types
+input RunQualityCheckInput {
+  paths: [String!]!
+  tools: [String!]
+  fix: Boolean = false
+  sessionId: String
+}
+
+type QualityCheckResult {
+  sessionId: String!
+  filesChecked: Int!
+  results: [FileQuality!]!
+  summary: CheckSummary!
+}
+
+type CheckSummary {
+  totalViolations: Int!
+  fixableViolations: Int!
+  averageScore: Float!
+  duration: Int!
+}
+
+input ApplyQualityFixInput {
+  path: String!
+  violationId: String!
+  preview: Boolean = true
+}
+
+type ApplyFixResult {
+  success: Boolean!
+  originalContent: String
+  fixedContent: String
+  violation: Violation
+  error: String
+}
+
+input CreateSessionInput {
+  type: SessionType!
+  metadata: SessionMetadataInput
+}
+
+input SessionMetadataInput {
+  claudeSessionId: String
+  gitBranch: String
+  gitCommit: String
+  userId: String
+}
+
+input UpdateThresholdsInput {
+  errorThreshold: Float
+  warningThreshold: Float
+  passingScore: Float
+}
+
+type QualityThresholds {
+  errorThreshold: Float!
+  warningThreshold: Float!
+  passingScore: Float!
+}
+
+# Real-time update types
+type QualityUpdate {
+  sessionId: String!
+  type: UpdateType!
+  file: String
+  quality: FileQuality
+  progress: Float
+}
+
+enum UpdateType {
+  FILE_ANALYZED
+  SESSION_COMPLETE
+  ERROR
+  PROGRESS
+}
+
+type ViolationEvent {
+  type: EventType!
+  violation: Violation!
+  file: String!
+  timestamp: String!
+}
+
+enum EventType {
+  VIOLATION_FOUND
+  VIOLATION_FIXED
+  VIOLATION_IGNORED
+}
+
+type FileQualityChange {
+  file: String!
+  previousScore: Float!
+  currentScore: Float!
+  changeType: ChangeType!
+  violations: ViolationChange!
+}
+
+enum ChangeType {
+  IMPROVED
+  DEGRADED
+  UNCHANGED
+}
+
+type ViolationChange {
+  added: [Violation!]!
+  removed: [Violation!]!
+  total: Int!
+}
+
+# Health check type (shared across services)
+type ServiceHealthStatus @shareable {
+  service: String!
+  status: String!
+  timestamp: String!
+  uptime: Int!
+  version: String!
+}
+
+# Time series specific types for TimescaleDB
+type QualityTrendData {
+  hourly: TrendPoint
+  daily: TrendPoint
+  weekly: TrendPoint
+}
+
+type TrendPoint {
+  score: Float!
+  violations: Int!
+  timestamp: String!
+  change: Float!
+}

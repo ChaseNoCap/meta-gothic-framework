@@ -1,5 +1,6 @@
 import { TimescaleQualityEngine } from './core/quality-engine.js';
 import { QualityMCPServer } from './mcp/server.js';
+import { QualityGraphQLServer } from './graphql-server.js';
 import type { QualityConfig } from './types/index.js';
 
 // Default configuration
@@ -40,16 +41,16 @@ async function main(): Promise<void> {
     await mcpServer.start();
     console.log(`✅ MCP Server started`);
 
-    // TODO: Start Web Portal
-    // const webPortal = await setupWebPortal(defaultConfig);
-    // await webPortal.listen({ port: 3007, host: '0.0.0.0' });
-    // console.log('✅ Web Portal started on http://localhost:3007');
+    // Start GraphQL Server
+    const graphqlServer = new QualityGraphQLServer(engine, defaultConfig);
+    await graphqlServer.start(3007);
+    console.log('✅ GraphQL Server started on http://localhost:3007/graphql');
 
     // For now, just demonstrate basic functionality
     console.log('\n📊 Quality Service is ready!');
     console.log('   - Database: Connected');
-    console.log('   - MCP Server: Coming soon (port 3006)');
-    console.log('   - Web Portal: Coming soon (port 3007)');
+    console.log('   - MCP Server: Ready (stdio)');
+    console.log('   - GraphQL API: http://localhost:3007/graphql');
     
     // Example: Process a test file
     if (process.argv[2] === 'test') {
@@ -90,8 +91,8 @@ async function main(): Promise<void> {
     process.on('SIGINT', async () => {
       console.log('\n🛑 Shutting down...');
       await mcpServer.stop();
+      await graphqlServer.stop();
       await engine.disconnect();
-      // TODO: Close web portal
       process.exit(0);
     });
 

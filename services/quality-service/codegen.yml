@@ -1,0 +1,13 @@
+schema: "./schema/schema-federated.graphql"
+generates:
+  ./src/types/generated.ts:
+    plugins:
+      - typescript
+      - typescript-resolvers
+    config:
+      useIndexSignature: true
+      contextType: "../graphql/context#GraphQLContext"
+      enumsAsTypes: true
+      scalars:
+        _Any: any
+        _FieldSet: string

@@ -10,7 +10,8 @@ This document defines the standard port configuration for all Meta GOTHIC Framew
 | **Claude Service** | 3002 | http://localhost:3002/graphql | AI agent operations and session management |
 | **Git Service** | 3004 | http://localhost:3004/graphql | Git repository operations |
 | **GitHub Adapter** | 3005 | http://localhost:3005/graphql | GitHub API integration |
-| **Quality Service** | 3006 | http://localhost:3006 | Code quality analysis with TimescaleDB |
+| **Quality Service (MCP)** | 3006 | stdio | Code quality MCP server for Claude integration |
+| **Quality Service (GraphQL)** | 3007 | http://localhost:3007/graphql | Code quality GraphQL API with TimescaleDB |
 | **UI Dashboard** | 3001 | http://localhost:3001 | Web interface for Meta GOTHIC |
 
 ## SSE Endpoints
@@ -22,6 +23,7 @@ Services that support Server-Sent Events (SSE) for real-time subscriptions:
 | **Claude Service** | http://localhost:3002/graphql/stream | ✅ Implemented |
 | **Git Service** | N/A | ❌ No subscriptions defined |
 | **GitHub Adapter** | N/A | ❌ REST adapter, no GraphQL subscriptions |
+| **Quality Service** | http://localhost:3007/graphql/stream | 🔧 Planned |
 
 ## Important Notes
 
@@ -35,12 +37,13 @@ Services that support Server-Sent Events (SSE) for real-time subscriptions:
 You can override default ports using environment variables:
 
 ```bash
-GATEWAY_PORT=4000         # Cosmo Router port
-CLAUDE_SERVICE_PORT=3002  # Claude Service port
-GIT_SERVICE_PORT=3004     # Git Service port
-GITHUB_ADAPTER_PORT=3005  # GitHub Adapter port
-QUALITY_SERVICE_PORT=3006 # Quality Service port
-UI_DASHBOARD_PORT=3001    # UI Dashboard port
+GATEWAY_PORT=4000              # Cosmo Router port
+CLAUDE_SERVICE_PORT=3002       # Claude Service port
+GIT_SERVICE_PORT=3004          # Git Service port
+GITHUB_ADAPTER_PORT=3005       # GitHub Adapter port
+MCP_PORT=3006                  # Quality Service MCP port (stdio)
+QUALITY_SERVICE_PORT=3007      # Quality Service GraphQL port
+UI_DASHBOARD_PORT=3001         # UI Dashboard port
 ```
 
 ## Quick Start
@@ -70,8 +73,11 @@ curl http://localhost:3004/graphql
 # Check GitHub Adapter
 curl http://localhost:3005/graphql
 
-# Check Quality Service
-curl http://localhost:3006
+# Check Quality Service GraphQL
+curl http://localhost:3007/graphql
+
+# Check Quality Service Health
+curl http://localhost:3007/health
 
 # Check UI Dashboard
 open http://localhost:3001

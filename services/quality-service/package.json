@@ -12,7 +12,8 @@
     "db:migrate": "tsx scripts/run-migrations.ts",
     "test": "vitest",
     "lint": "eslint src --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "codegen": "graphql-codegen --config codegen.yml"
   },
   "dependencies": {
     "@apollo/client": "^3.8.0",
@@ -25,7 +26,7 @@
     "@typescript-eslint/parser": "^6.19.0",
     "chokidar": "^3.6.0",
     "crypto": "^1.0.1",
-    "dataloader": "^2.2.2",
+    "dataloader": "^2.2.3",
     "eslint": "^8.56.0",
     "fastify": "^4.24.0",
     "graphql": "^16.8.0",
