@@ -54,7 +54,7 @@ export async function batchSessionAnalytics(
           averageTokensPerMessage: 0
         },
         costBreakdown: {
-          totalCost: 0,
+          totalCostUsd: 0,
           projectedMonthlyCost: 0
         }
       };
@@ -318,7 +318,7 @@ function calculateCostBreakdown(session: any, tokenUsage: any) {
   
   const inputCost = (tokenUsage.totalInputTokens / 1000) * COST_PER_1K_INPUT_TOKENS;
   const outputCost = (tokenUsage.totalOutputTokens / 1000) * COST_PER_1K_OUTPUT_TOKENS;
-  const totalCost = inputCost + outputCost;
+  const totalCostUsd = inputCost + outputCost;
 
   // Calculate projected monthly cost
   const sessionDuration = session.history.length > 0
@@ -326,7 +326,7 @@ function calculateCostBreakdown(session: any, tokenUsage: any) {
     : 1;
   
   const hoursElapsed = sessionDuration / (1000 * 60 * 60) || 1;
-  const costPerHour = totalCost / hoursElapsed;
+  const costPerHour = totalCostUsd / hoursElapsed;
   const projectedMonthlyCost = costPerHour * 24 * 30; // Assuming similar usage pattern
 
   // Generate optimization suggestions
@@ -346,12 +346,12 @@ function calculateCostBreakdown(session: any, tokenUsage: any) {
 
   const costByModel = [{
     model: session.metadata.model || 'claude-3-opus',
-    cost: totalCost,
+    costUsd: totalCostUsd,
     tokenCount: tokenUsage.totalInputTokens + tokenUsage.totalOutputTokens
   }];
 
   return {
-    totalCost,
+    totalCostUsd,
     costByModel,
     projectedMonthlyCost,
     optimizationSuggestions

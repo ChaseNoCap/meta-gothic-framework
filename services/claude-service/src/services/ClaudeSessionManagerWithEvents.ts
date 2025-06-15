@@ -333,7 +333,7 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
             const jsonData = JSON.parse(buffer);
             commandLogger?.info('Claude output parsed', { 
               hasResult: !!jsonData.result,
-              totalCost: jsonData.total_cost,
+              totalCostUsd: jsonData.total_cost,
               duration: jsonData.duration_ms
             });
             
@@ -370,7 +370,7 @@ export class ClaudeSessionManagerWithEvents extends EventEmitter {
             commandLogger?.info('Command executed successfully', {
               duration,
               outputLength: result.length,
-              cost: jsonData.total_cost
+              costUsd: jsonData.total_cost
             });
             
             // Emit final event

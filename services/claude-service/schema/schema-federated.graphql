@@ -847,7 +847,7 @@ type FileType {
 
 type CostBreakdown {
   """Total cost in USD"""
-  totalCost: Float!
+  totalCostUsd: Float!
   
   """Cost by model"""
   costByModel: [ModelCost!]!
@@ -863,8 +863,8 @@ type ModelCost {
   """Model name"""
   model: String!
   
-  """Total cost for this model"""
-  cost: Float!
+  """Total cost for this model in USD"""
+  costUsd: Float!
   
   """Token count for this model"""
   tokenCount: Int!
