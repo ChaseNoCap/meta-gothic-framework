@@ -40,6 +40,10 @@ export function buildCosmoSubgraphSchema(config) {
     const entityUnion = entityTypes.length > 0
         ? `union _Entity = ${entityTypes.join(' | ')}`
         : '';
+    // Only add _entities query if there are actual entities
+    const entitiesQuery = entityTypes.length > 0
+        ? '_entities(representations: [_Any!]!): [_Entity]!'
+        : '';
     const fullTypeDefs = `
     ${federationDirectives}
     ${typeDefsWithFederation}
@@ -48,7 +52,7 @@ export function buildCosmoSubgraphSchema(config) {
     scalar _FieldSet
     
     extend type Query {
-      _entities(representations: [_Any!]!): [_Entity]!
+      ${entitiesQuery}
       _service: _Service!
     }
     
@@ -58,26 +62,33 @@ export function buildCosmoSubgraphSchema(config) {
     
     ${entityUnion}
   `;
+    // Build federation Query resolvers
+    const federationQueryResolvers = {
+        _service: () => ({
+            sdl: fullTypeDefs
+        })
+    };
+    // Only add _entities resolver if there are entities
+    if (entityTypes.length > 0) {
+        federationQueryResolvers._entities = async (_parent, { representations }, context, info) => {
+            const results = await Promise.all(representations.map(async (reference) => {
+                const typename = reference.__typename;
+                // Look for resolver in the original resolvers
+                if (resolvers[typename]?.__resolveReference) {
+                    return resolvers[typename].__resolveReference(reference, context, info);
+                }
+                // Default: return the reference itself
+                return reference;
+            }));
+            return results;
+        };
+    }
     // Merge federation resolvers with user resolvers
     const mergedResolvers = {
         ...resolvers,
         Query: {
             ...resolvers.Query,
-            _entities: async (_parent, { representations }, context, info) => {
-                const results = await Promise.all(representations.map(async (reference) => {
-                    const typename = reference.__typename;
-                    // Look for resolver in the original resolvers
-                    if (resolvers[typename]?.__resolveReference) {
-                        return resolvers[typename].__resolveReference(reference, context, info);
-                    }
-                    // Default: return the reference itself
-                    return reference;
-                }));
-                return results;
-            },
-            _service: () => ({
-                sdl: fullTypeDefs
-            })
+            ...federationQueryResolvers
         },
         // Ensure Mutation and Subscription resolvers are preserved
         ...(resolvers.Mutation && { Mutation: resolvers.Mutation }),

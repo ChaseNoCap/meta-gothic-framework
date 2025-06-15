@@ -27,22 +27,33 @@ const defaultConfig: QualityConfig = {
   }
 };
 
+// Track server instances for cleanup
+let engine: TimescaleQualityEngine | null = null;
+let mcpServer: QualityMCPServer | null = null;
+let graphqlServer: QualityGraphQLServer | null = null;
+
 async function main(): Promise<void> {
   console.log('🚀 Starting Quality Service...');
+  console.log(`   Process ID: ${process.pid}`);
+  console.log(`   Node version: ${process.version}`);
+  console.log(`   Environment: ${process.env['NODE_ENV'] || 'development'}`);
   
   try {
     // Initialize the quality engine
-    const engine = new TimescaleQualityEngine(defaultConfig);
+    console.log('📊 Initializing Quality Engine...');
+    engine = new TimescaleQualityEngine(defaultConfig);
     await engine.connect();
     console.log('✅ Connected to TimescaleDB');
 
     // Start MCP Server
-    const mcpServer = new QualityMCPServer(engine, defaultConfig);
+    console.log('🔌 Starting MCP Server...');
+    mcpServer = new QualityMCPServer(engine, defaultConfig);
     await mcpServer.start();
-    console.log(`✅ MCP Server started`);
+    console.log(`✅ MCP Server started on port ${defaultConfig.mcp?.port || 3006}`);
 
     // Start GraphQL Server
-    const graphqlServer = new QualityGraphQLServer(engine, defaultConfig);
+    console.log('🌐 Starting GraphQL Server...');
+    graphqlServer = new QualityGraphQLServer(engine, defaultConfig);
     const graphqlPort = parseInt(process.env['GRAPHQL_PORT'] || '3007');
     await graphqlServer.start(graphqlPort);
     console.log(`✅ GraphQL Server started on http://localhost:${graphqlPort}/graphql`);
@@ -88,20 +99,77 @@ async function main(): Promise<void> {
       await engine.completeSession(result.session.id, 'completed');
     }
 
-    // Graceful shutdown
-    process.on('SIGINT', async () => {
-      console.log('\n🛑 Shutting down...');
-      await mcpServer.stop();
-      await graphqlServer.stop();
-      await engine.disconnect();
-      process.exit(0);
-    });
+    // Keep the process running
+    process.stdin.resume();
 
   } catch (error) {
     console.error('❌ Failed to start Quality Service:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      code: (error as any).code
+    });
+    
+    // Clean up on error
+    await cleanup();
     process.exit(1);
   }
 }
+
+// Graceful shutdown handler
+async function cleanup(): Promise<void> {
+  console.log('\n🧹 Cleaning up Quality Service...');
+  
+  try {
+    // Stop GraphQL server
+    if (graphqlServer) {
+      console.log('   - Stopping GraphQL server...');
+      await graphqlServer.stop();
+    }
+    
+    // Stop MCP server
+    if (mcpServer) {
+      console.log('   - Stopping MCP server...');
+      await mcpServer.stop();
+    }
+    
+    // Disconnect from database
+    if (engine) {
+      console.log('   - Disconnecting from database...');
+      await engine.disconnect();
+    }
+    
+    console.log('✅ Cleanup completed');
+  } catch (error) {
+    console.error('⚠️  Error during cleanup:', error);
+  }
+}
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Received SIGINT signal');
+  await cleanup();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Received SIGTERM signal');
+  await cleanup();
+  process.exit(0);
+});
+
+// Handle uncaught errors
+process.on('uncaughtException', async (error) => {
+  console.error('💥 Uncaught exception:', error);
+  await cleanup();
+  process.exit(1);
+});
+
+process.on('unhandledRejection', async (reason, promise) => {
+  console.error('💥 Unhandled rejection at:', promise, 'reason:', reason);
+  await cleanup();
+  process.exit(1);
+});
 
 // Export for use as a library
 export { TimescaleQualityEngine } from './core/quality-engine.js';
@@ -110,5 +178,9 @@ export * from './types/index.js';
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(console.error);
+  main().catch(async (error) => {
+    console.error('💥 Fatal error in main:', error);
+    await cleanup();
+    process.exit(1);
+  });
 }

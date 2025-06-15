@@ -1,4 +1,5 @@
 import type { GraphQLContext } from '../../graphql/context.js';
+import { mapQualitySession } from '../mappers.js';
 
 interface QualitySessionsArgs {
   limit?: number;
@@ -17,21 +18,7 @@ export async function qualitySessions(
     const sessions = await engine.getRecentSessions(limit);
     
     // Map to GraphQL schema format
-    return sessions.map(session => ({
-      id: session.id,
-      type: session.sessionType,
-      startTime: session.startTime.toISOString(),
-      endTime: session.endTime?.toISOString(),
-      filesAnalyzed: session.filesAnalyzed,
-      totalViolations: session.totalViolations,
-      averageScore: session.averageScore || 0,
-      metadata: session.metadata ? {
-        claudeSessionId: session.metadata.claudeSessionId,
-        gitBranch: session.metadata.gitBranch,
-        gitCommit: session.metadata.gitCommit,
-        userId: session.metadata.userId
-      } : null
-    }));
+    return sessions.map(mapQualitySession);
   } catch (error) {
     console.error('Error getting quality sessions:', error);
     throw new Error('Failed to get quality sessions');

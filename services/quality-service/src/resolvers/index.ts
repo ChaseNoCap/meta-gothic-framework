@@ -9,7 +9,7 @@ export const resolvers = {
   
   // Type resolvers
   FileQuality: {
-    trends: async (parent: any, _args: any, context: any) => {
+    trends: async (_parent: any, _args: any, _context: any) => {
       // TODO: Implement trend data loading
       return null;
     }

@@ -31,11 +31,9 @@ export async function runQualityCheck(
 
     // Process each file
     for (const path of paths) {
-      const startTime = Date.now();
-      
       // Analyze file
       const result = await engine.processFile(path, {
-        sessionType: 'MANUAL',
+        sessionType: 'INTERACTIVE',
         sessionId: session.id,
         triggeredBy: 'graphql'
       });
@@ -85,7 +83,7 @@ export async function runQualityCheck(
         totalViolations,
         fixableViolations: totalFixed,
         averageScore: results.reduce((sum, r) => sum + r.score, 0) / results.length,
-        duration: Date.now() - session.startTime.getTime()
+        duration: Date.now() - session.startedAt.getTime()
       }
     };
   } catch (error) {

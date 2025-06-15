@@ -124,6 +124,10 @@ else
   # Clean up temporary files
   rm -f subgraphs.yaml
   
+  # Clean up the intermediate router-config.json file
+  echo "🧹 Cleaning up intermediate files..."
+  rm -f router-config.json
+  
   exit 0
 fi
 

@@ -16,22 +16,22 @@ export async function violationStats(
 
   try {
     const stats = await engine.getViolationStats({
-      sessionId,
-      severity,
-      tool
+      ...(sessionId && { sessionId }),
+      ...(severity && { severity }),
+      ...(tool && { tool })
     });
 
     return {
       total: stats.total,
-      bySeverity: stats.bySeverity.map(item => ({
+      bySeverity: stats.bySeverity.map((item: any) => ({
         severity: item.severity,
         count: item.count
       })),
-      byTool: stats.byTool.map(item => ({
+      byTool: stats.byTool.map((item: any) => ({
         tool: item.tool,
         count: item.count
       })),
-      topRules: stats.topRules.map(item => ({
+      topRules: stats.topRules.map((item: any) => ({
         rule: item.rule,
         count: item.count,
         tool: item.tool

@@ -1,4 +1,5 @@
 import type { GraphQLContext } from '../../graphql/context.js';
+import { mapQualitySession } from '../mappers.js';
 
 interface CreateSessionInput {
   type: string;
@@ -21,21 +22,7 @@ export async function createQualitySession(
   try {
     const session = await engine.createSession(type, metadata);
     
-    return {
-      id: session.id,
-      type: session.sessionType,
-      startTime: session.startTime.toISOString(),
-      endTime: session.endTime?.toISOString(),
-      filesAnalyzed: session.filesAnalyzed,
-      totalViolations: session.totalViolations,
-      averageScore: session.averageScore || 0,
-      metadata: session.metadata ? {
-        claudeSessionId: session.metadata.claudeSessionId,
-        gitBranch: session.metadata.gitBranch,
-        gitCommit: session.metadata.gitCommit,
-        userId: session.metadata.userId
-      } : null
-    };
+    return mapQualitySession(session);
   } catch (error) {
     console.error('Error creating quality session:', error);
     throw new Error('Failed to create quality session');

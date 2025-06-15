@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { parse, execute, DocumentNode, GraphQLError } from 'graphql';
+import { parse, execute, DocumentNode } from 'graphql';
 import { TimescaleQualityEngine } from './core/quality-engine.js';
 import { schema } from './graphql/schema.js';
 import { createContext } from './graphql/context.js';
@@ -9,11 +9,9 @@ import type { QualityConfig } from './types/index.js';
 export class QualityGraphQLServer {
   private server: http.Server | null = null;
   private engine: TimescaleQualityEngine;
-  private config: QualityConfig;
 
-  constructor(engine: TimescaleQualityEngine, config: QualityConfig) {
+  constructor(engine: TimescaleQualityEngine, _config: QualityConfig) {
     this.engine = engine;
-    this.config = config;
   }
 
   async start(port: number = 3007): Promise<void> {
@@ -99,7 +97,7 @@ export class QualityGraphQLServer {
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(result));
           } catch (error) {
-            logger.error('GraphQL request error:', error);
+            logger.error('GraphQL request error:', error as Error);
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ 

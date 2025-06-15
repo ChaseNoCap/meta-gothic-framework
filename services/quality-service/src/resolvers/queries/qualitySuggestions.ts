@@ -19,7 +19,7 @@ export async function qualitySuggestions(
     const suggestions = [];
     
     // High impact: Errors
-    const errors = result.violations.filter(v => v.severity === 'ERROR');
+    const errors = result.violations.filter(v => v.severity === 'error');
     if (errors.length > 0) {
       suggestions.push({
         file: path,
@@ -31,7 +31,7 @@ export async function qualitySuggestions(
     }
     
     // Medium impact: Warnings
-    const warnings = result.violations.filter(v => v.severity === 'WARNING');
+    const warnings = result.violations.filter(v => v.severity === 'warning');
     if (warnings.length > 0) {
       suggestions.push({
         file: path,

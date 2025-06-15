@@ -10,7 +10,7 @@ export async function fileQuality(
   args: FileQualityArgs,
   context: GraphQLContext
 ) {
-  const { path, sessionId } = args;
+  const { path } = args;
   const { engine } = context;
 
   try {

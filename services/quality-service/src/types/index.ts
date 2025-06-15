@@ -1,5 +1,14 @@
 // Core types and interfaces for the Quality Platform
 
+export interface FileQuality {
+  path: string;
+  hash: string;
+  score: number;
+  violations: Violation[];
+  lastChecked: string;
+  trends?: any;
+}
+
 export interface QualityFile {
   id: string;
   path: string;
@@ -19,6 +28,8 @@ export interface Violation {
   message: string;
   lineNumber: number | null;
   columnNumber: number | null;
+  endLine?: number | null;
+  endColumn?: number | null;
   toolType: string;
   autoFixable: boolean;
   status: 'active' | 'fixed' | 'ignored' | 'in_progress';

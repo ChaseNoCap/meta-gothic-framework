@@ -19,24 +19,24 @@ export async function qualityTrends(
     const trends = await engine.getQualityTrends(
       path || '*', // Use wildcard for all files
       {
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        bucketSize
+        start: new Date(startTime),
+        end: new Date(endTime),
+        bucket: bucketSize as any
       }
     );
 
     // Calculate summary statistics
-    const totalViolations = trends.reduce((sum, t) => sum + (t.violationCount || 0), 0);
+    const totalViolations = trends.reduce((sum, t) => sum + (t.avgViolationCount || 0), 0);
     const avgScore = trends.length > 0 
-      ? trends.reduce((sum, t) => sum + (t.averageScore || 0), 0) / trends.length 
+      ? trends.reduce((sum, t) => sum + (t.avgQualityScore || 0), 0) / trends.length 
       : 0;
     
     // Determine trend direction
-    let trendDirection = 'STABLE' as const;
+    let trendDirection: 'STABLE' | 'IMPROVING' | 'DECLINING' = 'STABLE';
     if (trends.length >= 2) {
-      const firstScore = trends[0].averageScore || 0;
-      const lastScore = trends[trends.length - 1].averageScore || 0;
-      const improvement = ((lastScore - firstScore) / firstScore) * 100;
+      const firstScore = trends[0]?.avgQualityScore || 0;
+      const lastScore = trends[trends.length - 1]?.avgQualityScore || 0;
+      const improvement = firstScore > 0 ? ((lastScore - firstScore) / firstScore) * 100 : 0;
       
       if (improvement > 5) trendDirection = 'IMPROVING';
       else if (improvement < -5) trendDirection = 'DECLINING';
@@ -45,14 +45,14 @@ export async function qualityTrends(
     return {
       path,
       buckets: trends.map(t => ({
-        time: t.bucketTime.toISOString(),
-        averageScore: t.averageScore || 0,
-        violationCount: t.violationCount || 0,
-        filesAnalyzed: t.filesAnalyzed || 0
+        time: t.time.toISOString(),
+        averageScore: t.avgQualityScore || 0,
+        violationCount: t.avgViolationCount || 0,
+        filesAnalyzed: t.sampleCount || 0
       })),
       summary: {
-        improvement: trends.length >= 2 
-          ? ((trends[trends.length - 1].averageScore || 0) - (trends[0].averageScore || 0)) 
+        improvement: trends.length >= 2 && trends[0] && trends[trends.length - 1]
+          ? ((trends[trends.length - 1]?.avgQualityScore || 0) - (trends[0]?.avgQualityScore || 0)) 
           : 0,
         totalViolations,
         averageScore: avgScore,
