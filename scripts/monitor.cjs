@@ -25,6 +25,8 @@ const services = [
   { name: 'claude-service', displayName: 'Claude Service', port: 3002 },
   { name: 'git-service', displayName: 'Git Service', port: 3004 },
   { name: 'github-adapter', displayName: 'GitHub Adapter', port: 3005 },
+  { name: 'quality-service', displayName: 'Quality Service (MCP)', port: 3006, isQualityMcp: true },
+  { name: 'quality-service', displayName: 'Quality Service (GraphQL)', port: 3007, isQualityGraphql: true },
   { name: 'ui', displayName: 'UI Dashboard', port: 3001 }
 ];
 
@@ -72,6 +74,11 @@ function formatMemory(bytes) {
   return `${mb.toFixed(1)}MB`;
 }
 
+function truncateWithEllipsis(str, maxLength) {
+  if (str.length <= maxLength) return str;
+  return str.substring(0, maxLength - 3) + '...';
+}
+
 function getServiceStatus(pm2Process) {
   const status = pm2Process.pm2_env.status;
   const color = status === 'online' ? 'green' : status === 'stopped' ? 'red' : 'yellow';
@@ -81,15 +88,41 @@ function getServiceStatus(pm2Process) {
 
 function renderHeader() {
   process.stdout.write(colors.clear);
-  log('🚀 Meta-Gothic Services Monitor (Cosmo)', 'cyan');
-  log('━'.repeat(60), 'gray');
+  log('🚀 Meta-Gothic Services Monitor', 'cyan');
+  log('━'.repeat(80), 'gray');
   log('');
 }
 
 function renderServices(processes) {
-  const maxNameLength = Math.max(...services.map(s => s.displayName.length));
+  // Fixed column widths for 80-char limit (no icon)
+  // name + │_(2) + status + _│_(3) + port + _│_(3) + uptime + _│_(3) + cpu + _│_(3) + mem + _│_(3) + restart = 80
+  const nameWidth = 26;  // Service name (increased by 2 from removed icon)
+  const statusWidth = 8;  // Status  
+  const portWidth = 4;   // Port number
+  const uptimeWidth = 8;  // Uptime
+  const cpuWidth = 5;    // CPU
+  const memWidth = 7;    // Memory
+  const restartWidth = 3; // Restarts
+  // Total: 26 + 2 + 8 + 3 + 4 + 3 + 8 + 3 + 5 + 3 + 7 + 3 + 3 = 78 (leaving 2 for padding)
+  
+  // Header row
+  log('Service'.padEnd(nameWidth), 'gray', false);
+  log('│ ', 'gray', false);
+  log('Status'.padEnd(statusWidth), 'gray', false);
+  log(' │ ', 'gray', false);
+  log('Port'.padEnd(portWidth), 'gray', false);
+  log(' │ ', 'gray', false);
+  log('Uptime'.padEnd(uptimeWidth), 'gray', false);
+  log(' │ ', 'gray', false);
+  log('CPU'.padEnd(cpuWidth), 'gray', false);
+  log(' │ ', 'gray', false);
+  log('Memory'.padEnd(memWidth), 'gray', false);
+  log(' │ ', 'gray', false);
+  log('🔄', 'gray');
+  log('─'.repeat(80), 'gray');
   
   services.forEach(service => {
+    // For quality service entries, we show the same PM2 process but different ports
     const pm2Process = processes.find(p => p.name === service.name);
     
     if (pm2Process) {
@@ -99,27 +132,41 @@ function renderServices(processes) {
       const cpu = pm2Process.monit ? `${pm2Process.monit.cpu}%` : '-';
       const restarts = pm2Process.pm2_env.restart_time || 0;
       
-      const name = service.displayName.padEnd(maxNameLength);
-      log(`${icon} `, color, false);
-      log(`${name} `, 'reset', false);
-      log(`[${status.toUpperCase().padEnd(8)}] `, color, false);
-      log(`Port: ${service.port} `, 'gray', false);
-      log(`Uptime: ${uptime.padEnd(10)} `, 'reset', false);
-      log(`CPU: ${cpu.padEnd(6)} `, 'reset', false);
-      log(`Mem: ${memory.padEnd(8)} `, 'reset', false);
-      log(`Restarts: ${restarts}`, restarts > 0 ? 'yellow' : 'reset');
+      // Format each field with fixed width
+      const name = truncateWithEllipsis(service.displayName, nameWidth).padEnd(nameWidth);
+      const statusStr = status.toUpperCase().substring(0, statusWidth).padEnd(statusWidth);
+      const portStr = String(service.port).substring(0, portWidth).padEnd(portWidth);
+      const uptimeStr = uptime.substring(0, uptimeWidth).padEnd(uptimeWidth);
+      const cpuStr = cpu.substring(0, cpuWidth).padEnd(cpuWidth);
+      const memStr = memory.substring(0, memWidth).padEnd(memWidth);
+      const restartStr = String(restarts).substring(0, restartWidth).padEnd(restartWidth);
+      
+      // Build the line (no icon)
+      log(`${name}`, 'reset', false);
+      log('│ ', 'gray', false);
+      log(`${statusStr}`, color, false);
+      log(' │ ', 'gray', false);
+      log(`${portStr}`, 'reset', false);
+      log(' │ ', 'gray', false);
+      log(`${uptimeStr}`, 'reset', false);
+      log(' │ ', 'gray', false);
+      log(`${cpuStr}`, 'reset', false);
+      log(' │ ', 'gray', false);
+      log(`${memStr}`, 'reset', false);
+      log(' │ ', 'gray', false);
+      log(`${restartStr}`, restarts > 0 ? 'yellow' : 'reset');
     } else {
-      const name = service.displayName.padEnd(maxNameLength);
-      log(`✗ `, 'red', false);
-      log(`${name} `, 'reset', false);
-      log(`[NOT FOUND]`, 'red');
+      const name = truncateWithEllipsis(service.displayName, nameWidth).padEnd(nameWidth);
+      log(`${name}`, 'reset', false);
+      log('│ ', 'gray', false);
+      log(`NOT FOUND`, 'red');
     }
   });
 }
 
 function renderLogs(processes) {
   log('');
-  log('━'.repeat(60), 'gray');
+  log('━'.repeat(80), 'gray');
   log('📋 Recent Logs (last error from each service):', 'cyan');
   log('');
   
@@ -130,7 +177,11 @@ function renderLogs(processes) {
       try {
         const errorLog = execSync(`npx pm2 logs ${service.name} --err --lines 3 --nostream`, { encoding: 'utf8' });
         const lines = errorLog.split('\n').filter(line => line.trim());
-        lines.forEach(line => log(`  ${line}`, 'gray'));
+        lines.forEach(line => {
+          // Truncate long log lines to fit 80 chars (with 2-space indent)
+          const truncated = line.substring(0, 76);
+          log(`  ${truncated}`, 'gray');
+        });
       } catch (error) {
         log('  Unable to fetch logs', 'gray');
       }
@@ -140,7 +191,7 @@ function renderLogs(processes) {
 }
 
 function renderFooter() {
-  log('━'.repeat(60), 'gray');
+  log('━'.repeat(80), 'gray');
   log('');
   log('Commands:', 'cyan');
   log('  l - View logs           r - Restart all       s - Stop all', 'gray');
@@ -225,12 +276,18 @@ process.stdin.on('keypress', (str, key) => {
     case '3':
     case '4':
     case '5':
+    case '6':
+    case '7':
       const index = parseInt(str) - 1;
       if (index < services.length) {
         const service = services[index];
+        // Get unique service name (for quality service, both entries restart the same process)
+        const uniqueServices = [...new Set(services.map(s => s.name))];
+        const actualServiceName = service.name;
+        
         log(`\nRestarting ${service.displayName}...`, 'yellow');
         try {
-          execSync(`npx pm2 restart ${service.name}`);
+          execSync(`npx pm2 restart ${actualServiceName}`);
           log(`${service.displayName} restarted!`, 'green');
         } catch (error) {
           log(`Failed to restart ${service.displayName}`, 'red');

@@ -100,9 +100,11 @@ module.exports = {
       interpreter: 'bash',
       env: {
         NODE_ENV: 'development',
-        PORT: 3006,
+        MCP_PORT: 3006,
+        GRAPHQL_PORT: 3007,
         WORKSPACE_ROOT: WORKSPACE_ROOT,
-        DATABASE_URL: 'postgresql://josh@localhost:5432/quality_service'
+        DATABASE_URL: 'postgresql://josh@localhost:5432/quality_service',
+        FEDERATION: 'cosmo'
       },
       watch: false,
       max_memory_restart: '1G',

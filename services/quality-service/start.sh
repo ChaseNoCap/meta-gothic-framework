@@ -28,5 +28,7 @@ else
 fi
 
 # Start the service
-echo "🚀 Starting Quality Service on port ${PORT:-3006}"
+echo "🚀 Starting Quality Service..."
+echo "   MCP Server on port ${MCP_PORT:-3006}"
+echo "   GraphQL Server on port ${GRAPHQL_PORT:-3007}"
 exec npm run start

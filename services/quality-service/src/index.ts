@@ -43,8 +43,9 @@ async function main(): Promise<void> {
 
     // Start GraphQL Server
     const graphqlServer = new QualityGraphQLServer(engine, defaultConfig);
-    await graphqlServer.start(3007);
-    console.log('✅ GraphQL Server started on http://localhost:3007/graphql');
+    const graphqlPort = parseInt(process.env['GRAPHQL_PORT'] || '3007');
+    await graphqlServer.start(graphqlPort);
+    console.log(`✅ GraphQL Server started on http://localhost:${graphqlPort}/graphql`);
 
     // For now, just demonstrate basic functionality
     console.log('\n📊 Quality Service is ready!');

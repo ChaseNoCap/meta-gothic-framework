@@ -10,13 +10,13 @@ const services = [
   { name: 'claude-service', port: 3002 },
   { name: 'git-service', port: 3004 },
   { name: 'github-adapter', port: 3005 },
-  { name: 'quality-service', port: 3006 },
+  { name: 'quality-service', port: 3006, additionalPorts: [3007] },
   { name: 'gateway', port: 4000 },
   { name: 'ui', port: 3001 }
 ];
 
 // Ports that need to be available
-const requiredPorts = services.map(s => s.port);
+const requiredPorts = services.flatMap(s => [s.port, ...(s.additionalPorts || [])]);
 
 // Colors for output
 const colors = {
@@ -580,7 +580,7 @@ async function main() {
     log('   Claude Service: http://localhost:3002/graphql', 'dim');
     log('   Git Service: http://localhost:3004/graphql', 'dim');
     log('   GitHub Adapter: http://localhost:3005/graphql', 'dim');
-    log('   Quality Service: http://localhost:3006 (MCP: npm run start:mcp)', 'dim');
+    log('   Quality Service: MCP: 3006, GraphQL: http://localhost:3007/graphql', 'dim');
     log('   UI Dashboard: http://localhost:3001', 'dim');
     
     if (options.noMonitor) {
